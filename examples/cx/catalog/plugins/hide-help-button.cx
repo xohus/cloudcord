@@ -1,0 +1,3 @@
+plugin "HideHelpButton":
+  needs appearance.hide
+  hide help-entry

@@ -274,9 +274,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             .map(name => [name, () => name]));
         let routeVisibilityChecks = 0;
         const useRoutePredicate = () => { routeVisibilityChecks++; return true; };
-        const settingsRoutes = new Map([
+        const settingsEntrys = new Map([
             ["QuestHomeSetting", { type: "route", usePredicate: useRoutePredicate }],
             ["PremiumSetting", { type: "route" }],
+            ["SupportSetting", { type: "pressable" }],
         ]);
         const pickerOrder = Object.freeze(["emoji", "gif", "sticker"]);
         const useSegmentedControlState = options => options;
@@ -460,7 +461,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/SegmentedControlState.native.tsx") ? segmentedControl
                 : path.endsWith("/ExpressionPickerConstants.tsx") ? { ExpressionPickerOrder: pickerOrder }
                 : path.endsWith("/ExpressionPicker.tsx") ? { default: expressionPicker }
-                : path.includes("/defs/native/") ? { default: settingsRoutes.get(path.split("/").at(-1).replace(".tsx", "")) }
+                : path.includes("/defs/native/") ? { default: settingsEntrys.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
@@ -761,8 +762,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(segmentedControl.useSegmentedControlState, useSegmentedControlState);
                 assert.equal(appearanceHooks.size, 0);
                 continue;
-            } else if (rule.mobile.settingsRoute) {
-                const route = settingsRoutes.get(rule.mobile.settingsRoute.split("/").at(-1).replace(".tsx", ""));
+            } else if (rule.mobile.settingsEntry) {
+                const route = settingsEntrys.get(rule.mobile.settingsEntry.split("/").at(-1).replace(".tsx", ""));
                 const hadPredicate = rule.plugin === "HideQuestsTab";
                 const checks = routeVisibilityChecks;
                 assert.equal(route.usePredicate(), false);

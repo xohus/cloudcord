@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildBatchPlan, buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
+const { buildBatchPlan, buildPlan, checkAppearancePaths, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
@@ -293,6 +293,14 @@ const recipePriority = buildBatchPlan([
 ]);
 assert.equal(recipePriority.batches[0].anchor, "recipe:hide-component");
 assert.equal(recipePriority.covered, 2);
+assert.deepEqual(checkAppearancePaths({
+    route: { plugin: "Route", mobile: { settingsEntry: "native/Route.tsx" } },
+    component: { plugin: "Component", mobile: { hideComponentPaths: ["native/First.tsx", "native/Second.tsx"] } },
+    nameOnly: { plugin: "Name", mobile: ["NamedComponent"] },
+}, {
+    Android: new Set(["native/Route.tsx", "native/First.tsx", "native/Second.tsx"]),
+    iOS: new Set(["native/Route.tsx", "native/First.tsx"]),
+}), { checked: 2, missing: [{ plugin: "Component", platform: "iOS", path: "native/Second.tsx" }] });
 async function testReviewedFetch() {
     const code = "reviewed source\n";
     const hash = require("node:crypto").createHash("sha256").update(code).digest("hex");

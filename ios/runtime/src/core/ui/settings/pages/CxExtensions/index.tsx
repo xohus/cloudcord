@@ -395,12 +395,12 @@ function registerExpressionPickerTab(tab: PickerTab) {
     };
 }
 
-const settingsRouteVisibility = new WeakMap<object, { users: number; restore: () => void; }>();
+const settingsEntryVisibility = new WeakMap<object, { users: number; restore: () => void; }>();
 
-function hideSettingsRoute(path: string) {
+function hideSettingsEntry(path: string) {
     const route = findByFilePath(path)?.default;
-    if (route?.type !== "route") throw new Error("Discord's settings route is unavailable");
-    let binding = settingsRouteVisibility.get(route);
+    if (route?.type !== "route" && route?.type !== "pressable") throw new Error("Discord's settings entry is unavailable");
+    let binding = settingsEntryVisibility.get(route);
     if (!binding) {
         const original = route.usePredicate;
         const descriptor = Object.getOwnPropertyDescriptor(route, "usePredicate");
@@ -421,7 +421,7 @@ function hideSettingsRoute(path: string) {
             ? { ...descriptor, value: predicate }
             : { configurable: true, enumerable: descriptor?.enumerable ?? true, writable: true, value: predicate });
         binding = state;
-        settingsRouteVisibility.set(route, state);
+        settingsEntryVisibility.set(route, state);
     }
     const active = binding;
     active.users++;
@@ -430,7 +430,7 @@ function hideSettingsRoute(path: string) {
         if (released) return;
         released = true;
         if (--active.users === 0) {
-            settingsRouteVisibility.delete(route);
+            settingsEntryVisibility.delete(route);
             active.restore();
         }
     };
@@ -651,7 +651,7 @@ export default function CxExtensions() {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
                     if ("expressionPickerTab" in mobile) return registerExpressionPickerTab(mobile.expressionPickerTab);
-                    if ("settingsRoute" in mobile) return hideSettingsRoute(mobile.settingsRoute);
+                    if ("settingsEntry" in mobile) return hideSettingsEntry(mobile.settingsEntry);
                     if ("hideComponentPaths" in mobile) {
                         const components = mobile.hideComponentPaths.map(path => findByFilePath(path)?.default);
                         if (components.some(component => !component)) throw new Error("Discord's appearance components are unavailable");

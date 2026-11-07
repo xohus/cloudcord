@@ -1127,6 +1127,22 @@ function buildBatchPlan(records, limit = 12) {
     return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches };
 }
 
+function checkAppearancePaths(appearance, indexes) {
+    let checked = 0;
+    const missing = [];
+    for (const { plugin, mobile } of Object.values(appearance)) {
+        const paths = mobile?.hideComponentPaths ?? [mobile?.renderTree ?? mobile?.settingsEntry].filter(Boolean);
+        if (!paths.length) continue;
+        checked++;
+        for (const path of paths) {
+            for (const [platform, index] of Object.entries(indexes)) {
+                if (!index.has(path)) missing.push({ plugin, platform, path });
+            }
+        }
+    }
+    return { checked, missing };
+}
+
 function verifyPorts(files) {
     const { parseCx, activateCx } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     for (const [file, source] of files) {
@@ -1208,6 +1224,18 @@ async function main(rawArgs) {
     if (args.length === 1 && args[0] === "--help") {
         console.log(usage);
         console.log("Scan source patterns, export candidates for review, or add ready ports to the shared catalog.");
+        console.log("Check native appearance paths with --check-appearance-paths <Android path list> <iOS path list>.");
+        return;
+    }
+    if (args[0] === "--check-appearance-paths") {
+        if (args.length !== 3) throw new Error("Expected an Android and an iOS module path list");
+        const loadIndex = file => new Set(fs.readFileSync(file, "utf8").split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+        const { cxAppearanceTargets } = require("./sync-cx-catalog.cjs").loadCxRuntime();
+        const result = checkAppearancePaths(cxAppearanceTargets, { Android: loadIndex(args[1]), iOS: loadIndex(args[2]) });
+        if (result.missing.length) {
+            throw new Error(result.missing.map(({ plugin, platform, path }) => plugin + " missing on " + platform + " (" + path + ")").join("\n"));
+        }
+        console.log("Verified module paths for " + result.checked + " appearance ports in both mobile indexes.");
         return;
     }
     const sourceIndex = args.indexOf("--source-dir");
@@ -1278,4 +1306,4 @@ if (require.main === module) {
         process.exitCode = 1;
     });
 }
-module.exports = { buildBatchPlan, buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts };
+module.exports = { buildBatchPlan, buildPlan, checkAppearancePaths, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts };
