@@ -232,10 +232,15 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar"]
             .map(name => [name, () => name]));
         const renderHeader = tree => tree;
-        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem"].map(name => [
+        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay"].map(name => [
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
-        const headerMessages = { t: { "5h0QOP": "search" }, intl: { string: () => "Rechercher" } };
+        const headerMessages = { t: { "5h0QOP": "Rechercher", "F+x38C": "Divulgâcheur" }, intl: { string: value => value } };
+        class Spoiler {
+            constructor(element, revealed) { this.element = element; this.state = { revealed }; }
+            render() { return this.element; }
+        }
+        const renderSpoiler = Spoiler.prototype.render;
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
         const settings = {};
@@ -328,7 +333,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
             "@metro": { findByFilePath: path => path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
-                : { default: nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
+                : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
@@ -403,6 +408,23 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     assert.equal(styles[1], rule.style.values);
                 }
                 wraps.push(wrapped);
+            } else if (rule.style?.spoilerOutline) {
+                const hiddenText = new Spoiler(original, false);
+                const revealedText = new Spoiler(original, true);
+                assert.equal(hiddenText.render().props.style[0], baseStyle);
+                assert.equal(hiddenText.render().props.style[1], rule.style.spoilerOutline);
+                assert.equal(revealedText.render(), original);
+                const hook = appearanceHooks.get("MediaModalSpoilerOverlay");
+                const wrapped = hook(null, original);
+                assert.equal(wrapped.type(wrapped.props).props.style[1], rule.style.spoilerOutline);
+                const protectedMedia = jsx("NativeTarget", { source: { obscure: true }, style: baseStyle });
+                const protectedWrapper = hook(null, protectedMedia);
+                assert.equal(protectedWrapper.type(protectedWrapper.props), protectedMedia);
+                settings.safeMode = { enabled: true };
+                assert.equal(hiddenText.render(), original);
+                assert.equal(wrapped.type(wrapped.props), original);
+                settings.safeMode = undefined;
+                wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
             else if (rule.mobile.renderTree) {
                 const name = rule.mobile.renderTree.split("/").at(-1).replace(".tsx", "");
@@ -415,9 +437,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 const search = button("SearchIcon", "Rechercher", "link");
                 const addFriend = button("FriendIcon", "Ajouter un ami");
                 const avatar = jsx(headerIcons.Avatar, { source: { uri: "avatar" }, size: 20 });
+                const spoilerLabel = jsx("Text", { accessibilityRole: "text", children: "DIVULGÂCHEUR" });
+                const contentWarning = jsx("Text", { accessibilityRole: "text", children: "CONTENU SENSIBLE" });
                 const text = jsx("Text", { children: "Messages" });
                 const row = children => jsx("View", Object.freeze({ children: Object.freeze(children) }));
-                const input = row([text, row([voice, video, search, addFriend, avatar])]);
+                const input = row([text, row([voice, video, search, addFriend, avatar, spoilerLabel, contentWarning])]);
                 const originalHeader = jsx(header, input);
                 const hook = appearanceHooks.get(name);
                 const unrelated = jsx({ ...header }, input);
@@ -427,8 +451,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 const patched = wrapped.type(wrapped.props);
                 const rendered = patched.type.type(input);
                 const actual = rendered.props.children[1].props.children;
-                const expected = rule.mobile.hideComponents ? [voice, video, search, addFriend, null]
-                    : rule.mobile.hideIcons ? [null, null, search, addFriend, avatar] : [voice, video, null, addFriend, avatar];
+                const expected = rule.mobile.hideComponents ? [voice, video, search, addFriend, null, spoilerLabel, contentWarning]
+                    : rule.mobile.hideIcons ? [null, null, search, addFriend, avatar, spoilerLabel, contentWarning]
+                        : rule.mobile.hideText ? [voice, video, search, addFriend, avatar, null, contentWarning]
+                            : [voice, video, null, addFriend, avatar, spoilerLabel, contentWarning];
                 assert.equal(rendered.props.children[0], text);
                 expected.forEach((item, index) => assert.equal(actual[index], item));
                 assert.equal(input.props.children[1].props.children[0], voice);
@@ -461,6 +487,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable " + rule.plugin);
             assert.equal(appearanceHooks.size, 0);
             assert.equal(messageRenderer.default, createMessageContent);
+            assert.equal(Spoiler.prototype.render, renderSpoiler);
             assert.equal(colorOverlays.size, 0);
             assert.equal(stylesheet, undefined);
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);

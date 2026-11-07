@@ -166,6 +166,20 @@ export const cxAppearanceTargets = {
         css: '[class*="altText"] { display: none !important; }',
         mobile: ["MediaModalOverlayAltTextButton"],
     },
+    "spoiler-media-label": {
+        plugin: "HideSpoilerWarnings", label: "the spoiler label on images",
+        css: '[class*="spoilerWarning"] { display: none !important; }',
+        mobile: {
+            renderTree: "modules/media_viewer/native/components/MediaModalSpoilerOverlay.tsx",
+            hideText: ["F+x38C"],
+        },
+    },
+    "spoiler-outline": {
+        plugin: "ReadableSpoilers", label: "outline concealed spoilers",
+        css: '[class*="spoilerContent"]:not([class*="spoilerContentHidden"]), span[class*="spoilerText"]:not([class*="hidden"]) {}'
+            + '[class*="spoilerContent"], [class*="spoilerWarning"] { outline: 1px dashed rgb(1 205 254 / 70%); outline-offset: 1px; border-radius: 4px; box-shadow: 0 0 6px rgb(255 113 206 / 35%); }',
+        style: { spoilerOutline: { borderWidth: 1, borderColor: "rgba(1, 205, 254, 0.7)", borderStyle: "dashed", borderRadius: 4 } },
+    },
     "contrast-text": {
         plugin: "HighContrastText", label: "increase text contrast",
         css: ":root { --text-default: #ffffff; --text-normal: #ffffff; --text-muted: #c7c9d1; }",

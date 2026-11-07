@@ -110,7 +110,7 @@ function hideAppearanceElements(tree: ReactNode, shouldHide: (element: ReactElem
 
 function registerTreeAppearance(rule: {
     renderTree: string; hideComponents?: readonly string[]; hideIcons?: readonly string[];
-    keepWhilePresent?: readonly string[]; hideLabels?: readonly string[];
+    keepWhilePresent?: readonly string[]; hideLabels?: readonly string[]; hideText?: readonly string[];
 }) {
     const target = findByFilePath(rule.renderTree)?.default;
     if (target?.$$typeof !== Symbol.for("react.memo") || typeof target.type !== "function") {
@@ -119,23 +119,27 @@ function registerTreeAppearance(rule: {
     const getTypes = (names: readonly string[]) => new Set(names.map(name => findByProps(name)?.[name]).filter(Boolean));
     const components = getTypes(rule.hideComponents ?? []);
     const icons = getTypes(rule.hideIcons ?? []);
-    const translations = rule.hideLabels && findByProps("intl", "t");
-    const labels = new Set(rule.hideLabels?.flatMap(key => {
+    const translations = (rule.hideLabels || rule.hideText) && findByProps("intl", "t");
+    const translate = (keys: readonly string[] = []) => keys.flatMap(key => {
         const message = translations?.t?.[key];
         const label = message && translations?.intl?.string?.(message);
         return typeof label === "string" && label ? [label] : [];
-    }));
-    if (!components.size && !icons.size && !labels.size) throw new Error("Discord's appearance targets are unavailable");
+    });
+    const labels = new Set(translate(rule.hideLabels));
+    const text = new Set(translate(rule.hideText).map(label => label.toUpperCase()));
+    if (!components.size && !icons.size && !labels.size && !text.size) throw new Error("Discord's appearance targets are unavailable");
     const keep = getTypes(rule.keepWhilePresent ?? []);
     if (rule.keepWhilePresent && keep.size !== rule.keepWhilePresent.length) {
         throw new Error("Discord's active call controls are unavailable");
     }
     const shouldHide = ({ type, props }: ReactElement<AppearanceProps>) => {
         const { children, accessibilityRole, accessibilityLabel, onPress } = props;
-        return components.has(type) || typeof onPress === "function" && (
-            Boolean(accessibilityLabel && labels.has(accessibilityLabel))
-            || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons)
-        );
+        return components.has(type)
+            || accessibilityRole === "text" && typeof children === "string" && text.has(children)
+            || typeof onPress === "function" && (
+                Boolean(accessibilityLabel && labels.has(accessibilityLabel))
+                || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons)
+            );
     };
     const render = target.type;
     const component = target.displayName || render.displayName || render.name;
@@ -311,6 +315,24 @@ export default function CxExtensions() {
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
+                    if ("spoilerOutline" in style) {
+                        const spoiler = findByFilePath("modules/markup/native/Spoiler.tsx")?.default?.prototype;
+                        if (typeof spoiler?.render !== "function") throw new Error("Discord's text spoiler is unavailable");
+                        const outline = style.spoilerOutline;
+                        const stopText = instead("render", spoiler, function (this: { state?: { revealed?: boolean; }; }, args, original) {
+                            const rendered = original.apply(this, args);
+                            if (settings.safeMode?.enabled || this.state?.revealed !== false || !React.isValidElement<{ style?: unknown; }>(rendered)) return rendered;
+                            return React.cloneElement(rendered, { style: [rendered.props.style, outline] });
+                        });
+                        try {
+                            const stopMedia = registerJsxAppearance(["MediaModalSpoilerOverlay"], element => element.props.source?.obscure
+                                ? element : React.cloneElement(element, { style: [element.props.style, outline] }));
+                            return () => { stopMedia(); stopText(); };
+                        } catch (error) {
+                            stopText();
+                            throw error;
+                        }
+                    }
                     if ("component" in style) {
                         return registerJsxAppearance([style.component], element => {
                             if ("props" in style) {

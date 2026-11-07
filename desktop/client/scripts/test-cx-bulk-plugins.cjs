@@ -103,6 +103,23 @@ assert.deepEqual([...parseCx(inspectTweak(combinedTweak.replace(JSON.stringify(s
 assert.equal(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(styles + "body { display: none; }"))).cx, undefined);
 assert.equal(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(styles.replace("none", "block")))).cx, undefined);
 assert.equal(inspectTweak(combinedTweak.replace(');', ', getOptions());')).cx, undefined);
+const managedStyle = [
+    '/* SPDX-License-Identifier: GPL-3.0-or-later */',
+    'import definePlugin from "@utils/types";',
+    'import { enableStyle, disableStyle } from "@api/Styles";',
+    'import style from "./style.css?managed";',
+    'export default definePlugin({ name: "Managed Appearance", start: () => enableStyle(style), stop: () => disableStyle(style) });',
+].join("\n");
+const inspectManaged = (code, css = styles) => inspectPlugin("managed/index.ts", code, "desktop", cxAppearanceTargets, {}, name => {
+    assert.equal(name, "style.css");
+    return css;
+});
+assert.deepEqual([...parseCx(inspectManaged(managedStyle).cx).hiddenTargets], ["bot-tags", "profile-effects"]);
+assert.equal(inspectManaged(managedStyle.replace("./style.css", "../style.css")).cx, undefined);
+assert.equal(inspectManaged(managedStyle.replace("disableStyle(style)", "enableStyle(style)")).cx, undefined);
+assert.equal(inspectManaged(managedStyle.replace("enableStyle(style)", '{ enableStyle(style); fetch("/data"); }')).cx, undefined);
+assert.equal(inspectManaged(managedStyle.replace("import { enableStyle", "import type { enableStyle")).cx, undefined);
+assert.equal(inspectManaged(managedStyle, styles + "body { display: none; }").cx, undefined);
 const bd = [
     "/**",
     " * @name ReduceVisualClutter",

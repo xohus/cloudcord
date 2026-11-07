@@ -568,7 +568,49 @@ function compileMobilePreviousEdit(file, plugin, source) {
     if (rule) return { capability: "previous-edit", lines: ["  needs messages.editprevious", "  before send " + rule] };
 }
 
-function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}) {
+function compileManagedStyle(plugin, source, entry, appearance, readStylesheet) {
+    if (!readStylesheet || !fieldsAre(plugin, ["name", "description", "authors", "tags", "searchTerms", "start", "stop"])) return;
+    const imports = new Map([
+        ["@api/Styles", ["enableStyle", "disableStyle"]],
+        ["@utils/constants", ["Devs", "SincordDevs"]],
+    ]);
+    let stylesheet, binding;
+    for (const statement of source.statements) {
+        if (statement === entry) continue;
+        if (!ts.isImportDeclaration(statement) || !statement.importClause || statement.importClause.isTypeOnly) return;
+        const specifier = literal(statement.moduleSpecifier);
+        const { name, namedBindings } = statement.importClause;
+        const allowed = imports.get(specifier);
+        if (specifier === "@utils/types") {
+            if (name?.text !== "definePlugin" || namedBindings) return;
+        } else if (allowed) {
+            if (name || !namedBindings || !ts.isNamedImports(namedBindings)
+                || namedBindings.elements.some(item => item.propertyName || item.isTypeOnly || !allowed.includes(item.name.text))) return;
+        } else {
+            const match = /^\.\/([\w.-]+\.css)\?managed$/.exec(specifier ?? "");
+            if (!match || stylesheet || !name || namedBindings) return;
+            stylesheet = match[1];
+            binding = name.text;
+        }
+    }
+    if (!stylesheet) return;
+    for (const [hook, action] of [["start", "enableStyle"], ["stop", "disableStyle"]]) {
+        const method = handler(plugin, hook);
+        if (!method || method.parameters.length || !imported(source, action, "@api/Styles")) return;
+        let body = method.body;
+        if (ts.isBlock(body)) {
+            const statement = body.statements[0];
+            if (body.statements.length !== 1 || !ts.isExpressionStatement(statement)) return;
+            body = statement.expression;
+        }
+        if (!ts.isCallExpression(body) || body.questionDotToken || body.typeArguments?.length || identifier(body.expression) !== action
+            || body.arguments.length !== 1 || identifier(body.arguments[0]) !== binding) return;
+    }
+    const targets = matchAppearanceStyles(readStylesheet(stylesheet), appearance);
+    if (targets) return { capability: "appearance", lines: appearanceLines(targets) };
+}
+
+function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}, readStylesheet) {
     if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
     const entry = source.statements.find(ts.isExportAssignment);
@@ -636,11 +678,14 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
     const hasLicense = /SPDX-License-Identifier:\s*GPL-3\.0-or-later\b|GNU General Public License/.test(code);
     const supported = platform === "desktop" && factory === "definePlugin" && imported(source, "definePlugin", "@utils/types")
         && allowedDeclarations && simpleDependencies && !source.parseDiagnostics.length && hasLicense && safeText(name) && name.length <= 64;
+    const managedStyle = platform === "desktop" && factory === "definePlugin" && !entry.isExportEquals
+        && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
+        && safeText(name) && name.length <= 64 && compileManagedStyle(plugin, source, entry, appearance, readStylesheet);
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)
-        : supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
+        : managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
@@ -728,7 +773,11 @@ function scan(sourceDir, { includeCompanions = false } = {}) {
     ]) {
         for (const folder of folders) for (const file of entryFiles(path.join(root, folder))) {
             const code = fs.readFileSync(file, "utf8");
-            const record = inspectPlugin(path.relative(root, file).replaceAll("\\", "/"), code, platform, cxAppearanceTargets, cxNativeEffects);
+            const record = inspectPlugin(path.relative(root, file).replaceAll("\\", "/"), code, platform, cxAppearanceTargets, cxNativeEffects, name => {
+                const directory = fs.realpathSync(path.dirname(file));
+                const stylesheet = path.join(directory, name);
+                if (fs.lstatSync(stylesheet, { throwIfNoEntry: false })?.isFile()) return fs.readFileSync(stylesheet, "utf8");
+            });
             if (!record) continue;
             if (includeCompanions && !record.cx && path.dirname(file) !== path.join(root, folder)) {
                 const { companions, hooks, targets } = inspectCompanions(file, code);

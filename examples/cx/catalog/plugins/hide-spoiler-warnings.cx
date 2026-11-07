@@ -1,0 +1,3 @@
+plugin "HideSpoilerWarnings":
+  needs appearance.hide
+  hide spoiler-media-label
