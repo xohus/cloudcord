@@ -36985,6 +36985,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               opacity: 0.6
             }
           }
+        },
+        "reduced-motion": {
+          plugin: "NoAnimations",
+          label: "reduce interface animations and transitions",
+          css: "*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }",
+          style: {
+            reducedMotion: true
+          }
         }
       };
     }
@@ -41751,6 +41759,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-animations.cx
+  var no_animations_default;
+  var init_no_animations = __esm({
+    "../examples/cx/catalog/plugins/no-animations.cx"() {
+      no_animations_default = 'plugin "NoAnimations":\n  needs appearance.style\n  style reduced-motion\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-blocked-messages.cx
   var no_blocked_messages_default;
   var init_no_blocked_messages = __esm({
@@ -43077,6 +43093,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_muted_channels_faded();
       init_narrow_channel_list();
       init_nepeta_s_typing_quirk();
+      init_no_animations();
       init_no_blocked_messages();
       init_no_mosaic();
       init_no_pending_count();
@@ -43664,6 +43681,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "Nepeta'sTypingQuirk",
             source: nepeta_s_typing_quirk_default
+          },
+          {
+            name: "NoAnimations",
+            source: no_animations_default
           },
           {
             name: "NoBlockedMessages",
@@ -45270,6 +45291,57 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       });
     });
   }
+  function registerReducedMotion() {
+    if (!reducedMotionAppearance) {
+      var store = findByStoreName("AccessibilityStore");
+      var key = "useReducedMotion";
+      var previous = store && Object.getOwnPropertyDescriptor(store, key);
+      var descriptor = previous;
+      for (var prototype = store && Object.getPrototypeOf(store); prototype && !descriptor; prototype = Object.getPrototypeOf(prototype))
+        descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+      var original = descriptor?.get;
+      if (!original || typeof store?.emitChange !== "function")
+        throw new Error("Discord's reduced motion setting is unavailable");
+      var read = function read2() {
+        return settings.safeMode?.enabled ? original.call(this) : true;
+      };
+      Object.defineProperty(store, key, {
+        configurable: true,
+        enumerable: descriptor?.enumerable,
+        get: read,
+        set: descriptor?.set
+      });
+      var restore = () => {
+        if (Object.getOwnPropertyDescriptor(store, key)?.get !== read)
+          return;
+        if (previous)
+          Object.defineProperty(store, key, previous);
+        else
+          Reflect.deleteProperty(store, key);
+      };
+      try {
+        store.emitChange();
+      } catch (error) {
+        restore();
+        throw error;
+      }
+      reducedMotionAppearance = {
+        users: 0,
+        restore() {
+          restore();
+          store.emitChange();
+        }
+      };
+    }
+    var binding = reducedMotionAppearance;
+    binding.users++;
+    return () => {
+      if (--binding.users > 0)
+        return;
+      reducedMotionAppearance = void 0;
+      binding.restore();
+    };
+  }
   function patchProfileMenus() {
     var ProfileUser = React2.createContext(void 0);
     function ProfileMenu({ element }) {
@@ -45628,6 +45700,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
+            if ("reducedMotion" in style)
+              return registerReducedMotion();
             if ("mentionHighlight" in style) {
               var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
               var highlightColor = (0, import_react_native41.processColor)(style.mentionHighlight);
@@ -46303,7 +46377,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -50990,7 +51064,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9a6545d92f994db3543306c2ede1361a466c2c6b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a63e070311f9ae58663a30f946478942912b2eb2";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
