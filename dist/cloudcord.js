@@ -36477,6 +36477,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "EmbedCard"
           ]
         },
+        "message-edited-label": {
+          plugin: "HideEditedLabel",
+          label: "the edited label in chat",
+          css: '[class*="edited_"] { display: none !important; }',
+          mobile: {
+            messagePresentation: "edited"
+          }
+        },
+        "message-stickers": {
+          plugin: "HideStickers",
+          label: "stickers in chat",
+          css: '[class*="stickerAsset"] { display: none !important; }',
+          mobile: {
+            messagePresentation: "stickers"
+          }
+        },
         "active-now": {
           plugin: "HideActiveNow",
           label: "the active friends panel",
@@ -39042,6 +39058,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-edited-label.cx
+  var hide_edited_label_default;
+  var init_hide_edited_label = __esm({
+    "../examples/cx/catalog/plugins/hide-edited-label.cx"() {
+      hide_edited_label_default = 'plugin "HideEditedLabel":\n  needs appearance.hide\n  hide message-edited-label\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-embeds.cx
   var hide_embeds_default;
   var init_hide_embeds = __esm({
@@ -39159,6 +39183,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_shop_tab = __esm({
     "../examples/cx/catalog/plugins/hide-shop-tab.cx"() {
       hide_shop_tab_default = 'plugin "HideShopTab":\n  needs appearance.hide\n  hide shop-entry\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-stickers.cx
+  var hide_stickers_default;
+  var init_hide_stickers = __esm({
+    "../examples/cx/catalog/plugins/hide-stickers.cx"() {
+      hide_stickers_default = 'plugin "HideStickers":\n  needs appearance.hide\n  hide message-stickers\n';
     }
   });
 
@@ -40353,6 +40385,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_channel_topic();
       init_hide_character_count();
       init_hide_clan_tags();
+      init_hide_edited_label();
       init_hide_embeds();
       init_hide_gift_button();
       init_hide_image_alt_text();
@@ -40368,6 +40401,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_send_button();
       init_hide_server_banner();
       init_hide_shop_tab();
+      init_hide_stickers();
       init_hide_stream_previews();
       init_hide_typing_indicator();
       init_hide_unread_pills();
@@ -40643,6 +40677,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_clan_tags_default
           },
           {
+            name: "HideEditedLabel",
+            source: hide_edited_label_default
+          },
+          {
             name: "HideEmbeds",
             source: hide_embeds_default
           },
@@ -40701,6 +40739,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideShopTab",
             source: hide_shop_tab_default
+          },
+          {
+            name: "HideStickers",
+            source: hide_stickers_default
           },
           {
             name: "HideStreamPreviews",
@@ -41546,7 +41588,30 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           registerProfileMenuAction,
           hideAppearanceTarget(target) {
-            return registerJsxAppearance(cxAppearanceTargets[target].mobile, () => null);
+            var mobile = cxAppearanceTargets[target].mobile;
+            if (!("messagePresentation" in mobile))
+              return registerJsxAppearance(mobile, () => null);
+            var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+            return overrideCxMethods(renderer, {
+              default(args, invoke) {
+                var presentation = invoke(args);
+                if (!presentation || typeof presentation !== "object")
+                  return presentation;
+                if (mobile.messagePresentation === "edited") {
+                  if ("edited" in presentation && presentation.edited === true)
+                    return {
+                      ...presentation,
+                      edited: false
+                    };
+                } else if ("stickers" in presentation && Array.isArray(presentation.stickers) && presentation.stickers.length) {
+                  return {
+                    ...presentation,
+                    stickers: []
+                  };
+                }
+                return presentation;
+              }
+            }, () => !settings.safeMode?.enabled);
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
@@ -46678,7 +46743,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "279ebac12d107b9eb27e46ce06df601b12fd7011";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "77e1b6f21eccee067044594a4f3658d2238eefd9";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
