@@ -1,0 +1,3 @@
+plugin "JumpToTop":
+  needs channels.jump
+  use jump-to-first-message

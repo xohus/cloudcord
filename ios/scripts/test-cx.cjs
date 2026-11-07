@@ -240,7 +240,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const emojiConverters = { convertNameToSurrogate: name => name === "thumbsup" ? "👍" : undefined };
         const customEmoji = { id: me, name: "custom", animated: true, type: 1, guildId };
         let latestMessage = { id: "previous", author: { id: me }, content: "Fix a.b twice: a.b", timestamp: Date.now(), channel_id: "test-channel" };
-        const dispatch = event => acknowledged.push(event);
+        let rejectBulkAck = false;
+        const dispatch = event => rejectBulkAck && event.type === "BULK_ACK"
+            ? Promise.reject(new Error("Could not acknowledge channels")) : acknowledged.push(event);
         const channelSelections = new Set();
         const channelDispatcher = {
             dispatch,
@@ -471,6 +473,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const module = { exports: {} };
         const adapter = desktop ? "desktop/client/src/sincordplugins/cxExtensions/index.tsx"
             : "ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx";
+        const serverListButtons = new Set();
+        function GuildsBarFooterWrapper(props) { return props.children; }
         const mocks = {
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
@@ -493,9 +497,17 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 onEditMessage(listener) { editHooks.add(listener); return () => { editHooks.delete(listener); }; }
             },
             "@api/Notifications": { showNotification: alert => { notifications.push(alert.body); desktopAlerts.push(alert); } },
+            "@api/ServerList": { ServerListRenderPosition: { Above: 0 },
+                addServerListElement: (_, component) => serverListButtons.add(component),
+                removeServerListElement: (_, component) => serverListButtons.delete(component),
+            },
+            "@components/Button": { TextButton: "TextButton" },
+            "@components/ErrorBoundary": { __esModule: true, default: "ErrorBoundary" },
+            "@components/Icons": { UpArrowIcon: "UpArrowIcon" },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
             "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name],
+                findComponentByCodeLazy: () => "ChannelToolbarIcon",
                 waitFor: (filter, callback) => emojiPickerWaiters.set(filter, callback),
                 waitForSubscriptions: emojiPickerWaiters, findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
@@ -569,6 +581,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
+                : path.endsWith("/GuildsBarFooterWrapper.tsx") ? { default: GuildsBarFooterWrapper }
                 : path === "modules/channel/useChannelName.tsx" ? channelNameModule
                 : path.endsWith("/guild_channels/ChannelContent.tsx") ? channelRowModule
                 : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
@@ -605,7 +618,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
                 processColor: value => value === "#7c5cff2e" ? 0x2e7c5cff : undefined,
-                Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput", View: "View",
+                Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput", View: "View", Pressable: "Pressable",
             },
         };
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
@@ -1736,6 +1749,76 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
+        {
+            const originalSelection = selectedChannel;
+            const channel = { id: other, type: 0 };
+            selectedChannel = channel.id;
+            function ChannelActionButtons(props) { return props.output; }
+            const originalHeader = jsx("View", { children: jsx("NativeControl", {}) });
+            function renderJump(selected) {
+                if (desktop) return desktopPlugin.renderJumpToFirst(selected);
+                const hook = appearanceHooks.get("ChannelActionButtons");
+                if (!hook) return originalHeader;
+                const wrapped = hook(null, jsx(ChannelActionButtons, { channel: selected, output: originalHeader }));
+                const renderer = wrapped.type(wrapped.props);
+                return renderer.type(renderer.props);
+            }
+            const readFooter = jsx(GuildsBarFooterWrapper, { children: jsx("NativeRailButton", {}) });
+            const renderReadAll = () => {
+                if (desktop) return [...serverListButtons][0]?.();
+                const hook = appearanceHooks.get(GuildsBarFooterWrapper);
+                if (!hook) return readFooter;
+                const wrapped = hook(null, readFooter);
+                return wrapped.type(wrapped.props);
+            };
+            const jumpButton = () => find(renderJump(channel), el => (el.props.tooltip ?? el.props.label) === "Jump to First Message");
+            assert.equal(jumpButton(), undefined);
+            selectCatalog("JumpToTop");
+            click(render(), "Allow for this session");
+            assert.ok(!find(renderJump({ ...channel, type: 15 }), el => (el.props.tooltip ?? el.props.label) === "Jump to First Message"));
+            assert.ok(!find(renderJump({ ...channel, isForumPost: () => true }), el => (el.props.tooltip ?? el.props.label) === "Jump to First Message"));
+            const clickJump = jumpButton().props[desktop ? "onClick" : "onPress"];
+            selectedChannel = sender;
+            await clickJump();
+            assert.equal(jumps.length, 0);
+            selectedChannel = channel.id;
+            await clickJump();
+            assert.deepEqual({ ...jumps.pop() }, { channelId: other, messageId: other, flash: false, jumpType: "INSTANT" });
+            click(render(), "Disable JumpToTop");
+            await clickJump();
+            assert.equal(jumps.length, 0);
+            assert.equal(jumpButton(), undefined);
+            selectedChannel = originalSelection;
+
+            const previousAcks = acknowledged.length;
+            selectCatalog("ReadAllNotificationsButton");
+            click(render(), "Allow for this session");
+            const readButton = find(renderReadAll(), el => el.props.label === "Mark Servers as Read" || el.props.children === "Read All");
+            const clickRead = readButton.props[desktop ? "onClick" : "onPress"];
+            assert.equal(acknowledged.length, previousAcks);
+            if (!desktop) {
+                settings.safeMode = { enabled: true };
+                assert.equal(renderReadAll(), readFooter);
+                await clickRead();
+                assert.equal(acknowledged.length, previousAcks);
+                settings.safeMode = undefined;
+            }
+            rejectBulkAck = true;
+            await clickRead();
+            assert.equal(acknowledged.length, previousAcks);
+            assert.equal(notifications.pop(), "Couldn't mark servers as read.");
+            rejectBulkAck = false;
+            await clickRead();
+            const readEvent = acknowledged.pop();
+            assert.equal(readEvent.type, "BULK_ACK");
+            assert.equal(Array.from(readEvent.channels, item => item.channelId).join(), "first,thread");
+            assert.equal(notifications.pop(), "Marked 2 channels as read.");
+            click(render(), "Disable ReadAllNotificationsButton");
+            await clickRead();
+            assert.equal(acknowledged.length, previousAcks);
+            assert.equal(serverListButtons.size, 0);
+            assert.equal(appearanceHooks.size, 0);
+        }
         const stamp = new Date(2022, 6, 10, 14, 42, 19);
         const nativeTimestamp = Object.freeze({ timestamp: "2:42 PM", timestampTooltip: "Original tooltip", timestampAccessibilityLabel: "Original label" });
         const nativeTimestampInput = Object.freeze({ message: Object.freeze({ timestamp: stamp }), cxTestPresentation: nativeTimestamp });

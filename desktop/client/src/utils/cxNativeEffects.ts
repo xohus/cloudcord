@@ -24,6 +24,8 @@ export const cxNativeEffects = {
     "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
     "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
+    "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },
+    "read-all-servers-button": { permission: "servers.markread", label: "Add a server list button to mark loaded server channels as read" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },
     "clean-channel-names": { permission: "appearance.style", label: "Remove decorations from displayed channel names" },
     "title-channel-names": { permission: "appearance.style", label: "Format displayed server channel names as titles" },

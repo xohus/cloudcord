@@ -4,6 +4,7 @@ import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, creat
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
+import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
@@ -23,9 +24,10 @@ import { getCxMessageGesture } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Alert, Animated, FlatList, Linking, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Alert, Animated, FlatList, Linking, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
+const navigationControls = createCxNavigationControls();
 const timestamps = createCxTimestampRegistry();
 const timestampFields = [
     ["timestamp", "cozy"], ["timestampTooltip", "tooltip"], ["timestampAccessibilityLabel", "accessibility"],
@@ -132,6 +134,42 @@ const SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
 const PresenceStore = findByStoreNameLazy("PresenceStore");
 const UserGuildSettingsStore = findByStoreNameLazy("UserGuildSettingsStore");
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
+
+const getReadStores = () => ({ guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore });
+const acknowledgeServers: Parameters<typeof markCxServersReadAndWait>[1] = channels => FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels });
+
+function NavigationButton({ label, text, onPress }: { label: string; text: string; onPress: () => void; }) {
+    return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+        style={{ minWidth: 38, minHeight: 36, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: resolveSemanticColor(semanticColors.INTERACTIVE_TEXT_DEFAULT), fontSize: text === "↑" ? 20 : 10, fontWeight: "600" }}>{text}</Text>
+    </Pressable>;
+}
+
+function registerJumpToFirst(enabled: () => boolean) {
+    const actions = findByProps("jumpToMessage", "fetchMessages");
+    if (typeof actions?.jumpToMessage !== "function") throw new Error("Discord message navigation is unavailable");
+    return registerRenderedTree("ChannelActionButtons", (tree, props) => {
+        const target = getCxFirstMessageTarget((props as { channel?: CxNavigationChannel; }).channel);
+        if (!target || !React.isValidElement<{ children?: ReactNode; }>(tree) || !("children" in tree.props)) return tree;
+        return React.cloneElement(tree, { children: <>{tree.props.children}<NavigationButton label="Jump to First Message" text="↑" onPress={async () => {
+            if (!enabled() || !navigationControls.has("jump-to-first-message") || SelectedChannelStore.getChannelId() !== target.channelId) return;
+            try { await actions.jumpToMessage(target); }
+            catch { showToast("Couldn't jump to the first message."); }
+        }} /></> });
+    });
+}
+
+function registerReadAllButton(enabled: () => boolean) {
+    const footer = findByFilePath("modules/guilds_bar/native/GuildsBarFooterWrapper.tsx")?.default;
+    if (!footer) throw new Error("Discord's server list is unavailable");
+    return registerJsxAppearance([footer], element => React.cloneElement(element, { children: <>
+        {element.props.children}<NavigationButton label="Mark Servers as Read" text="Read All" onPress={async () => {
+            if (!enabled() || !navigationControls.has("read-all-servers-button")) return;
+            try { showToast(await markCxServersReadAndWait(getReadStores(), acknowledgeServers)); }
+            catch { showToast("Couldn't mark servers as read."); }
+        }} />
+    </> }));
+}
 
 function hideDisabledEmojiInPicker(enabled: () => boolean) {
     const picker = findByFilePath("modules/emoji_picker/native/components/useComputeEmojiPickerFunctions.tsx");
@@ -739,7 +777,7 @@ function registerTreeAppearance(rule: {
         keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide));
 }
 
-function registerRenderedTree(target: string | object, change: (tree: ReactNode) => ReactNode) {
+function registerRenderedTree(target: string | object, change: (tree: ReactNode, props: object) => ReactNode) {
     const wrappers = new WeakMap<object, { type: ComponentType<object>; forwardsRef: boolean; }>();
     return registerJsxAppearance([target], element => {
         if (typeof target !== "string" && element.type !== target) return element;
@@ -758,7 +796,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode)
             const render = nativeRender;
             function FilteredTree(props: object, ref?: unknown) {
                 const tree = render(props, ref) as ReactNode;
-                return settings.safeMode?.enabled ? tree : change(tree);
+                return settings.safeMode?.enabled ? tree : change(tree, props);
             }
             const filtered = forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree;
             wrapper = { type: memoized ? React.memo(filtered, component.compare) : filtered, forwardsRef };
@@ -1386,6 +1424,10 @@ export default function CxExtensions() {
                 registerNativeEffect(effect, avatarResolution = 256) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
+                        case "jump-to-first-message":
+                            return navigationControls.register(effect, () => registerJumpToFirst(enabled));
+                        case "read-all-servers-button":
+                            return navigationControls.register(effect, () => registerReadAllButton(enabled));
                         case "clean-channel-names":
                         case "title-channel-names":
                             return registerChannelNames(effect === "clean-channel-names" ? "clean" : "titles", enabled);
@@ -1616,9 +1658,7 @@ export default function CxExtensions() {
                                         artists: [{ id: activity?.metadata?.artist_ids?.[0] }],
                                     });
                                 },
-                                markServersRead: () => markCxServersRead({
-                                    guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
-                                }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),
+                                markServersRead: () => markCxServersRead(getReadStores(), acknowledgeServers),
                                 friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
                                 copyDiagnostics: async () => describeCcpReport(await copyCcpReport()),
                             });

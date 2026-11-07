@@ -1,0 +1,3 @@
+plugin "ReadAllNotificationsButton":
+  needs servers.markread
+  use read-all-servers-button

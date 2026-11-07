@@ -47,6 +47,17 @@ const compose = records.find(record => record.name === "CompactCompose");
 assert.equal(compose.status, "needs-adapter");
 assert.ok(compose.targets.includes("css:min-height"));
 const matches = records.filter(record => record.cx);
+for (const [name, effect, permission] of [
+    ["JumpToTop", "jump-to-first-message", "channels.jump"],
+    ["ReadAllNotificationsButton", "read-all-servers-button", "servers.markread"],
+]) {
+    const port = matches.find(record => record.name === name);
+    assert.equal(port?.capability, "native-effect");
+    const parsed = parseCx(port.cx);
+    assert.deepEqual(Array.from(parsed.nativeEffects), [effect]);
+    assert.deepEqual(Array.from(parsed.permissions), [permission]);
+    verifyPorts(portFiles([port]));
+}
 for (const name of ["RealtimeTimestamps", "CustomTimestamps"]) {
     const port = matches.find(record => record.name === name);
     assert.equal(port?.capability, "timestamp-format");

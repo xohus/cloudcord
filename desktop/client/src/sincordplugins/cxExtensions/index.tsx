@@ -2,20 +2,38 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, findGroupChildrenByChildId, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
+import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
+import { TextButton } from "@components/Button";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { UpArrowIcon } from "@components/Icons";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
+import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { findByProps, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
+import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 const session = createCxSession();
 const timestamps = createCxTimestampRegistry();
+const navigationControls = createCxNavigationControls();
+const ChannelToolbarIcon = findComponentByCodeLazy("tooltipPosition:", '"aria-haspopup":', '"data-jump-section":');
+
+const getReadStores = () => ({ guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore });
+const acknowledgeServers: Parameters<typeof markCxServersReadAndWait>[1] = channels => FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels });
+
+function ReadAllServersButton() {
+    return <TextButton variant="secondary" onClick={async () => {
+        if (!navigationControls.has("read-all-servers-button")) return;
+        try { showToast(await markCxServersReadAndWait(getReadStores(), acknowledgeServers)); }
+        catch { showToast("Couldn't mark servers as read."); }
+    }}>Read All</TextButton>;
+}
 const profileBioTransforms = new Set<(bio: string) => string>();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
@@ -361,6 +379,13 @@ export function CxSettings() {
                 },
                 registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
+                        case "jump-to-first-message":
+                            return navigationControls.register(effect);
+                        case "read-all-servers-button":
+                            return navigationControls.register(effect, () => {
+                                addServerListElement(ServerListRenderPosition.Above, ReadAllServersButton);
+                                return () => removeServerListElement(ServerListRenderPosition.Above, ReadAllServersButton);
+                            });
                         case "clean-channel-names":
                         case "title-channel-names":
                             return registerChannelNames(effect === "clean-channel-names" ? "clean" : "titles");
@@ -539,9 +564,7 @@ export function CxSettings() {
                                     await copyToClipboard(JSON.stringify(report));
                                     return describeCcpReport(report);
                                 },
-                                markServersRead: () => markCxServersRead({
-                                    guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
-                                }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),
+                                markServersRead: () => markCxServersRead(getReadStores(), acknowledgeServers),
                             });
                             if (outgoing !== undefined) return { content: outgoing };
                         },
@@ -685,7 +708,7 @@ export default definePlugin({
     description: "Review and run permission-scoped CX plugins and themes.",
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
-    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI"],
+    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI"],
     flux: {
         CHANNEL_SETTINGS_INIT({ channelId }: { channelId: string; }) {
             editingChannelId = channelId;
@@ -697,6 +720,12 @@ export default definePlugin({
         },
     },
     patches: [{
+        find: "Missing channel in Channel.renderHeaderToolbar",
+        replacement: {
+            match: /(?<=renderHeaderToolbar"\);let (\i)=\[\];)/,
+            replace: "$1.push($self.renderJumpToFirst(this.props.channel));",
+        },
+    }, {
         find: "#{intl::MESSAGE_EDITED_TIMESTAMP_A11Y_LABEL}",
         replacement: [
             {
@@ -811,6 +840,18 @@ export default definePlugin({
             replace: "if(!$self.canSplitDraft($1)&&$1.length>$2)",
         },
     }],
+    renderJumpToFirst(channel: CxNavigationChannel | undefined) {
+        if (!navigationControls.has("jump-to-first-message")) return null;
+        const target = getCxFirstMessageTarget(channel);
+        if (!target) return null;
+        return <ErrorBoundary key="cx-jump-to-first" noop>
+            <ChannelToolbarIcon tooltip="Jump to First Message" icon={UpArrowIcon} onClick={async () => {
+                if (!navigationControls.has("jump-to-first-message") || SelectedChannelStore.getChannelId() !== target.channelId) return;
+                try { await MessageActions.jumpToMessage(target); }
+                catch { showToast("Couldn't jump to the first message."); }
+            }} />
+        </ErrorBoundary>;
+    },
     formatTimestamp(input: unknown, surface: CxTimestampSurface, original: unknown) {
         return typeof original === "string" && original ? timestamps.format(input, surface) ?? original : original;
     },

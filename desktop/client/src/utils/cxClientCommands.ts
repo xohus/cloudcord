@@ -135,6 +135,13 @@ export function markCxServersRead(stores: UnreadStores, acknowledge: (channels: 
     return "Marked " + channels.size + " channel" + (channels.size === 1 ? "" : "s") + " as read.";
 }
 
+export async function markCxServersReadAndWait(stores: UnreadStores, acknowledge: (channels: ReadChannel[]) => unknown) {
+    let result: unknown;
+    const summary = markCxServersRead(stores, channels => { result = acknowledge(channels); });
+    await result;
+    return summary;
+}
+
 type ChannelSelection = { channelId?: unknown; messageId?: unknown; jumpToMessageId?: unknown; };
 type ChannelOpenRead = {
     dispatcher: {
