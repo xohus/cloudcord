@@ -646,6 +646,13 @@ export default definePlugin({
             replace: "$1$self.rewriteProfileBioProps($2)",
         },
     }, {
+        // BlurNSFW by Ven (GPL-3.0-or-later).
+        find: "}renderStickersAccessories(",
+        replacement: {
+            match: /(\.renderReactions\(\i\).+?className:)/,
+            replace: '$1(this?.props?.channel?.nsfw?"cc-cx-nsfw-media ":"")+',
+        },
+    }, {
         find: "#{intl::ATTACHMENT_UTILITIES_SPOILER}",
         replacement: {
             match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,

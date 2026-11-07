@@ -385,6 +385,18 @@ export const cxAppearanceTargets = {
         css: "*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }",
         style: { reducedMotion: true },
     },
+    "blur-chat-media": {
+        plugin: "BlurImagesUntilHover", label: "conceal chat images and videos until you reveal them",
+        css: '[class*="imageWrapper"] img, [class*="imageWrapper"] video { filter: blur(18px); transition: filter .2s; } '
+            + '[class*="imageWrapper"]:hover img, [class*="imageWrapper"]:hover video { filter: none; }',
+        style: { blurredMedia: "all" },
+    },
+    "blur-nsfw-attachments": {
+        plugin: "BlurNSFW", label: "conceal attachments in age-restricted channels until you reveal them",
+        css: '.cc-cx-nsfw-media [class*="imageContainer"], .cc-cx-nsfw-media [class*="wrapperPaused"] { filter: blur(10px); transition: filter .2s; } '
+            + '.cc-cx-nsfw-media [class*="imageContainer"]:hover, .cc-cx-nsfw-media [class*="wrapperPaused"]:hover { filter: blur(0); }',
+        style: { blurredMedia: "nsfw" },
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;

@@ -296,8 +296,62 @@ function registerMediaLinkCopy() {
 }
 
 function mapMediaEntries<T>(items: readonly T[], transform: (item: T) => T) {
-    const next = items.map(transform);
-    return next.some((item, index) => item !== items[index]) ? next : items;
+    let next: T[] | undefined;
+    items.forEach((item, index) => {
+        const changed = transform(item);
+        if (changed !== item) (next ??= items.slice())[index] = changed;
+    });
+    return next ?? items;
+}
+
+let blurredMedia: { all: number; nsfw: number; stop: () => void; } | undefined;
+
+function registerBlurredMedia(mode: "all" | "nsfw") {
+    if (!blurredMedia) {
+        const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+        const types = findByProps("AttachmentType")?.AttachmentType;
+        if (types?.IMAGE == null || types?.VIDEO == null) throw new Error("Discord's attachment types are unavailable");
+        const translations = findByProps("intl", "t");
+        const text = translations?.t?.["F+x38C"];
+        const label = text ? translations.intl?.string?.(text) : undefined;
+        const spoiler = typeof label === "string" && label ? label.toUpperCase() : "SPOILER";
+        const binding = { all: 0, nsfw: 0 };
+        type Media = {
+            attachmentType?: unknown; url?: unknown; image?: unknown; video?: unknown; thumbnail?: unknown; images?: unknown;
+            isSpoiler?: boolean; spoiler?: string; obscure?: unknown; verifyAge?: unknown; obscureAwaitingScan?: unknown;
+            obscureHideControls?: unknown; obscureIsOpaque?: unknown; isSuspiciousDownload?: unknown;
+        };
+        const untouched = (media: Media | null | undefined) => !media || typeof media !== "object" || media.isSpoiler
+            || media.spoiler || media.obscure || media.verifyAge || media.obscureAwaitingScan || media.obscureHideControls
+            || media.obscureIsOpaque || media.isSuspiciousDownload;
+        const stop = overrideCxMethods(renderer, {
+            default(args, invoke) {
+                const row = invoke(args) as { channelId?: string; attachments?: Media[]; embeds?: Media[]; } | undefined;
+                if (!row || !row.attachments?.length && !row.embeds?.length) return row;
+                const concealAll = binding.all > 0;
+                if (!concealAll && (!binding.nsfw || !row.channelId || ChannelStore?.getChannel?.(row.channelId)?.nsfw !== true)) return row;
+                const attachments = Array.isArray(row.attachments) ? mapMediaEntries(row.attachments, item => {
+                    if (untouched(item) || typeof item.url !== "string"
+                        || item.attachmentType !== types.IMAGE && item.attachmentType !== types.VIDEO) return item;
+                    return { ...item, isSpoiler: true, spoiler };
+                }) : row.attachments;
+                const embeds = concealAll && Array.isArray(row.embeds) ? mapMediaEntries(row.embeds, item => {
+                    if (untouched(item) || !(item.image || item.video || item.thumbnail || Array.isArray(item.images) && item.images.length)) return item;
+                    return { ...item, spoiler };
+                }) : row.embeds;
+                return attachments === row.attachments && embeds === row.embeds ? row : { ...row, attachments, embeds };
+            },
+        }, () => !settings.safeMode?.enabled);
+        blurredMedia = Object.assign(binding, { stop });
+    }
+    const binding = blurredMedia;
+    binding[mode]++;
+    return () => {
+        binding[mode]--;
+        if (binding.all || binding.nsfw) return;
+        blurredMedia = undefined;
+        binding.stop();
+    };
 }
 
 function registerGifAltText() {
@@ -1113,6 +1167,7 @@ export default function CxExtensions() {
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
+                    if ("blurredMedia" in style) return registerBlurredMedia(style.blurredMedia);
                     if ("reducedMotion" in style) return registerReducedMotion();
                     if ("mentionHighlight" in style) {
                         const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");

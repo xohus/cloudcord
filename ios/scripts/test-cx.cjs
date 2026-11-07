@@ -262,7 +262,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], guild_id: id === "guild-channel" ? guildId : undefined,
+            ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" ? guildId : undefined,
                 rateLimitPerUser: id === "slow-channel" ? 10 : 0 }) },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
             GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
@@ -313,6 +313,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         });
         const createMessageContent = (presentation = messagePresentation) => presentation;
         const messageRenderer = { default: createMessageContent };
+        const attachmentTypes = { AttachmentType: { IMAGE: "image", VIDEO: "video", AUDIO: "audio", OTHER: "other" } };
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
             "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu", "ThreadIcon"]
             .map(name => [name, () => name]));
@@ -554,7 +555,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : ["editMessage", "jumpToMessage"].includes(name) ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
-                            : name === "intl" ? headerMessages : name === "addReaction" ? reactionActions
+                            : name === "intl" ? headerMessages : name === "AttachmentType" ? attachmentTypes : name === "addReaction" ? reactionActions
                                 : name === "convertNameToSurrogate" ? emojiConverters : name in expressionSheets ? expressionSheets
                                     : name === "showSimpleActionSheet" ? linkSheet : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
@@ -624,6 +625,43 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", style: baseStyle, styles: originalStyles }) });
             const wraps = [];
             if (desktop) assert.equal(stylesheet.textContent, rule.css);
+            else if (rule.style?.blurredMedia) {
+                const all = rule.style.blurredMedia === "all";
+                const image = Object.freeze({ attachmentType: "image", url: "https://media.discordapp.net/attachments/1/2/image.png" });
+                const video = Object.freeze({ ...image, attachmentType: "video" });
+                const audio = Object.freeze({ ...image, attachmentType: "audio" });
+                const restricted = Object.freeze({ ...image, verifyAge: true, obscure: "Discord safety notice" });
+                const scanPending = Object.freeze({ ...image, obscureAwaitingScan: true });
+                const existing = Object.freeze({ ...image, isSpoiler: true, spoiler: "Native label" });
+                const embed = Object.freeze({ image: { url: image.url }, description: "Image description" });
+                const textEmbed = Object.freeze({ description: "No media" });
+                const row = Object.freeze({ channelId: "nsfw-channel",
+                    attachments: Object.freeze([image, video, audio, restricted, scanPending, existing]),
+                    embeds: Object.freeze([embed, textEmbed]) });
+                const blurred = messageRenderer.default(row);
+                assert.equal(blurred.attachments[0].isSpoiler, true);
+                assert.equal(blurred.attachments[1].isSpoiler, true);
+                for (let index = 2; index < row.attachments.length; index++)
+                    assert.equal(blurred.attachments[index], row.attachments[index]);
+                assert.equal(Boolean(blurred.embeds[0].spoiler), all);
+                assert.equal(blurred.embeds[0].description, embed.description);
+                assert.equal(blurred.embeds[1], textEmbed);
+                const ordinary = { ...row, channelId: "guild-channel" };
+                assert.equal(messageRenderer.default(ordinary) === ordinary, !all);
+                settings.safeMode = { enabled: true };
+                assert.equal(messageRenderer.default(row), row);
+                settings.safeMode = undefined;
+                if (all) {
+                    selectCatalog("BlurNSFW");
+                    click(render(), "Allow for this session");
+                    click(render(), "Disable " + rule.plugin);
+                    assert.equal(messageRenderer.default(ordinary), ordinary);
+                    assert.equal(messageRenderer.default(row).attachments[0].isSpoiler, true);
+                    click(render(), "Disable BlurNSFW");
+                } else click(render(), "Disable " + rule.plugin);
+                assert.equal(messageRenderer.default, createMessageContent);
+                continue;
+            }
             else if (rule.style?.reducedMotion) {
                 const store = stores.AccessibilityStore;
                 assert.equal(store.useReducedMotion, true);

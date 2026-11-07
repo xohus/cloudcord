@@ -852,6 +852,13 @@ function compileMobileSocialEvents(file, plugin, source) {
 
 const sharedSourceRecipes = [
     {
+        capability: "appearance",
+        sources: {
+            "desktop/client/src/plugins/blurNsfw/index.ts": "292e1074f5153a353f41f4b350505e00a879c81f8268f49e218324f6697e0c26",
+        },
+        lines: ["  needs appearance.style", "  style blur-nsfw-attachments"],
+    },
+    {
         capability: "incoming-notifications",
         sources: {
             "desktop/client/src/sincordplugins/pingNotifications/index.tsx": "fa7f9d4cd15ab7e3d019b596724fb1b02f8e1d3a35dbea99709eb1f3584ba58f",

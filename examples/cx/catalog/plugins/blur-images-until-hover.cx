@@ -1,0 +1,3 @@
+plugin "BlurImagesUntilHover":
+  needs appearance.style
+  style blur-chat-media

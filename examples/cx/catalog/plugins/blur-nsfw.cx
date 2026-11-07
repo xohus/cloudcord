@@ -1,0 +1,3 @@
+plugin "BlurNSFW":
+  needs appearance.style
+  style blur-nsfw-attachments
