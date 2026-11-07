@@ -6,7 +6,7 @@ import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, creat
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { findByProps } from "@webpack";
+import { findByProps, findStore } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 
 const session = createCxSession();
@@ -143,6 +143,8 @@ export function CxSettings() {
                             return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"));
                         case "avatar-resolution":
                             return raiseCxAvatarResolution(findByProps("getUserAvatarURL", "getGuildIconURL"), avatarResolution);
+                        case "stop-auto-unread":
+                            return overrideCxMethods(findStore("UnreadSettingNoticeStore2"), { maybeAutoUpgradeChannel: () => false });
                     }
                 },
                 registerReplyPingSuppression() {

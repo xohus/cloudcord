@@ -195,7 +195,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             return user.id === me ? "//cdn.discordapp.com/embed/avatars/0.png"
                 : "https://cdn.discordapp.com/avatars/" + user.id + "/" + avatarHash + ".gif?size=" + size;
         }, getGuildIconURL(options) { return options.canAnimate; } };
+        let autoUpgrades = 0;
+        const upgradeChannel = function (channelId) { assert.equal(this, stores.UnreadSettingNoticeStore2); autoUpgrades++; return channelId; };
         const stores = {
+            UnreadSettingNoticeStore2: { maybeAutoUpgradeChannel: upgradeChannel },
             UserStore: { getCurrentUser: () => ({ id: me }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
             UserProfileStore: {
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
@@ -303,7 +306,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
+            "@webpack": { findStore: name => stores[name], findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
                     : key === "removeRelationship" ? relationshipActions : undefined },
             "@webpack/common": { useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
@@ -343,7 +346,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             } },
             "@metro": { findByFilePath: path => path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
-                findByStoreNameLazy: name => stores[name], findByProps: name =>
+                findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
@@ -967,7 +970,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const silent = cxCatalog.plugins.find(entry => entry.name === "SilentTyping").source;
         assert.throws(() => activateCx(silent, host, []), /approval/);
         assert.throws(() => parseCx(silent.replace("use silent-typing", "use token")), /Unknown or duplicate client effect/);
-        for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps"]) {
+        const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
+        assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
+        for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {
             selectCatalog(name);
             click(render(), "Allow for this session");
         }
@@ -981,6 +986,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(icons.getGuildIconURL(iconOptions), true);
         assert.equal(iconOptions.canAnimate, false);
         assert.equal(rounding(7.6), 7);
+        assert.equal(stores.UnreadSettingNoticeStore2.maybeAutoUpgradeChannel("first"), false);
+        assert.equal(autoUpgrades, 0);
         if (!desktop) {
             settings.safeMode = { enabled: true };
             typing.startTyping();
@@ -988,12 +995,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(stores.RelationshipStore.getPendingCount(), 3);
             assert.equal(icons.getGuildIconURL(iconOptions), false);
             assert.equal(rounding(7.6), 8);
+            assert.equal(stores.UnreadSettingNoticeStore2.maybeAutoUpgradeChannel("first"), "first");
+            assert.equal(autoUpgrades, 1);
             settings.safeMode.enabled = false;
         }
         click(render(), "Disable SilentTyping");
         click(render(), "Disable NoPendingCount");
         click(render(), "Disable AlwaysAnimate");
         click(render(), "Disable DontRoundMyTimestamps");
+        click(render(), "Disable StopAutoUnread");
+        assert.equal(stores.UnreadSettingNoticeStore2.maybeAutoUpgradeChannel, upgradeChannel);
         assert.equal(rounding, Math.ceil);
         const highRes = cxCatalog.plugins.find(entry => entry.name === "High-Res Profile Images").source;
         const originalAvatarGetter = icons.getUserAvatarURL;

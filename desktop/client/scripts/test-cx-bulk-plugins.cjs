@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { buildPlan, inspectPlugin, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
@@ -16,7 +18,7 @@ const source = [
     '});',
 ].join("\n");
 const inspect = input => inspectPlugin("fixture.ts", input, "desktop");
-const { parseCx, cxAppearanceTargets } = loadCxRuntime();
+const { parseCx, cxAppearanceTargets, cxNativeEffects } = loadCxRuntime();
 const candidate = inspect(source);
 assert.equal(candidate.capability, "outgoing-text");
 assert.deepEqual(candidate.hooks, ["outgoing-message"]);
@@ -44,6 +46,12 @@ const compose = records.find(record => record.name === "CompactCompose");
 assert.equal(compose.status, "needs-adapter");
 assert.ok(compose.targets.includes("css:min-height"));
 const matches = records.filter(record => record.cx);
+const stopAutoUnread = matches.find(record => record.name === "StopAutoUnread");
+assert.equal(stopAutoUnread?.capability, "native-effect");
+assert.deepEqual(Array.from(parseCx(stopAutoUnread.cx).nativeEffects), ["stop-auto-unread"]);
+assert.deepEqual(Array.from(parseCx(stopAutoUnread.cx).permissions), ["notifications.preventautoupgrade"]);
+const stopAutoUnreadSource = fs.readFileSync(path.join(__dirname, "../../..", stopAutoUnread.file), "utf8");
+assert.equal(inspectPlugin(stopAutoUnread.file, stopAutoUnreadSource.replace("return !1;", "return !0;"), "desktop", {}, cxNativeEffects).cx, undefined);
 for (const [name, platform, rule] of [["HideSystemMessages", "desktop", "hide-system"], ["NoProfileThemes", "mobile", "hide-profile-themes"]]) {
     const port = matches.find(record => record.name === name && record.platform === platform);
     assert.equal(port?.capability, "incoming-filter");

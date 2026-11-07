@@ -1,0 +1,3 @@
+plugin "StopAutoUnread":
+  needs notifications.preventautoupgrade
+  use stop-auto-unread

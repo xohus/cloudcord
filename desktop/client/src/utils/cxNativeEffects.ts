@@ -4,6 +4,7 @@ export const cxNativeEffects = {
     "animated-assets": { permission: "appearance.style", label: "Animate avatars, banners, and server icons" },
     "floor-relative-time": { permission: "appearance.style", label: "Round relative timestamps down" },
     "avatar-resolution": { permission: "appearance.avatarresolution", label: "Request higher-resolution Discord avatars" },
+    "stop-auto-unread": { permission: "notifications.preventautoupgrade", label: "Keep your chosen channel notification settings" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;

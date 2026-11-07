@@ -51,6 +51,7 @@ const permissionLabels = {
     "messages.watchlocal": "Match incoming messages on this device and show local notifications",
     "messages.filterlocal": "Hide matching incoming messages and history on this device",
     "typing.suppress": "Suppress your outgoing typing indicator",
+    "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).

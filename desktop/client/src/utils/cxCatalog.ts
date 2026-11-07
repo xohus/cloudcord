@@ -97,14 +97,15 @@ import plugin95 from "../../../../examples/cx/catalog/plugins/space-out.cx";
 import plugin96 from "../../../../examples/cx/catalog/plugins/spotify-share-commands.cx";
 import plugin97 from "../../../../examples/cx/catalog/plugins/starify.cx";
 import plugin98 from "../../../../examples/cx/catalog/plugins/sticker-blocker.cx";
-import plugin99 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
-import plugin100 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
-import plugin101 from "../../../../examples/cx/catalog/plugins/unindent.cx";
-import plugin102 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin103 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
-import plugin104 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
-import plugin105 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin106 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin99 from "../../../../examples/cx/catalog/plugins/stop-auto-unread.cx";
+import plugin100 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
+import plugin101 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
+import plugin102 from "../../../../examples/cx/catalog/plugins/unindent.cx";
+import plugin103 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
+import plugin104 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin105 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
+import plugin106 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin107 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -306,14 +307,15 @@ export const cxCatalog = {
         { name: "SpotifyShareCommands", source: plugin96 },
         { name: "Starify", source: plugin97 },
         { name: "StickerBlocker", source: plugin98 },
-        { name: "TalkInReverse", source: plugin99 },
-        { name: "TextReplace", source: plugin100 },
-        { name: "Unindent", source: plugin101 },
-        { name: "UnitConverter", source: plugin102 },
-        { name: "VibeCheck", source: plugin103 },
-        { name: "VoiceJoinMessages", source: plugin104 },
-        { name: "WriteUpperCase", source: plugin105 },
-        { name: "ZeroWidthSanitizer", source: plugin106 },
+        { name: "StopAutoUnread", source: plugin99 },
+        { name: "TalkInReverse", source: plugin100 },
+        { name: "TextReplace", source: plugin101 },
+        { name: "Unindent", source: plugin102 },
+        { name: "UnitConverter", source: plugin103 },
+        { name: "VibeCheck", source: plugin104 },
+        { name: "VoiceJoinMessages", source: plugin105 },
+        { name: "WriteUpperCase", source: plugin106 },
+        { name: "ZeroWidthSanitizer", source: plugin107 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },

@@ -520,6 +520,36 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
     };
 }
 
+// Only translate reviewed patch bodies into named runtime adapters. The
+// emitted CX never carries Webpack source, store names, or replacement code.
+const desktopStoreEffectRecipes = {
+    StopAutoUnread: {
+        effect: "stop-auto-unread",
+        find: "}maybeAutoUpgradeChannel(",
+        match: String.raw`/maybeAutoUpgradeChannel\(\i\){/`,
+        replace: "$&return !1;",
+    },
+};
+
+function compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects) {
+    if (!Object.hasOwn(desktopStoreEffectRecipes, name)
+        || !fieldsAre(plugin, ["name", "description", "authors", "tags", "patches"])
+        || !source.statements.every(node => node === entry || ts.isImportDeclaration(node)
+            && ["@utils/constants", "@utils/types"].includes(node.moduleSpecifier.text))) return;
+    const recipe = desktopStoreEffectRecipes[name];
+    const patches = value(plugin, "patches");
+    if (!patches || !ts.isArrayLiteralExpression(patches) || patches.elements.length !== 1) return;
+    const [patch] = patches.elements;
+    if (!fieldsAre(patch, ["find", "replacement"]) || literal(value(patch, "find")) !== recipe.find) return;
+    const replacement = value(patch, "replacement");
+    if (!replacement || !fieldsAre(replacement, ["match", "replace"])) return;
+    const match = value(replacement, "match");
+    const effect = nativeEffects[recipe.effect];
+    if (!effect || !match || !ts.isRegularExpressionLiteral(match) || match.text !== recipe.match
+        || literal(value(replacement, "replace")) !== recipe.replace) return;
+    return { capability: "native-effect", lines: ["  needs " + effect.permission, "  use " + recipe.effect] };
+}
+
 const mobileSocialRecipes = {
     voicejoinmessages: { event: "VOICE_STATE_UPDATES", rule: "friends-voice", permission: "voice.notifyfriends",
         signatures: ['relationships?.isFriend?.(state.userId)', 'lastChannel.set(state.userId, state.channelId ?? null)', 'showToast('] },
@@ -681,11 +711,14 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
     const managedStyle = platform === "desktop" && factory === "definePlugin" && !entry.isExportEquals
         && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
         && safeText(name) && name.length <= 64 && compileManagedStyle(plugin, source, entry, appearance, readStylesheet);
+    const storeEffect = platform === "desktop" && factory === "definePlugin" && !entry.isExportEquals
+        && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
+        && compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects);
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)
-        : managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
+        : storeEffect || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),

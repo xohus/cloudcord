@@ -12,7 +12,7 @@ import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
-import { findByFilePath, findByProps, findByStoreNameLazy } from "@metro";
+import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, ReactElement, ReactNode } from "react";
@@ -441,6 +441,8 @@ export default function CxExtensions() {
                             return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"), enabled);
                         case "avatar-resolution":
                             return raiseCxAvatarResolution(findByProps("getUserAvatarURL", "getGuildIconURL"), avatarResolution, enabled);
+                        case "stop-auto-unread":
+                            return overrideCxMethods(findByStoreName("UnreadSettingNoticeStore2"), { maybeAutoUpgradeChannel: () => false }, enabled);
                     }
                 },
                 registerReplyPingSuppression() {
