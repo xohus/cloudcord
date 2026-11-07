@@ -12,6 +12,7 @@ import { Image, StyleSheet, View } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
 const Messages = findByFilePathLazy("modules/messages/native/Messages.tsx", true);
+const MessagesRenderer = findByFilePathLazy("modules/messages/native/MessagesRenderer.tsx", true);
 const styles = StyleSheet.create({
     container: { flex: 1 },
     imageLayer: StyleSheet.absoluteFillObject,
@@ -79,11 +80,16 @@ export default function patchChatBackground() {
     let active = true;
     let modernSeen = false;
     let unpatch: (() => void) | undefined;
+    let exactRenderer: object | undefined;
 
     // Recent Android builds use a function component for the native message
     // renderer. iOS exposes a memoized forward ref with displayName "Messages".
     function wrapRenderer(_: unknown, element: React.ReactElement) {
-        return !active || unpatch ? element : <ThemeBackground key={element.key} direct>{element}</ThemeBackground>;
+        if (!active || element.type === ThemeBackground) return element;
+        modernSeen = true;
+        unpatch?.();
+        unpatch = undefined;
+        return <ThemeBackground key={element.key} direct>{element}</ThemeBackground>;
     }
     onJsxCreate("MessagesRenderer", wrapRenderer);
     function wrapMessagesDisplayName(_: unknown, element: React.ReactElement<{ channelId?: string; style?: StyleProp<ViewStyle>; }>) {
@@ -92,9 +98,6 @@ export default function patchChatBackground() {
         if (typeof inner === "function") return inner.name === "MessagesRenderer" ? wrapRenderer(null, element) : element;
         if (!active || inner?.$$typeof !== Symbol.for("react.forward_ref")
             || typeof element.props.channelId !== "string" || !("style" in element.props)) return element;
-        modernSeen = true;
-        unpatch?.();
-        unpatch = undefined;
         return wrapRenderer(null, element);
     }
     onJsxCreate("Messages", wrapMessagesDisplayName);
@@ -120,6 +123,18 @@ export default function patchChatBackground() {
         }
     }
 
+    let cancelRenderer: (() => void) | undefined;
+    try {
+        cancelRenderer = getLazyContext(MessagesRenderer)?.getExports(exports => {
+            if (!active || exactRenderer) return;
+            const renderer = exports?.default ?? exports;
+            if (typeof renderer !== "function" && renderer?.$$typeof !== Symbol.for("react.memo")
+                && renderer?.$$typeof !== Symbol.for("react.forward_ref")) return;
+            exactRenderer = renderer;
+            onJsxCreate(renderer, wrapRenderer);
+        });
+    } catch { /* Component names and the legacy render patch still provide fallback routes. */ }
+
     let cancel: (() => void) | undefined;
     try {
         const lazy = getLazyContext(Messages);
@@ -137,9 +152,11 @@ export default function patchChatBackground() {
     }
     return () => {
         active = false;
+        cancelRenderer?.();
         cancel?.();
         unpatch?.();
         deleteJsxCreate("MessagesRenderer", wrapRenderer);
         deleteJsxCreate("Messages", wrapMessagesDisplayName);
+        if (exactRenderer) deleteJsxCreate(exactRenderer, wrapRenderer);
     };
 }
