@@ -37142,6 +37142,71 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     ]);
     return "Marked " + channels2.size + " channel" + (channels2.size === 1 ? "" : "s") + " as read.";
   }
+  function bindCxChannelOpenRead({ dispatcher: dispatcher2, selected, user, read, jump, enabled = () => true }) {
+    if (typeof dispatcher2?.subscribe !== "function" || typeof read?.lastMessageId !== "function")
+      throw new Error("Discord channel read state is unavailable");
+    var pending2;
+    var generation = 0;
+    var previous;
+    var previousUser;
+    function onSelect({ channelId, messageId: targetId, jumpToMessageId }) {
+      var account = user();
+      if (targetId || jumpToMessageId) {
+        clearTimeout(pending2);
+        generation++;
+        previous = void 0;
+        return;
+      }
+      if (enabled() && channelId === previous && account === previousUser)
+        return;
+      clearTimeout(pending2);
+      var request = ++generation;
+      previous = void 0;
+      if (!enabled() || !account || typeof channelId !== "string" || !/^\d{17,20}$/.test(channelId))
+        return;
+      previous = channelId;
+      previousUser = account;
+      pending2 = setTimeout(() => _async_to_generator(function* () {
+        try {
+          if (!enabled() || user() !== account || selected() !== channelId || !read.hasUnread(channelId))
+            return;
+          var messageId = read.lastMessageId(channelId);
+          if (!messageId || !/^\d{17,20}$/.test(messageId))
+            return;
+          yield dispatcher2.dispatch({
+            type: "BULK_ACK",
+            context: "APP",
+            channels: [
+              {
+                channelId,
+                messageId,
+                readStateType: 0
+              }
+            ]
+          });
+          if (user() !== account)
+            return;
+          yield dispatcher2.dispatch({
+            type: "CHANNEL_LOCAL_ACK",
+            channelId
+          });
+          if (request === generation && enabled() && user() === account && selected() === channelId)
+            yield jump({
+              channelId,
+              messageId,
+              flash: false
+            });
+        } catch (e) {
+        }
+      })(), 0);
+    }
+    dispatcher2.subscribe("CHANNEL_SELECT", onSelect);
+    return () => {
+      generation++;
+      clearTimeout(pending2);
+      dispatcher2.unsubscribe("CHANNEL_SELECT", onSelect);
+    };
+  }
   var cxClientFunctions, cxExternalLookups;
   var init_cxClientCommands = __esm({
     "src/lib/api/cxClientCommands.ts"() {
@@ -38421,6 +38486,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "copy-media-link": {
           permission: "media.clipboard",
           label: "Add a clipboard action to media and link menus"
+        },
+        "scroll-to-latest": {
+          permission: "channels.markonopen",
+          label: "Open channels at the latest message and mark them read"
         },
         "sticker-links": {
           permission: "stickers.links",
@@ -40176,6 +40245,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "friends.invites.revoke": "Revoke all your friend invites when you run the listed command",
         "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
         "servers.markread": "Mark unread server channels as read when you run the listed command",
+        "channels.markonopen": "Mark the channel you open as read through its newest known message",
         "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
         "appearance.hide": "Hide the listed interface elements on this device",
         "appearance.style": "Apply the listed visual changes on this device",
@@ -41594,6 +41664,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/scroll-to-latest.cx
+  var scroll_to_latest_default;
+  var init_scroll_to_latest = __esm({
+    "../examples/cx/catalog/plugins/scroll-to-latest.cx"() {
+      scroll_to_latest_default = 'plugin "ScrollToLatest":\n  needs channels.markonopen\n  use scroll-to-latest\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/sed-enhanced.cx
   var sed_enhanced_default;
   var init_sed_enhanced = __esm({
@@ -42780,6 +42858,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_reverse_text();
       init_round_server_icons();
       init_rounded_chat_bar();
+      init_scroll_to_latest();
       init_sed_enhanced();
       init_send_timestamps();
       init_ship_calc();
@@ -43396,6 +43475,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "RoundedChatBar",
             source: rounded_chat_bar_default
+          },
+          {
+            name: "ScrollToLatest",
+            source: scroll_to_latest_default
           },
           {
             name: "SedEnhanced",
@@ -45227,6 +45310,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return registerExpressionLinks(effect);
               case "copy-media-link":
                 return registerMediaLinkCopy();
+              case "scroll-to-latest": {
+                var actions = findByProps("jumpToMessage", "fetchMessages");
+                if (typeof actions?.jumpToMessage !== "function")
+                  throw new Error("Discord message navigation is unavailable");
+                return bindCxChannelOpenRead({
+                  dispatcher: FluxDispatcher,
+                  read: ReadStateStore,
+                  enabled,
+                  selected: () => SelectedChannelStore?.getChannelId?.(),
+                  user: () => UserStore2?.getCurrentUser?.()?.id,
+                  jump: (target) => actions.jumpToMessage(target)
+                });
+              }
               case "unicode-emoji-autocomplete":
               case "local-emoji-autocomplete":
                 return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode", findByProps("EmojiIntention")?.EmojiIntention, enabled);
@@ -50388,7 +50484,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a38cba191957bc0afd4d136682ff9c9b5605da21";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "468f2d291af11142642fea49a0c453ae75d76f77";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
