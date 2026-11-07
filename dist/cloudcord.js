@@ -38608,6 +38608,72 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxWallpaper.ts
+  function validateCxWallpaper(uri) {
+    var match = /^data:image\/(png|jpeg);base64,(iVBORw0KGgo[A-Za-z0-9+/]+={0,2}|\/9j\/[A-Za-z0-9+/]+={0,2})$/.exec(uri);
+    if (!match || match[2].length % 4 !== 0 || match[1] === "png" !== match[2].startsWith("iVBORw0KGgo"))
+      throw new Error("Wallpaper must be an embedded PNG or JPEG data URL");
+    var [, type, data] = match;
+    var length = data.length / 4 * 3 - (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
+    function byte(offset2) {
+      var group = Math.floor(offset2 / 3) * 4;
+      var index = offset2 % 3;
+      var high = base64.indexOf(data[group + index]);
+      var low = base64.indexOf(data[group + index + 1]);
+      return (high << 2 * (index + 1) | low >>> 4 - 2 * index) & 255;
+    }
+    function read(offset2, count) {
+      var value = 0;
+      for (var i = 0; i < count; i++)
+        value = value * 256 + byte(offset2 + i);
+      return value;
+    }
+    var width;
+    var height;
+    if (type === "png") {
+      if (length >= 33 && read(8, 4) === 13 && read(12, 4) === 1229472850) {
+        width = read(16, 4);
+        height = read(20, 4);
+      }
+    } else {
+      for (var offset = 2; offset + 3 < length; ) {
+        if (byte(offset++) !== 255)
+          break;
+        while (offset < length && byte(offset) === 255)
+          offset++;
+        if (offset + 2 >= length)
+          break;
+        var marker = byte(offset++);
+        if (marker === 218 || marker === 217)
+          break;
+        var size = read(offset, 2);
+        if (size < 2 || offset + size > length)
+          break;
+        if (marker >= 192 && marker <= 207 && marker !== 196 && marker !== 200 && marker !== 204) {
+          if (size >= 8) {
+            height = read(offset + 3, 2);
+            width = read(offset + 5, 2);
+          }
+          break;
+        }
+        offset += size;
+      }
+    }
+    if (!width || !height)
+      throw new Error("Wallpaper is missing valid image dimensions");
+    if (width > 4096 || height > 4096 || width * height > 8e6)
+      throw new Error("Wallpaper must fit within 4096 pixels per side and 8 million pixels total");
+  }
+  var base64;
+  var init_cxWallpaper = __esm({
+    "src/lib/api/cxWallpaper.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    }
+  });
+
   // src/lib/api/cxProfileMenu.ts
   function isCxProfileUserId(id) {
     return typeof id === "string" && /^\d{17,20}$/.test(id);
@@ -39211,8 +39277,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           theme.mode = value;
         } else if (key === "wallpaper") {
           var uri = quoted(value, 384 * 1024);
-          if (!/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(uri) || uri.slice(uri.indexOf(",") + 1).length % 4 !== 0)
-            throw new Error("Wallpaper must be an embedded PNG or JPEG data URL");
+          validateCxWallpaper(uri);
           theme.wallpaper = uri;
         } else if (key === "wallpaper-opacity") {
           if (!/^(?:100|[1-9]?[0-9])$/.test(value))
@@ -39711,6 +39776,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxPreviousMessage();
       init_cxTextRules();
       init_cxUploadNames();
+      init_cxWallpaper();
       init_cxProfileMenu();
       init_cxProfileMenu();
       init_cxClientCommands();
@@ -49562,7 +49628,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "556823a40d44676bb2cc618125299cf5e4ae77d9";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "3b2018e15d1b9029d35f073879728fe17d96e63c";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
