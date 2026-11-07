@@ -36849,6 +36849,36 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/api/cxClientCommands.ts
+  function lookupWikipedia(input, signal) {
+    return _async_to_generator(function* () {
+      var query = input.trim();
+      if (!query || query.length > 120 || query === "." || query === "..")
+        return "Enter a Wikipedia article title up to 120 characters.";
+      var escaped = (value) => value.replace(/@/g, "\uFF20").replace(/[\\\x60*_~|<>[\]]/g, "\\$&");
+      var title = encodeURIComponent(query);
+      var response = yield fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + title, {
+        credentials: "omit",
+        redirect: "error",
+        headers: {
+          "Api-User-Agent": "CloudCord (https://getcloudcord.com)"
+        },
+        signal
+      });
+      if (response.status === 404)
+        return "No Wikipedia article found for **" + escaped(query) + "**.";
+      if (!response.ok)
+        throw new Error("Wikipedia lookup failed");
+      var data = yield response.json();
+      if (data.type === "disambiguation" || typeof data.extract !== "string" || !data.extract.trim()) {
+        return "**" + escaped(query) + "** is ambiguous. Try a more specific title.";
+      }
+      var heading = typeof data.title === "string" ? data.title : query;
+      var page = data.content_urls?.desktop?.page;
+      var url2 = typeof page === "string" && /^https:\/\/en\.wikipedia\.org\/wiki\/[^\s<>]{1,500}$/.test(page) ? page : "https://en.wikipedia.org/wiki/" + title;
+      var excerpt = escaped(data.extract.trim().slice(0, 1200));
+      return "**" + escaped(heading.slice(0, 120)) + "**\n" + excerpt.slice(0, 1600) + "\n<" + url2 + ">";
+    })();
+  }
   function formatCxSpotify(action, text, track) {
     if (!track)
       return;
@@ -36945,7 +36975,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     ]);
     return "Marked " + channels2.size + " channel" + (channels2.size === 1 ? "" : "s") + " as read.";
   }
-  var cxClientFunctions;
+  var cxClientFunctions, cxExternalLookups;
   var init_cxClientCommands = __esm({
     "src/lib/api/cxClientCommands.ts"() {
       "use strict";
@@ -36972,6 +37002,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         spotifyArtist: {
           permission: "spotify.activity",
           input: "text"
+        }
+      };
+      cxExternalLookups = {
+        wikipedia: {
+          permission: "lookup.wikipedia",
+          run: lookupWikipedia
         }
       };
     }
@@ -38445,6 +38481,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
+      var lookup = /^    lookup ([a-z]+) "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
+      if (lookup && current && !current.actions.length && !current.text && current.inputs.length === 1 && current.inputs[0].name === lookup[2] && current.inputs[0].type === "text" && current.inputs[0].required && Object.prototype.hasOwnProperty.call(cxExternalLookups, lookup[1])) {
+        current.actions.push({
+          kind: "lookup",
+          service: lookup[1],
+          input: lookup[2]
+        });
+        current = void 0;
+        return "continue";
+      }
       var pick = /^    send one of (\[.{1,3000}\])$/.exec(line12);
       if (pick && current && current.actions.length < 4 && !current.actions.some(sendsMessage)) {
         var choices1 = void 0;
@@ -38724,9 +38770,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     if (!document.permissions.every((permission) => grants.has(permission)))
       throw new Error("CX permission approval is required");
     var cleanups = [];
+    var activeLookups = /* @__PURE__ */ new Map();
     var active = true;
     function stop() {
       active = false;
+      for (var controller of activeLookups.values())
+        controller.abort();
+      activeLookups.clear();
       for (var cleanup of cleanups.splice(0).reverse())
         cleanup();
     }
@@ -38777,15 +38827,34 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var _loop3 = function(action3) {
             if (!getActionPermissions(action3).every((permission) => grants.has(permission)))
               return "continue";
-            if (action3.kind === "friend-invites") {
+            if (action3.kind === "lookup") {
               var reply = invocation?.reply;
-              if (reply && invocation.friendInvites) {
+              if (!reply || activeLookups.has(action3.service))
+                return "continue";
+              var controller = new AbortController();
+              activeLookups.set(action3.service, controller);
+              var timer = setTimeout(() => controller.abort(), 8e3);
+              void cxExternalLookups[action3.service].run(inputs.get(action3.input), controller.signal).then((result) => {
+                if (active)
+                  reply(result);
+              }, () => {
+                if (active)
+                  reply("Couldn\u2019t reach the lookup service. Try again.");
+              }).finally(() => {
+                clearTimeout(timer);
+                activeLookups.delete(action3.service);
+              });
+              return "continue";
+            }
+            if (action3.kind === "friend-invites") {
+              var reply1 = invocation?.reply;
+              if (reply1 && invocation.friendInvites) {
                 void invocation.friendInvites(action3.operation).then((result) => {
                   if (active)
-                    reply(result);
+                    reply1(result);
                 }, () => {
                   if (active)
-                    reply("Friend invites failed. Try again.");
+                    reply1("Friend invites failed. Try again.");
                 });
               }
               return "continue";
@@ -39014,7 +39083,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.watchlocal": "Match incoming messages on this device and show local notifications",
         "messages.filterlocal": "Hide matching incoming messages and history on this device",
         "typing.suppress": "Suppress your outgoing typing indicator",
-        "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications"
+        "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
+        "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command"
       };
       leetCharacters = {
         a: "4",
@@ -39069,6 +39139,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       getActionPermissions = (action) => action.kind === "friend-invites" ? [
         "reply.local",
         `friends.invites.${action.operation}`
+      ] : action.kind === "lookup" ? [
+        "reply.local",
+        cxExternalLookups[action.service].permission
       ] : actionPermissions[action.kind];
       sendsMessage = (action) => action.kind === "send" || action.kind === "reply or send";
     }
@@ -39935,6 +40008,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_voice_join_messages = __esm({
     "../examples/cx/catalog/plugins/voice-join-messages.cx"() {
       voice_join_messages_default = 'plugin "VoiceJoinMessages":\n  needs voice.notifyfriends\n  on incoming friends-voice ""\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/wiki-lookup.cx
+  var wiki_lookup_default;
+  var init_wiki_lookup = __esm({
+    "../examples/cx/catalog/plugins/wiki-lookup.cx"() {
+      wiki_lookup_default = 'plugin "WikiLookup":\n  needs commands.register\n  needs reply.local\n  needs lookup.wikipedia\n  on command "wiki":\n    input "message" text\n    lookup wikipedia "message"\n';
     }
   });
 
@@ -40869,6 +40950,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_unit_converter();
       init_vibe_check();
       init_voice_join_messages();
+      init_wiki_lookup();
       init_write_upper_case();
       init_zero_width_sanitizer();
       init_midnight();
@@ -41404,6 +41486,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "VoiceJoinMessages",
             source: voice_join_messages_default
+          },
+          {
+            name: "WikiLookup",
+            source: wiki_lookup_default
           },
           {
             name: "WriteUpperCase",
@@ -47486,7 +47572,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "afbc9fe5ff151fb5a156fb6c7cbc818afda0667f";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "7452cf75e9a46a0c39fc6c68abf241f46895e91e";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
