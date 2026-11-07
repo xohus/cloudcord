@@ -38609,6 +38609,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "sticker-links": {
           permission: "stickers.links",
           label: "Add Copy Sticker Link and Open Sticker Link actions"
+        },
+        "clean-channel-names": {
+          permission: "appearance.style",
+          label: "Remove decorations from displayed channel names"
+        },
+        "title-channel-names": {
+          permission: "appearance.style",
+          label: "Format displayed server channel names as titles"
         }
       };
       cxAvatarResolutions = [
@@ -39045,6 +39053,57 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           scope: "server"
         }
       };
+    }
+  });
+
+  // src/lib/api/cxChannelNames.ts
+  function cleanChannelName(name, type) {
+    return name.normalize("NFKC").replace(/[ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀꜱᴛᴜᴠᴡxʏᴢ]/g, (letter) => smallCaps[letter]).replace(RegExp("[^ -~]?\\p{Extended_Pictographic}[^ -~]?", "ug"), "").replace(RegExp("-?[^\\p{Letter} -~]-?", "ug"), [
+      2,
+      4
+    ].includes(type) ? " " : "-").replace(/(^-|-$)/g, "").replace(/-+/g, "-") || name;
+  }
+  function formatCxChannelName(label2, channel, modes) {
+    if (typeof channel.type !== "number" || !channel.name || !label2)
+      return label2;
+    var cleaned = modes.clean ? cleanChannelName(label2, channel.type) : label2;
+    if (!modes.titles || !channel.guild_id)
+      return cleaned;
+    return cleaned.replace(/[-_]+/g, " ").trim().replace(RegExp("\\p{L}[\\p{L}\\p{M}\\d]*(?:['\u2019][\\p{L}\\p{M}\\d]+)*", "gu"), (word, index) => {
+      var conventional = conventionalCase.get(word.toLowerCase());
+      if (conventional && (index > 0 || conventional !== conventional.toLowerCase()))
+        return conventional;
+      return word.replace(RegExp("^\\p{L}", "u"), (letter) => letter.toUpperCase());
+    }) || cleaned;
+  }
+  var smallCaps, conventionalCase;
+  var init_cxChannelNames = __esm({
+    "src/lib/api/cxChannelNames.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      smallCaps = Object.fromEntries([
+        ..."\u1D00\u0299\u1D04\u1D05\u1D07\uA730\u0262\u029C\u026A\u1D0A\u1D0B\u029F\u1D0D\u0274\u1D0F\u1D18\u01EB\u0280\uA731\u1D1B\u1D1C\u1D20\u1D21x\u028F\u1D22"
+      ].map((letter, index) => [
+        letter,
+        "abcdefghijklmnopqrstuvwxyz"[index]
+      ]));
+      conventionalCase = new Map([
+        "a",
+        "and",
+        "at",
+        "for",
+        "of",
+        "or",
+        "the",
+        "to",
+        "FAQ",
+        "GitHub",
+        "VC"
+      ].map((word) => [
+        word.toLowerCase(),
+        word
+      ]));
     }
   });
 
@@ -40428,6 +40487,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxWallpaper();
       init_cxProfileMenu();
       init_cxProfileMenu();
+      init_cxChannelNames();
       init_cxIncoming();
       init_cxClientCommands();
       init_cxNativeEffects();
@@ -40615,6 +40675,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/better-chat-names.cx
+  var better_chat_names_default;
+  var init_better_chat_names = __esm({
+    "../examples/cx/catalog/plugins/better-chat-names.cx"() {
+      better_chat_names_default = 'plugin "BetterChatNames":\n  needs appearance.style\n  use title-channel-names\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/better-gif-alt-text.cx
   var better_gif_alt_text_default;
   var init_better_gif_alt_text = __esm({
@@ -40692,6 +40760,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_clap_text = __esm({
     "../examples/cx/catalog/plugins/clap-text.cx"() {
       clap_text_default = 'plugin "ClapText":\n  needs commands.register\n  needs messages.send\n  on command "clap" with text:\n    send "${clap(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/clean-channel-name.cx
+  var clean_channel_name_default;
+  var init_clean_channel_name = __esm({
+    "../examples/cx/catalog/plugins/clean-channel-name.cx"() {
+      clean_channel_name_default = 'plugin "CleanChannelName":\n  needs appearance.style\n  use clean-channel-names\n';
     }
   });
 
@@ -43057,6 +43133,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_at_someone();
       init_auto_vaporwave();
       init_avatar_grabber();
+      init_better_chat_names();
       init_better_gif_alt_text();
       init_better_plus_reacts();
       init_bigger_code_blocks();
@@ -43067,6 +43144,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_bold_text();
       init_calculator();
       init_clap_text();
+      init_clean_channel_name();
       init_clear_urls();
       init_client_side_block();
       init_cloud_cord_accent();
@@ -43342,6 +43420,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: avatar_grabber_default
           },
           {
+            name: "BetterChatNames",
+            source: better_chat_names_default
+          },
+          {
             name: "BetterGifAltText",
             source: better_gif_alt_text_default
           },
@@ -43380,6 +43462,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ClapText",
             source: clap_text_default
+          },
+          {
+            name: "CleanChannelName",
+            source: clean_channel_name_default
           },
           {
             name: "ClearURLs",
@@ -44369,6 +44455,51 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   __export(CxExtensions_exports, {
     default: () => CxExtensions
   });
+  function registerChannelNames(mode, enabled) {
+    if (!stopChannelNames) {
+      var nameModule = findByFilePath("modules/channel/useChannelName.tsx");
+      var channelRows = findByFilePath("modules/main_tabs_v2/native/shared_components/guild_channels/ChannelContent.tsx");
+      var format = (label2, channel) => typeof label2 === "string" && channel ? formatCxChannelName(label2, channel, channelNames) : label2;
+      var stopNames = overrideCxMethods(nameModule, {
+        default: (args, invoke) => format(invoke(args), args[0]),
+        computeChannelName: (args, invoke) => format(invoke(args), args[0])
+      }, enabled);
+      try {
+        var stopRows = overrideCxMethods(channelRows, {
+          renderChannelContent(args, invoke) {
+            var props = args[0];
+            var name = format(props?.name, props?.channel);
+            return name === props?.name ? invoke(args) : invoke([
+              {
+                ...props,
+                name
+              },
+              ...args.slice(1)
+            ]);
+          }
+        }, enabled);
+        stopChannelNames = () => {
+          stopRows();
+          stopNames();
+        };
+      } catch (error) {
+        stopNames();
+        throw error;
+      }
+    }
+    channelNames[mode]++;
+    var active = true;
+    return () => {
+      if (!active)
+        return;
+      active = false;
+      channelNames[mode]--;
+      if (!channelNames.clean && !channelNames.titles) {
+        stopChannelNames?.();
+        stopChannelNames = void 0;
+      }
+    };
+  }
   function hideDisabledEmojiInPicker(enabled) {
     var picker = findByFilePath("modules/emoji_picker/native/components/useComputeEmojiPickerFunctions.tsx");
     var active = true;
@@ -46039,6 +46170,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           registerNativeEffect(effect, avatarResolution = 256) {
             var enabled = () => !settings.safeMode?.enabled;
             switch (effect) {
+              case "clean-channel-names":
+              case "title-channel-names":
+                return registerChannelNames(effect === "clean-channel-names" ? "clean" : "titles", enabled);
               case "static-typing-dots":
                 return registerStaticTypingDots();
               case "hide-disabled-emojis":
@@ -46592,7 +46726,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, channelNames, stopChannelNames, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -46625,6 +46759,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_components();
       import_react_native41 = __toESM(require_react_native());
       session = createCxSession();
+      channelNames = {
+        clean: 0,
+        titles: 0
+      };
       UserStore2 = findByStoreNameLazy("UserStore");
       ChannelStore = findByStoreNameLazy("ChannelStore");
       MessageStore = findByStoreNameLazy("MessageStore");
@@ -51280,7 +51418,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "56ebbdc5ef2d8250a6392ac489388e4d4ccd57ab";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "7dd7c07ba05d1b3d23bd49bcb903d4c4c55930d1";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
