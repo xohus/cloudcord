@@ -229,10 +229,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const messagePresentation = Object.freeze({ edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello" });
         const createMessageContent = () => messagePresentation;
         const messageRenderer = { default: createMessageContent };
-        const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon"]
+        const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar"]
             .map(name => [name, () => name]));
         const renderHeader = tree => tree;
-        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader"].map(name => [
+        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem"].map(name => [
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
         const headerMessages = { t: { "5h0QOP": "search" }, intl: { string: () => "Rechercher" } };
@@ -404,8 +404,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 }
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
-            else if (rule.mobile.header) {
-                const name = rule.mobile.header.split("/").at(-1).replace(".tsx", "");
+            else if (rule.mobile.renderTree) {
+                const name = rule.mobile.renderTree.split("/").at(-1).replace(".tsx", "");
                 const header = nativeHeaders.get(name);
                 const button = (icon, label, accessibilityRole = "button") =>
                     jsx("Pressable", Object.freeze({ accessibilityRole, accessibilityLabel: label, onPress() {}, children: jsx(icon, {}) }));
@@ -414,15 +414,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 const hangup = button(headerIcons.PhoneHangUpIcon, "Hang up");
                 const search = button("SearchIcon", "Rechercher", "link");
                 const addFriend = button("FriendIcon", "Ajouter un ami");
+                const avatar = jsx(headerIcons.Avatar, { source: { uri: "avatar" }, size: 20 });
                 const text = jsx("Text", { children: "Messages" });
                 const row = children => jsx("View", Object.freeze({ children: Object.freeze(children) }));
-                const input = row([text, row([voice, video, search, addFriend])]);
+                const input = row([text, row([voice, video, search, addFriend, avatar])]);
                 const originalHeader = jsx(header, input);
-                const wrapped = appearanceHooks.get(name)(null, originalHeader);
+                const hook = appearanceHooks.get(name);
+                const unrelated = jsx({ ...header }, input);
+                const unrelatedWrapper = hook(null, unrelated);
+                assert.equal(unrelatedWrapper.type(unrelatedWrapper.props), unrelated);
+                const wrapped = hook(null, originalHeader);
                 const patched = wrapped.type(wrapped.props);
                 const rendered = patched.type.type(input);
                 const actual = rendered.props.children[1].props.children;
-                const expected = rule.mobile.hideIcons ? [null, null, search, addFriend] : [voice, video, null, addFriend];
+                const expected = rule.mobile.hideComponents ? [voice, video, search, addFriend, null]
+                    : rule.mobile.hideIcons ? [null, null, search, addFriend, avatar] : [voice, video, null, addFriend, avatar];
                 assert.equal(rendered.props.children[0], text);
                 expected.forEach((item, index) => assert.equal(actual[index], item));
                 assert.equal(input.props.children[1].props.children[0], voice);

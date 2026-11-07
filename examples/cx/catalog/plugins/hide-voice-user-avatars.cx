@@ -1,0 +1,3 @@
+plugin "HideVoiceUserAvatars":
+  needs appearance.hide
+  hide voice-user-avatars

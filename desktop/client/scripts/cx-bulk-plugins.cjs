@@ -646,6 +646,53 @@ function entryFiles(folder) {
     });
 }
 
+function inspectCompanions(entry, code) {
+    const directory = fs.realpathSync(path.dirname(entry));
+    const pending = [[fs.realpathSync(entry), code]];
+    const seen = new Set([pending[0][0]]);
+    const hooks = new Set();
+    const targets = new Set();
+    const companions = [];
+    function withinPlugin(file) {
+        const local = path.relative(directory, file);
+        return local !== ".." && !local.startsWith(".." + path.sep) && !path.isAbsolute(local);
+    }
+    for (const [file, text] of pending) {
+        if (file.endsWith(".css")) {
+            hooks.add("appearance");
+            for (const [, property] of text.matchAll(/(?:\{|;)\s*([a-z-]+)\s*:/gi)) targets.add("css:" + property.toLowerCase());
+            continue;
+        }
+        const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+        if (file !== pending[0][0]) {
+            const found = inventory(source);
+            for (const hook of found.hooks) hooks.add(hook);
+            for (const target of found.targets) targets.add(target);
+        }
+        function visit(node) {
+            ts.forEachChild(node, visit);
+            let imported;
+            if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly) imported = literal(node.moduleSpecifier);
+            if (ts.isExportDeclaration(node) && !node.isTypeOnly) imported = literal(node.moduleSpecifier);
+            if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || identifier(node.expression) === "require"))
+                imported = literal(node.arguments[0]);
+            if (!imported?.startsWith("./") && !imported?.startsWith("../")) return;
+            const base = path.resolve(path.dirname(file), imported.replace(/\.css\?managed$/, ".css"));
+            if (!withinPlugin(base)) return;
+            const resolved = ["", ".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx"]
+                .map(suffix => base + suffix).find(candidate => /\.(?:[jt]sx?|css)$/.test(candidate) && fs.statSync(candidate, { throwIfNoEntry: false })?.isFile());
+            if (!resolved) return;
+            const real = fs.realpathSync(resolved);
+            if (seen.has(real) || !withinPlugin(real)) return;
+            seen.add(real);
+            companions.push(real);
+            pending.push([real, fs.readFileSync(real, "utf8")]);
+        }
+        visit(source);
+    }
+    return { companions, hooks, targets };
+}
+
 function betterDiscordFiles(folder) {
     return fs.readdirSync(folder, { withFileTypes: true }).flatMap(entry => {
         const location = path.join(folder, entry.name);
@@ -655,7 +702,7 @@ function betterDiscordFiles(folder) {
     });
 }
 
-function scan(sourceDir) {
+function scan(sourceDir, { includeCompanions = false } = {}) {
     const { cxAppearanceTargets, cxNativeEffects } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     const existing = new Set(["character counter"]);
     for (const name of fs.readdirSync(catalogFolder).filter(name => name.endsWith(".cx"))) {
@@ -669,8 +716,18 @@ function scan(sourceDir) {
         ["mobile", ["ios/runtime/src/core/plugins"]],
     ]) {
         for (const folder of folders) for (const file of entryFiles(path.join(root, folder))) {
-            const record = inspectPlugin(path.relative(root, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), platform, cxAppearanceTargets, cxNativeEffects);
-            if (record) records.push(record);
+            const code = fs.readFileSync(file, "utf8");
+            const record = inspectPlugin(path.relative(root, file).replaceAll("\\", "/"), code, platform, cxAppearanceTargets, cxNativeEffects);
+            if (!record) continue;
+            if (includeCompanions && !record.cx && path.dirname(file) !== path.join(root, folder)) {
+                const { companions, hooks, targets } = inspectCompanions(file, code);
+                if (companions.length) {
+                    record.companions = companions.map(source => path.relative(root, source).replaceAll("\\", "/")).sort();
+                    record.hooks = [...new Set([...record.hooks, ...hooks])].sort();
+                    record.targets = [...new Set([...record.targets, ...targets])].sort();
+                }
+            }
+            records.push(record);
         }
     }
     if (sourceDir) for (const file of betterDiscordFiles(sourceDir)) {
@@ -702,14 +759,14 @@ function buildPlan(records) {
     const groups = new Map();
     const adapters = new Map();
     const plugins = new Set();
-    for (const { name, file, platform, hooks, targets, status, capability } of records) {
+    for (const { name, file, platform, hooks, targets, status, capability, companions } of records) {
         const normalized = name.toLowerCase();
         plugins.add(normalized);
         if (status === "in-catalog") continue;
         const key = hooks.join(" + ") || "unclassified";
         const group = groups.get(key) ?? new Map();
         const plugin = group.get(normalized) ?? { name, sources: [] };
-        plugin.sources.push({ file, platform, status, ...(capability ? { capability } : {}) });
+        plugin.sources.push({ file, platform, status, ...(capability ? { capability } : {}), ...(companions ? { companions } : {}) });
         group.set(normalized, plugin);
         groups.set(key, group);
         for (const target of targets ?? []) {
@@ -818,7 +875,7 @@ function main(rawArgs) {
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
     if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--add-ready"].includes(args[0])))
         throw new Error(usage);
-    const records = scan(sourceDir && path.resolve(sourceDir));
+    const records = scan(sourceDir && path.resolve(sourceDir), { includeCompanions: args.includes("--plan") || args.includes("--json") });
     if (args[0] === "--add-ready") {
         addReady(records.filter(record => record.status === "ready"));
         return;

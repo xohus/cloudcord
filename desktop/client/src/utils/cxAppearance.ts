@@ -46,6 +46,14 @@ export const cxAppearanceTargets = {
         css: '[class*="streamPreview"] { display: none !important; }',
         mobile: ["VoicePanelStreamPreview"],
     },
+    "voice-user-avatars": {
+        plugin: "HideVoiceUserAvatars", label: "avatars next to users in voice channels",
+        css: '[class*="voiceUser"] [class*="avatar"] { display: none !important; }',
+        mobile: {
+            renderTree: "modules/guild_sidebar/native/VoiceUserItem.tsx",
+            hideComponents: ["Avatar"],
+        },
+    },
     "nameplates": {
         plugin: "HideNameplates", label: "nameplates",
         css: '[class*="nameplate"] { display: none !important; }',
@@ -100,7 +108,7 @@ export const cxAppearanceTargets = {
         plugin: "HideCallButtons", label: "the buttons to start calls in DMs",
         css: '[aria-label="Start Voice Call"], [aria-label="Start Video Call"] { display: none !important; }',
         mobile: {
-            header: "modules/main_tabs_v2/native/channel/header/PrivateChannelButtons.tsx",
+            renderTree: "modules/main_tabs_v2/native/channel/header/PrivateChannelButtons.tsx",
             hideIcons: ["PhoneCallIcon", "VideoIcon"],
             keepWhilePresent: ["PhoneHangUpIcon", "VoiceNormalIcon"],
         },
@@ -109,7 +117,7 @@ export const cxAppearanceTargets = {
         plugin: "HideDmSearch", label: "the search button in the DM list",
         css: '[class*="privateChannels"] [class*="searchBar"] { display: none !important; }',
         mobile: {
-            header: "modules/main_tabs_v2/native/tabs/messages/MessagesHeader.tsx",
+            renderTree: "modules/main_tabs_v2/native/tabs/messages/MessagesHeader.tsx",
             hideLabels: ["5h0QOP"],
         },
     },

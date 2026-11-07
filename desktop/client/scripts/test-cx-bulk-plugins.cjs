@@ -34,7 +34,16 @@ assert.equal(inspect(source.replace('import definePlugin', 'import "./unreviewed
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", start() { fetch("/data"); },')).cx, undefined);
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
-const matches = scan().filter(record => record.cx);
+const records = scan(undefined, { includeCompanions: true });
+const folders = records.find(record => record.name === "BetterFolders");
+assert.equal(folders.status, "needs-adapter");
+assert.ok(folders.companions.some(file => file.endsWith("/FolderSideBar.tsx")));
+assert.ok(folders.companions.some(file => file.endsWith("/style.css")));
+assert.ok(folders.targets.includes("css:grid-area"));
+const compose = records.find(record => record.name === "CompactCompose");
+assert.equal(compose.status, "needs-adapter");
+assert.ok(compose.targets.includes("css:min-height"));
+const matches = records.filter(record => record.cx);
 for (const [name, kind] of [["VoiceJoinMessages", "friends-voice"], ["FollowVoiceUser", "follow-voice"], ["RelationshipNotifier", "friend-removals"]]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "social-event");
