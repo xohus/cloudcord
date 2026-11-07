@@ -26177,14 +26177,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       import_react_native26.Alert.alert("Fake boost", "Open a server text channel first, then come back.");
       return;
     }
-    var snowflake = findByProps("fromTimestamp", "extractTimestamp");
+    var snowflake2 = findByProps("fromTimestamp", "extractTimestamp");
     FluxDispatcher.dispatch({
       type: "MESSAGE_CREATE",
       channelId,
       optimistic: false,
       isPushNotification: false,
       message: {
-        id: snowflake?.fromTimestamp?.(Date.now()) ?? String((Date.now() - 14200704e5) * 4194304),
+        id: snowflake2?.fromTimestamp?.(Date.now()) ?? String((Date.now() - 14200704e5) * 4194304),
         type: reachedLevel > 0 ? 8 + reachedLevel : 8,
         content: times > 1 ? String(times) : "",
         channel_id: channelId,
@@ -38071,6 +38071,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "appearance.style",
           label: "Keep Discord's typing dots still"
         },
+        "plus-reactions": {
+          permission: "messages.reactshortcut",
+          label: "React to the matching previous message when you send a plus shortcut"
+        },
         "pending-friend-count": {
           permission: "appearance.hide",
           label: "Hide the pending friend request count"
@@ -38358,6 +38362,74 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxNativeEffects();
       isId = (id) => typeof id === "string" && /^\d{17,20}$/.test(id);
       label = (name, fallback) => name?.replace(/[\r\n\t]/g, " ").slice(0, 100).trim() || fallback;
+    }
+  });
+
+  // src/lib/api/cxPlusReactions.ts
+  function createCxPlusReactionHandler(host) {
+    return (channel, message, options) => {
+      if (typeof channel !== "string" || !snowflake.test(channel) || typeof message?.content !== "string" || message.reaction || message.tts || message.attachments?.length || message.stickers?.length || message.stickerIds?.length || options?.uploads?.length || options?.attachmentsToUpload?.length || options?.stickers?.length || options?.stickerIds?.length || options?.messageReference || options?.replyOptions?.messageReference || options?.scheduledTimestamp != null)
+        return;
+      var parsed = shortcut.exec(message.content.trim());
+      if (!parsed)
+        return;
+      try {
+        var [, pluses, shortcode, customId, rawEmoji] = parsed;
+        var cache = host.messages(channel);
+        if (cache?.hasMoreAfter)
+          return;
+        var list = cache?._array ?? cache?.toArray?.();
+        var target = list?.[list.length - pluses.length];
+        if (!target?.id || !snowflake.test(target.id) || (target.channel_id ?? target.channelId ?? channel) !== channel)
+          return;
+        var emoji;
+        if (rawEmoji)
+          emoji = {
+            id: null,
+            name: rawEmoji
+          };
+        else {
+          var store = host.emojis();
+          var guild = host.guild(channel);
+          var matches = (item) => item.available !== false && (item.uniqueName === shortcode || item.name === shortcode);
+          var custom = customId ? (store?.getUsableCustomEmojiById ?? store?.getCustomEmojiById)?.call(store, customId) : (guild ? store?.getUsableGuildEmoji?.(guild)?.find(matches) : void 0) ?? Object.values(store?.getGuilds?.() ?? {}).flatMap((group) => group.usableEmojis ?? group.emojis ?? group._emojis ?? []).find(matches);
+          if (custom?.id && snowflake.test(custom.id) && custom.name && custom.available !== false) {
+            emoji = {
+              id: custom.id,
+              name: custom.name,
+              animated: custom.animated === true
+            };
+          } else if (shortcode) {
+            var unicode = host.unicode(shortcode);
+            if (unicode)
+              emoji = {
+                id: null,
+                name: unicode
+              };
+          }
+        }
+        if (!emoji)
+          return;
+        var { id } = target;
+        var reaction = emoji;
+        return Promise.resolve().then(() => host.react(channel, id, reaction)).then(() => void 0, () => {
+          try {
+            host.error();
+          } catch (e) {
+          }
+        });
+      } catch (e) {
+      }
+    };
+  }
+  var shortcut, snowflake;
+  var init_cxPlusReactions = __esm({
+    "src/lib/api/cxPlusReactions.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      shortcut = RegExp("^(\\++)(?::([\\w~-]+):|<a?:[\\w~-]+:(\\d{17,20})>|(\\p{Extended_Pictographic}(?:\\ufe0f|\\p{Emoji_Modifier}|\\u200d\\p{Extended_Pictographic})*|\\p{Regional_Indicator}{2}|[0-9#*]\\ufe0f?\\u20e3))$", "u");
+      snowflake = /^\d{17,20}$/;
     }
   });
 
@@ -39123,6 +39195,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxNativeEffects();
       init_cxPreviousMessage();
       init_cxSocialEvents();
+      init_cxPlusReactions();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -39134,6 +39207,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.edit.transform": "Change text when you submit a message edit",
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
         "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
+        "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
         "replies.suppressping": "Send replies without pinging the person you reply to",
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
         "guild.members": "Read loaded members with the role you select in the current server",
@@ -39270,6 +39344,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_avatar_grabber = __esm({
     "../examples/cx/catalog/plugins/avatar-grabber.cx"() {
       avatar_grabber_default = 'plugin "AvatarGrabber":\n  needs commands.register\n  needs messages.send\n  needs profile.avatar\n  needs reply.local\n  on command "avatar":\n    input "user" user optional\n    send "${avatar(user)}" else "Couldn\'t find that user."\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/better-plus-reacts.cx
+  var better_plus_reacts_default;
+  var init_better_plus_reacts = __esm({
+    "../examples/cx/catalog/plugins/better-plus-reacts.cx"() {
+      better_plus_reacts_default = 'plugin "BetterPlusReacts":\n  needs messages.reactshortcut\n  use plus-reactions\n';
     }
   });
 
@@ -40974,6 +41056,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_at_someone();
       init_auto_vaporwave();
       init_avatar_grabber();
+      init_better_plus_reacts();
       init_bigger_code_blocks();
       init_bigger_server_icons();
       init_block_keywords();
@@ -41210,6 +41293,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "AvatarGrabber",
             source: avatar_grabber_default
+          },
+          {
+            name: "BetterPlusReacts",
+            source: better_plus_reacts_default
           },
           {
             name: "BiggerCodeBlocks",
@@ -42790,6 +42877,29 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "static-typing-dots":
                 return registerStaticTypingDots();
+              case "plus-reactions": {
+                var reactions = findByProps("addReaction", "removeReaction") ?? findByProps("addReaction");
+                if (typeof reactions?.addReaction !== "function")
+                  throw new Error("Discord reactions are unavailable");
+                var handle = createCxPlusReactionHandler({
+                  messages: (channel) => MessageStore?.getMessages?.(channel),
+                  guild: (channel) => ChannelStore?.getChannel?.(channel)?.guild_id,
+                  emojis: () => EmojiStore,
+                  unicode: (name) => findByProps("convertNameToSurrogate")?.convertNameToSurrogate(name),
+                  react: (channel, message, emoji) => reactions.addReaction(channel, message, emoji),
+                  error: () => {
+                    showToast("Couldn\u2019t react to the previous message.");
+                  }
+                });
+                return instead("sendMessage", messageUtil, function(args, original) {
+                  if (enabled()) {
+                    var result = handle(args[0], args[1], args[3]);
+                    if (result)
+                      return result;
+                  }
+                  return original.apply(this, args);
+                });
+              }
               case "silent-typing":
                 return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
                   startTyping: () => void 0
@@ -43215,7 +43325,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -43248,6 +43358,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       UserStore2 = findByStoreNameLazy("UserStore");
       ChannelStore = findByStoreNameLazy("ChannelStore");
       MessageStore = findByStoreNameLazy("MessageStore");
+      EmojiStore = findByStoreNameLazy("EmojiStore");
       RelationshipStore = findByStoreNameLazy("RelationshipStore");
       UserProfileStore = findByStoreNameLazy("UserProfileStore");
       GuildMemberStore = findByStoreNameLazy("GuildMemberStore");
@@ -47895,7 +48006,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "191c76b3255d1f509c57605738612415e9313459";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6e9862b17c625176365cd5e5ddb047dd5a7f0346";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
