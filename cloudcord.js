@@ -36511,6 +36511,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             memberActivityText: true
           }
         },
+        "member-custom-status": {
+          plugin: "HideCustomStatuses",
+          label: "custom statuses in the member list",
+          css: '[class*="memberInner"] [class*="activity"], [class*="member_"] [class*="subText"] { display: none !important; }',
+          mobile: {
+            memberCustomStatus: true
+          }
+        },
         "reply-previews": {
           plugin: "HideReplyPreviews",
           label: "reply previews in chat",
@@ -39501,6 +39509,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-custom-statuses.cx
+  var hide_custom_statuses_default;
+  var init_hide_custom_statuses = __esm({
+    "../examples/cx/catalog/plugins/hide-custom-statuses.cx"() {
+      hide_custom_statuses_default = 'plugin "HideCustomStatuses":\n  needs appearance.hide\n  hide member-custom-status\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-dm-search.cx
   var hide_dm_search_default;
   var init_hide_dm_search = __esm({
@@ -40976,6 +40992,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_channel_topic();
       init_hide_character_count();
       init_hide_clan_tags();
+      init_hide_custom_statuses();
       init_hide_dm_search();
       init_hide_edited_label();
       init_hide_embeds();
@@ -41300,6 +41317,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideClanTags",
             source: hide_clan_tags_default
+          },
+          {
+            name: "HideCustomStatuses",
+            source: hide_custom_statuses_default
           },
           {
             name: "HideDmSearch",
@@ -42063,8 +42084,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         listener();
     }
     onJsxCreate(name, wrap, true);
-    return (change) => {
-      changes.add(change);
+    return (change, beforeWrapping) => {
+      if (beforeWrapping)
+        changes = /* @__PURE__ */ new Set([
+          change,
+          ...changes
+        ]);
+      else
+        changes.add(change);
       refresh();
       return () => {
         if (!changes.delete(change))
@@ -42077,18 +42104,52 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       };
     };
   }
-  function registerJsxAppearance(names, change) {
+  function registerJsxAppearance(names, change, beforeWrapping = false) {
     var cleanups = names.map((name) => {
       var bind = appearanceBindings.get(name);
       if (!bind) {
         bind = bindAppearance(name);
         appearanceBindings.set(name, bind);
       }
-      return bind(change);
+      return bind(change, beforeWrapping);
     });
     return () => {
       for (var cleanup of cleanups)
         cleanup();
+    };
+  }
+  function registerMemberRowAppearance(target, change) {
+    if (!memberRowScope) {
+      var context = React2.createContext(false);
+      var stop = registerJsxAppearance([
+        "UserRowSubLabel"
+      ], (element) => element.props.guildId ? /* @__PURE__ */ jsx(context.Provider, {
+        value: true,
+        children: element
+      }) : element);
+      memberRowScope = {
+        context,
+        stop,
+        users: 0
+      };
+    }
+    var scope = memberRowScope;
+    scope.users++;
+    function MemberAppearance({ element }) {
+      var inMemberRow = React2.useContext(scope.context);
+      return inMemberRow && !settings.safeMode?.enabled ? change(element) : element;
+    }
+    var stopAppearance = registerJsxAppearance([
+      target
+    ], (element) => /* @__PURE__ */ jsx(MemberAppearance, {
+      element
+    }));
+    return () => {
+      stopAppearance();
+      if (--scope.users === 0) {
+        scope.stop();
+        memberRowScope = void 0;
+      }
     };
   }
   function containsAppearanceType(tree, types, depth = 0) {
@@ -42440,42 +42501,50 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 "ActivityStatus"
               ], (element) => React2.cloneElement(element, {
                 hideEmoji: true
-              }));
+              }), true);
               return () => {
                 hideActivityEmoji();
                 hideBubbleEmoji();
               };
             }
             if ("memberActivityText" in mobile) {
-              var MemberActivity2 = function({ element }) {
-                var inMemberRow = React2.useContext(MemberRow);
-                return inMemberRow && !settings.safeMode?.enabled ? React2.cloneElement(element, {
-                  hideText: true
-                }) : element;
-              };
-              var MemberActivity = MemberActivity2;
               var status2 = findByFilePath("modules/activity_status/native/PresenceActivityStatus.tsx")?.default;
               if (!status2)
                 throw new Error("Discord's member activity renderer is unavailable");
-              var MemberRow = React2.createContext(false);
-              var stopRow = registerJsxAppearance([
-                "UserRowSubLabel"
-              ], (element) => element.props.guildId ? /* @__PURE__ */ jsx(MemberRow.Provider, {
-                value: true,
-                children: element
-              }) : element);
-              var stopActivity = registerJsxAppearance([
-                status2
-              ], (element) => {
+              return registerMemberRowAppearance(status2, (element) => {
                 var type = element.props.activity?.type;
-                return type === 0 || type === 2 ? /* @__PURE__ */ jsx(MemberActivity2, {
-                  element
+                return type === 0 || type === 2 ? React2.cloneElement(element, {
+                  hideText: true
                 }) : element;
               });
-              return () => {
-                stopActivity();
-                stopRow();
+            }
+            if ("memberCustomStatus" in mobile) {
+              var WithoutCustomStatus2 = function({ originalProps }) {
+                var output = status1(originalProps);
+                if (settings.safeMode?.enabled || !React2.isValidElement(output))
+                  return output;
+                var { children } = output.props;
+                if (!Array.isArray(children) || children.length !== 3)
+                  return output;
+                var [activity, separator, custom] = children;
+                if (!React2.isValidElement(custom) || custom.type !== React2.Fragment || separator != null && (!React2.isValidElement(separator) || separator.props.accessibilityElementsHidden !== true))
+                  return output;
+                return React2.cloneElement(output, {
+                  children: [
+                    activity,
+                    null,
+                    null
+                  ]
+                });
               };
+              var WithoutCustomStatus = WithoutCustomStatus2;
+              var status1 = findByFilePath("modules/activity_status/native/ActivityStatus.tsx")?.default;
+              if (typeof status1 !== "function" || status1.prototype?.isReactComponent) {
+                throw new Error("Discord's custom status renderer is unavailable");
+              }
+              return registerMemberRowAppearance("ActivityStatus", (element) => element.type === status1 ? /* @__PURE__ */ jsx(WithoutCustomStatus2, {
+                originalProps: element.props
+              }) : element);
             }
             if ("emptyServerFolders" in mobile) {
               return registerJsxAppearance([
@@ -43062,7 +43131,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -47741,7 +47810,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ba905ccf62db8dd6e97fcfbc0a90d8618c51ebe3";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "49b94d2efa0a8fc0d2b3b68a08fe96e39e48cd1f";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
