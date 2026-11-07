@@ -38526,6 +38526,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "media.clipboard",
           label: "Add a clipboard action to media and link menus"
         },
+        "attachment-image-quality": {
+          permission: "media.imagequality",
+          label: "Improve attachment previews and load originals in the media viewer"
+        },
+        "original-attachment-images": {
+          permission: "media.imagequality",
+          label: "Load original attachment images in chat and the media viewer"
+        },
         "scroll-to-latest": {
           permission: "channels.markonopen",
           label: "Open channels at the latest message and mark them read"
@@ -39389,6 +39397,40 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       snowflake2 = /^\d{17,20}$/;
+    }
+  });
+
+  // src/lib/api/cxAttachmentImages.ts
+  function getCxAttachmentImageUrl(source, { width, height, original, frozen }) {
+    if (typeof source !== "string" || source.length > 8192 || RegExp("[\\s\\x00-\\x1f\\x7f\\\\]", "u").test(source))
+      return;
+    var match = /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)(\/attachments\/\d+\/\d+\/[^/?#]+\.(png|jpe?g|gif|webp|avif|bmp))(?:\?([^#]*))?$/i.exec(source);
+    if (!match)
+      return;
+    var [, path, extension, query] = match;
+    var proxy = !original || frozen === true;
+    if (!original && (typeof width !== "number" || typeof height !== "number" || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0 || width > 65536 || height > 65536))
+      return;
+    var fields = query?.split("&").filter((field) => field && !/^(?:width|height|format|animated)=/i.test(field) && (proxy || !/^quality=/i.test(field))) ?? [];
+    if (proxy) {
+      var format = frozen && extension.toLowerCase() === "gif" ? "webp" : query?.match(/(?:^|&)format=(webp|png|jpe?g|gif|avif)(?:&|$)/i)?.[1];
+      if (format)
+        fields.push("format=" + format);
+      var animated = frozen === void 0 ? query?.match(/(?:^|&)animated=(?:true|false)(?:&|$)/i)?.[0].replace(/^&|&$/g, "") : "animated=" + !frozen;
+      if (animated)
+        fields.push(animated);
+      if (!original && typeof width === "number" && typeof height === "number") {
+        var scale = Math.min(1, Math.sqrt(24e5 / (width * height)), 2400 / Math.max(width, height));
+        fields.push("width=" + Math.max(1, Math.floor(width * scale)), "height=" + Math.max(1, Math.floor(height * scale)));
+      }
+    }
+    return `https://${proxy ? "media.discordapp.net" : "cdn.discordapp.com"}${path}${fields.length ? "?" + fields.join("&") : ""}`;
+  }
+  var init_cxAttachmentImages = __esm({
+    "src/lib/api/cxAttachmentImages.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
     }
   });
 
@@ -40259,6 +40301,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxSplitMessages();
       init_cxEmojiPicker();
       init_cxExpressionLinks();
+      init_cxAttachmentImages();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -40269,6 +40312,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.split": "Send your long drafts as separate messages in the same channel",
         "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
         "media.clipboard": "Copy a selected media or web link when you choose its menu action",
+        "media.imagequality": "Request higher-resolution image attachments from Discord\u2019s CDN",
         "stickers.links": "Copy or open the selected Discord sticker\u2019s CDN link when you choose its menu action",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
@@ -40810,6 +40854,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_fix_file_extensions = __esm({
     "../examples/cx/catalog/plugins/fix-file-extensions.cx"() {
       fix_file_extensions_default = 'plugin "FixFileExtensions":\n  needs uploads.rename\n  use fix-file-extensions\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/fix-images-quality.cx
+  var fix_images_quality_default;
+  var init_fix_images_quality = __esm({
+    "../examples/cx/catalog/plugins/fix-images-quality.cx"() {
+      fix_images_quality_default = 'plugin "FixImagesQuality":\n  needs media.imagequality\n  use attachment-image-quality\n';
     }
   });
 
@@ -42817,6 +42869,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_fake_profile_themes();
       init_feferi_typing_quirk();
       init_fix_file_extensions();
+      init_fix_images_quality();
       init_floating_chat_bar();
       init_follow_voice_user();
       init_friend_invites();
@@ -43165,6 +43218,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "FixFileExtensions",
             source: fix_file_extensions_default
+          },
+          {
+            name: "FixImagesQuality",
+            source: fix_images_quality_default
           },
           {
             name: "FloatingChatBar",
@@ -44379,6 +44436,89 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       throw error;
     }
   }
+  function patchAttachmentImageQuality() {
+    var enabled = () => !settings.safeMode?.enabled;
+    var chat = findByFilePath("modules/messages/native/renderer/transformMessageAttachments.tsx");
+    var viewer = findByFilePath("modules/media_viewer/native/useMediaViewerSources.tsx");
+    var binding = {
+      users: 0,
+      originals: 0
+    };
+    var stopChat = overrideCxMethods(chat, {
+      default(args, invoke) {
+        var attachments = invoke(args);
+        if (!Array.isArray(attachments) || !args[0]?.shouldInlineAttachmentMedia)
+          return attachments;
+        var next = attachments.map((item) => {
+          if (!item || item.obscure || item.isSuspiciousDownload || item.videoUrl || item.inlinePlaybackDisabled)
+            return item;
+          var url2 = getCxAttachmentImageUrl(item.url, {
+            width: item.width,
+            height: item.height,
+            original: binding.originals > 0,
+            frozen: item.srcIsAnimated === true && item.isAnimated === false ? true : void 0
+          });
+          return url2 && url2 !== item.url ? {
+            ...item,
+            url: url2
+          } : item;
+        });
+        return next.some((item, index) => item !== attachments[index]) ? next : attachments;
+      }
+    }, enabled);
+    try {
+      var stopViewer = overrideCxMethods(viewer, {
+        setMediaViewerSources(args, invoke) {
+          var [options, ...rest] = args;
+          var state2 = options;
+          if (!Array.isArray(state2?.sources))
+            return invoke(args);
+          var sources = state2.sources.map((item) => {
+            var source = item;
+            if (!source || source.videoURI || source.obscure || source.spoiler)
+              return item;
+            var uri = getCxAttachmentImageUrl(source.uri, {
+              original: true
+            });
+            return uri && uri !== source.uri ? {
+              ...source,
+              uri
+            } : item;
+          });
+          return invoke(sources.some((source, index) => source !== state2.sources[index]) ? [
+            {
+              ...state2,
+              sources
+            },
+            ...rest
+          ] : args);
+        }
+      }, enabled);
+      return Object.assign(binding, {
+        stop: () => {
+          stopViewer();
+          stopChat();
+        }
+      });
+    } catch (error) {
+      stopChat();
+      throw error;
+    }
+  }
+  function registerAttachmentImageQuality(original) {
+    var binding = attachmentQualityBinding ??= patchAttachmentImageQuality();
+    binding.users++;
+    if (original)
+      binding.originals++;
+    return () => {
+      if (original)
+        binding.originals--;
+      if (--binding.users === 0) {
+        binding.stop();
+        attachmentQualityBinding = void 0;
+      }
+    };
+  }
   function registerMemberRowAppearance(target, change) {
     if (!memberRowScope) {
       var context = React2.createContext(false);
@@ -45376,6 +45516,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return registerExpressionLinks(effect);
               case "copy-media-link":
                 return registerMediaLinkCopy();
+              case "attachment-image-quality":
+              case "original-attachment-images":
+                return registerAttachmentImageQuality(effect === "original-attachment-images");
               case "scroll-to-latest": {
                 var actions = findByProps("jumpToMessage", "fetchMessages");
                 if (typeof actions?.jumpToMessage !== "function")
@@ -45865,7 +46008,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -50552,7 +50695,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6ec37f64adc40c55a563f4e39c84825f4ca6b615";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c7c08dd27f302b8b0681a7acb211a5fb6fbf3e15";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
