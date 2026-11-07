@@ -291,6 +291,29 @@ const patchAndMenu = inspect(source.replace('name: "LiteralReplace",', `name: "P
     contextMenus: { "image-context": () => {}, [dynamicMenu]: () => {} },`));
 assert.ok(patchAndMenu.targets.includes("patch:ChannelCallHeader"));
 assert.deepEqual(patchAndMenu.targets.filter(target => target.startsWith("menu:")), ["menu:image-context"]);
+const betterDiscordAnchors = inspectPlugin("fixture.plugin.js", [
+    "/**",
+    " * @name AnchorExample",
+    " */",
+    "module.exports = class {",
+    '    start() {',
+    '        this.modulePatches = { after: ["MemberList", dynamic] };',
+    '        BdApi.ContextMenu.patch("message", handler);',
+    '        BdApi.Patcher.after("AnchorExample", UserStore, "getCurrentUser", handler);',
+    '        BdApi.Patcher.after(ChannelStore, "getChannel", handler);',
+    '        BdApi.Webpack.Filters.byKeys("getActivities");',
+    '        BdApi.DOM.addStyle("anchor", ".sample { opacity: .5 }");',
+    "    }",
+    "};",
+].join("\n"), "betterdiscord");
+assert.deepEqual(betterDiscordAnchors.targets, [
+    "component:MemberList", "css:opacity", "menu:message", "method:ChannelStore.getChannel", "method:UserStore.getCurrentUser",
+    "module:getActivities", "selector:.sample", "store:ChannelStore", "store:UserStore", "style:.sample → opacity",
+]);
+assert.equal(betterDiscordAnchors.cx, undefined);
+const nativeAnchor = inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", start() { findByFilePath("modules/chat/native/MemberList.tsx"); },'));
+assert.ok(nativeAnchor.targets.includes("native:modules/chat/native/MemberList.tsx"));
+assert.ok(nativeAnchor.targets.includes("component:MemberList"));
 const adapterPlan = buildPlan([
     { ...target, status: "needs-adapter" },
     { ...target, platform: "mobile", status: "needs-adapter" },

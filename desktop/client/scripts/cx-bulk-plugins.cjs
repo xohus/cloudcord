@@ -44,6 +44,8 @@ function inventory(source) {
     const hooks = new Set();
     const targets = new Set();
     const event = /^(?:MESSAGE|VOICE|CHANNEL|GUILD|RELATIONSHIP|PRESENCE|TYPING|USER_PROFILE)_[A-Z][A-Z0-9_]*$/;
+    const menuId = /^[a-z][a-z0-9-]{2,63}$/;
+    const namedTarget = /^[A-Z][\w$]{2,79}$/;
     const visit = node => {
         if (ts.isIdentifier(node)) {
             for (const [group, pattern] of Object.entries(hookGroups)) if (pattern.test(node.text)) hooks.add(group);
@@ -71,24 +73,55 @@ function inventory(source) {
             if (menus && ts.isObjectLiteralExpression(menus)) {
                 for (const { name } of menus.properties) {
                     const key = identifier(name) ?? literal(name);
-                    if (/^[a-z][a-z0-9-]{2,63}$/.test(key ?? "")) targets.add("menu:" + key);
+                    if (menuId.test(key ?? "")) targets.add("menu:" + key);
+                }
+            }
+            const parent = node.parent;
+            const patchTable = ts.isBinaryExpression(parent) && parent.right === node
+                && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isPropertyAccessExpression(parent.left)
+                && parent.left.name.text === "modulePatches" && parent.left.expression.kind === ts.SyntaxKind.ThisKeyword;
+            if (patchTable) {
+                for (const phase of ["before", "after", "instead"]) {
+                    const list = value(node, phase);
+                    if (!list || !ts.isArrayLiteralExpression(list)) continue;
+                    for (const entry of list.elements) {
+                        const name = literal(entry);
+                        if (namedTarget.test(name ?? "")) targets.add("component:" + name);
+                    }
                 }
             }
         }
         if (ts.isCallExpression(node)) {
-            const callee = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : identifier(node.expression);
+            const access = ts.isPropertyAccessExpression(node.expression) ? node.expression : undefined;
+            const callee = access?.name.text ?? identifier(node.expression);
+            const receiver = access && (ts.isPropertyAccessExpression(access.expression) ? access.expression.name.text : identifier(access.expression));
             const first = literal(node.arguments[0]);
-            if (/^(?:findByProps(?:Lazy)?|getByKeys)$/.test(callee ?? "")) {
+            if (/^(?:findByProps(?:Lazy)?|getByKeys)$/.test(callee ?? "") || callee === "byKeys" && receiver === "Filters") {
                 for (const argument of node.arguments) {
                     const key = literal(argument);
                     if (key && /^[a-zA-Z_$][\w$]{2,79}$/.test(key)) targets.add("module:" + key);
                 }
             } else if (/^(?:find(?:By)?Store(?:Name)?(?:Lazy)?|getStore)$/.test(callee ?? "") && first && /^[A-Z]\w+Store$/.test(first)) {
                 targets.add("store:" + first);
-            } else if (callee === "onJsxCreate" && first && /^[A-Z][\w$]{2,79}$/.test(first)) {
+            } else if (callee === "findByFilePath" && first && /^(?:modules|design)\/[\w./-]+\.tsx?$/.test(first)) {
+                targets.add("native:" + first);
+                const name = first.slice(first.lastIndexOf("/") + 1).replace(/\.tsx?$/, "");
+                if (namedTarget.test(name)) targets.add("component:" + name);
+            } else if (callee === "onJsxCreate" && first && namedTarget.test(first)) {
                 targets.add("component:" + first);
-            } else if (/^(?:addContextMenuPatch|patchContextMenu)$/.test(callee ?? "") && /^[a-z][a-z0-9-]{2,63}$/.test(first ?? "")) {
+            } else if ((/^(?:addContextMenuPatch|patchContextMenu)$/.test(callee ?? "") || callee === "patch" && receiver === "ContextMenu")
+                && first && menuId.test(first)) {
                 targets.add("menu:" + first);
+                hooks.add("context-menu");
+            } else if (/^(?:after|before|instead)$/.test(callee ?? "") && receiver === "Patcher") {
+                const method = literal(node.arguments.at(-2));
+                const owner = identifier(node.arguments.at(-3));
+                if (owner && /^[A-Z]\w+Store$/.test(owner) && /^[a-z]\w{2,79}$/.test(method ?? "")) {
+                    targets.add("method:" + owner + "." + method);
+                }
+            } else if (callee === "addStyle" && receiver === "DOM") {
+                const css = literal(node.arguments[1]);
+                if (css) inventoryStyles(css, targets, true);
             } else if (callee === "defineTweak") {
                 const css = literal(node.arguments[2]) ?? "";
                 inventoryStyles(css, targets, true);
@@ -1131,7 +1164,8 @@ function scan(sourceDir, { includeCompanions = false, reviewedSources = [] } = {
                 if (fs.lstatSync(stylesheet, { throwIfNoEntry: false })?.isFile()) return fs.readFileSync(stylesheet, "utf8");
             });
             if (!record) continue;
-            if (includeCompanions && !record.cx && path.dirname(file) !== path.join(root, folder)) {
+            if (includeCompanions && !record.cx && !existing.has(record.name.toLowerCase())
+                && path.dirname(file) !== path.join(root, folder)) {
                 const { companions, hooks, targets } = inspectCompanions(file, code);
                 if (companions.length) {
                     record.companions = companions.map(source => path.relative(root, source).replaceAll("\\", "/")).sort();
@@ -1142,8 +1176,15 @@ function scan(sourceDir, { includeCompanions = false, reviewedSources = [] } = {
             records.push(record);
         }
     }
-    if (sourceDir) for (const file of betterDiscordFiles(sourceDir)) {
-        const record = inspectPlugin(path.relative(sourceDir, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), "betterdiscord", cxAppearanceTargets);
+    const sourceDirs = typeof sourceDir === "string" ? [sourceDir] : sourceDir ?? [];
+    const externalHashes = new Set(reviewedSources.map(({ sha256 }) => sha256));
+    for (const directory of sourceDirs) for (const file of betterDiscordFiles(directory)) {
+        const code = fs.readFileSync(file, "utf8");
+        const hash = createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+        if (externalHashes.has(hash)) continue;
+        externalHashes.add(hash);
+        const label = sourceDirs.length === 1 ? path.relative(directory, file) : file;
+        const record = inspectPlugin(label.replaceAll("\\", "/"), code, "betterdiscord", cxAppearanceTargets);
         if (record) records.push(record);
     }
     for (const { file, code, sha256 } of reviewedSources) {
@@ -1220,7 +1261,7 @@ function buildBatchPlan(records, limit = Infinity) {
         pending.add(key);
         for (const { targets } of variants) for (const anchor of targets ?? []) {
             // A store or CSS property can be referenced by unrelated features.
-            if (!/^(event|module|component|recipe|selector|style|menu|patch):/.test(anchor)
+            if (!/^(event|module|component|recipe|selector|style|menu|patch|native|method):/.test(anchor)
                 || /^module:(?:Store|dispatch|subscribe|icon|iconContainer|default|render)$/.test(anchor)) continue;
             const candidates = queues.get(anchor) ?? new Set();
             candidates.add(key);
@@ -1229,7 +1270,7 @@ function buildBatchPlan(records, limit = Infinity) {
     }
     const batches = [];
     const covered = new Set();
-    const specificity = anchor => ({ style: 3, selector: 2, recipe: 1 }[anchor.split(":", 1)[0]] ?? 0);
+    const specificity = anchor => ({ style: 3, selector: 2, recipe: 1, native: 1, method: 1 }[anchor.split(":", 1)[0]] ?? 0);
     while (batches.length < limit) {
         const best = [...queues].map(([anchor, keys]) => {
             const next = [...keys].filter(key => !covered.has(key));
@@ -1312,7 +1353,7 @@ function verifyPorts(files) {
     }
 }
 
-const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --batches | --batch-json | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources> | --fetch-reviewed]";
+const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --batches | --batch-json | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources>]... [--fetch-reviewed]";
 
 function portFiles(ports) {
     const files = new Map();
@@ -1375,19 +1416,21 @@ async function main(rawArgs) {
         console.log("Verified module paths for " + result.checked + " appearance ports in both mobile indexes.");
         return;
     }
-    const sourceIndex = args.indexOf("--source-dir");
-    const sourceDir = sourceIndex === -1 ? undefined : args.splice(sourceIndex, 2)[1];
-    if (sourceIndex !== -1 && (!sourceDir || sourceDir.startsWith("--"))) throw new Error(usage);
-    const fetchReviewed = args.includes("--fetch-reviewed");
-    if (fetchReviewed) {
-        if (sourceDir) throw new Error(usage);
-        args.splice(args.indexOf("--fetch-reviewed"), 1);
+    const sourceDirs = [];
+    for (let sourceIndex; (sourceIndex = args.indexOf("--source-dir")) !== -1;) {
+        const sourceDir = args.splice(sourceIndex, 2)[1];
+        if (!sourceDir || sourceDir.startsWith("--")) throw new Error(usage);
+        const resolved = fs.realpathSync(sourceDir);
+        if (!fs.statSync(resolved).isDirectory()) throw new Error("Expected a BetterDiscord source directory");
+        if (!sourceDirs.includes(resolved)) sourceDirs.push(resolved);
     }
+    const fetchReviewed = args.includes("--fetch-reviewed");
+    if (fetchReviewed) args.splice(args.indexOf("--fetch-reviewed"), 1);
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
     if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--batches", "--batch-json", "--add-ready"].includes(args[0])))
         throw new Error(usage);
     const reviewedSources = fetchReviewed ? await fetchReviewedBetterDiscordSources() : [];
-    const records = scan(sourceDir && path.resolve(sourceDir), {
+    const records = scan(sourceDirs, {
         includeCompanions: ["--plan", "--json", "--batches", "--batch-json"].includes(args[0]),
         reviewedSources,
     });
