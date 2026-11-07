@@ -37965,6 +37965,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "avatar-resolution": {
           permission: "appearance.avatarresolution",
           label: "Request higher-resolution Discord avatars"
+        },
+        "stop-auto-unread": {
+          permission: "notifications.preventautoupgrade",
+          label: "Keep your chosen channel notification settings"
         }
       };
       cxAvatarResolutions = [
@@ -38978,7 +38982,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "friends.notifyremoval": "Show a local notification when a friend removes you",
         "messages.watchlocal": "Match incoming messages on this device and show local notifications",
         "messages.filterlocal": "Hide matching incoming messages and history on this device",
-        "typing.suppress": "Suppress your outgoing typing indicator"
+        "typing.suppress": "Suppress your outgoing typing indicator",
+        "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications"
       };
       leetCharacters = {
         a: "4",
@@ -39819,6 +39824,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_sticker_blocker = __esm({
     "../examples/cx/catalog/plugins/sticker-blocker.cx"() {
       sticker_blocker_default = 'plugin "StickerBlocker":\n  needs messages.filterstickers\n  on incoming stickers "*"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/stop-auto-unread.cx
+  var stop_auto_unread_default;
+  var init_stop_auto_unread = __esm({
+    "../examples/cx/catalog/plugins/stop-auto-unread.cx"() {
+      stop_auto_unread_default = 'plugin "StopAutoUnread":\n  needs notifications.preventautoupgrade\n  use stop-auto-unread\n';
     }
   });
 
@@ -40791,6 +40804,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_spotify_share_commands();
       init_starify();
       init_sticker_blocker();
+      init_stop_auto_unread();
       init_talk_in_reverse();
       init_text_replace();
       init_unindent();
@@ -41292,6 +41306,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "StickerBlocker",
             source: sticker_blocker_default
+          },
+          {
+            name: "StopAutoUnread",
+            source: stop_auto_unread_default
           },
           {
             name: "TalkInReverse",
@@ -42278,6 +42296,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"), enabled);
               case "avatar-resolution":
                 return raiseCxAvatarResolution(findByProps("getUserAvatarURL", "getGuildIconURL"), avatarResolution, enabled);
+              case "stop-auto-unread":
+                return overrideCxMethods(findByStoreName("UnreadSettingNoticeStore2"), {
+                  maybeAutoUpgradeChannel: () => false
+                }, enabled);
             }
           },
           registerReplyPingSuppression() {
@@ -47358,7 +47380,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "106b16a8ee21d86e2381f17d3f6c61d1bc6702f4";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9b18154c8a38474012c349628aa10bdc6389d1e9";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
