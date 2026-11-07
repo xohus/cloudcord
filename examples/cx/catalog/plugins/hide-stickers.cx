@@ -1,0 +1,3 @@
+plugin "HideStickers":
+  needs appearance.hide
+  hide message-stickers

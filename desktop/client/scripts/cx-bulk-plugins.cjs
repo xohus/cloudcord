@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const { createHash } = require("node:crypto");
 const path = require("node:path");
+const { transformSync } = require("esbuild");
 const ts = require("typescript");
 const reviewedBetterDiscordSources = require("./cx-betterdiscord-sources.json");
 
@@ -90,16 +91,29 @@ function appearanceLines(targets) {
     return [...permissions, ...instructions.map(instruction => "  " + instruction)];
 }
 
+function normalizeAppearanceStyles(stylesheet) {
+    const result = transformSync(stylesheet, { loader: "css", minifyWhitespace: true, legalComments: "none", logLevel: "silent" });
+    if (!result.warnings.length) return result.code.trim();
+}
+
+const appearanceMatchers = new WeakMap();
 function matchAppearanceStyles(stylesheet, appearance) {
     if (!stylesheet) return;
-    const rules = Object.entries(appearance).sort((a, b) => b[1].css.length - a[1].css.length);
+    let rules = appearanceMatchers.get(appearance);
+    if (!rules) {
+        rules = Object.entries(appearance).map(target => ({ target, css: normalizeAppearanceStyles(target[1].css) }))
+            .filter(rule => rule.css).sort((a, b) => b.css.length - a.css.length);
+        appearanceMatchers.set(appearance, rules);
+    }
     const targets = [];
-    let css = stylesheet.trim();
+    let css;
+    try { css = normalizeAppearanceStyles(stylesheet); }
+    catch { return; }
     while (css) {
-        const target = rules.find(([, rule]) => css.startsWith(rule.css));
-        if (!target || targets.includes(target)) return;
-        targets.push(target);
-        css = css.slice(target[1].css.length).trimStart();
+        const rule = rules.find(rule => css.startsWith(rule.css));
+        if (!rule || targets.includes(rule.target)) return;
+        targets.push(rule.target);
+        css = css.slice(rule.css.length);
     }
     if (targets.length) return targets;
 }

@@ -226,6 +226,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
+        const messagePresentation = Object.freeze({ edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello" });
+        const createMessageContent = () => messagePresentation;
+        const messageRenderer = { default: createMessageContent };
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
         const settings = {};
@@ -317,7 +320,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 incomingHooks.push(callback);
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
-            "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name =>
+            "@metro": { findByFilePath: path => path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer : undefined,
+                findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions : undefined },
@@ -389,18 +393,41 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 }
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
-            else for (const name of rule.mobile) {
+            else if (rule.mobile.messagePresentation) {
+                const rendered = messageRenderer.default();
+                assert.equal(rendered.content, messagePresentation.content);
+                assert.equal(rendered.edited, rule.mobile.messagePresentation !== "edited");
+                assert.equal(rendered.stickers.length, rule.mobile.messagePresentation === "stickers" ? 0 : 1);
+                settings.safeMode = { enabled: true };
+                assert.equal(messageRenderer.default(), messagePresentation);
+                settings.safeMode = undefined;
+            } else for (const name of rule.mobile) {
                 const wrapped = appearanceHooks.get(name)(null, original);
                 assert.equal(wrapped.type(wrapped.props), null);
                 wraps.push(wrapped);
             }
             click(render(), "Disable " + rule.plugin);
             assert.equal(appearanceHooks.size, 0);
+            assert.equal(messageRenderer.default, createMessageContent);
             assert.equal(colorOverlays.size, 0);
             assert.equal(stylesheet, undefined);
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
         }
         if (!desktop) {
+            for (const name of ["HideEditedLabel", "HideStickers"]) {
+                selectCatalog(name);
+                click(render(), "Allow for this session");
+            }
+            let rendered = messageRenderer.default();
+            assert.equal(rendered.edited, false);
+            assert.equal(rendered.stickers.length, 0);
+            assert.equal(rendered.content, "hello");
+            click(render(), "Disable HideEditedLabel");
+            rendered = messageRenderer.default();
+            assert.equal(rendered.edited, true);
+            assert.equal(rendered.stickers.length, 0);
+            click(render(), "Disable HideStickers");
+            assert.equal(messageRenderer.default, createMessageContent);
             for (const name of ["FloatingChatBar", "RoundedChatBar"]) {
                 selectCatalog(name);
                 click(render(), "Allow for this session");
@@ -658,7 +685,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable AtSomeone");
 
         const friendInvites = cxCatalog.plugins.find(entry => entry.name === "FriendInvites").source;
-        assert.throws(() => parseCx(friendInvites.replace("  needs friends.invites.revoke\n", "")), /permissions/);
+        for (const newline of ["\n", "\r\n"]) {
+            const source = friendInvites.replace(/\r?\n/g, newline);
+            assert.throws(() => parseCx(source.replace(/^  needs friends\.invites\.revoke\r?\n/m, "")), /permissions/);
+        }
         selectCatalog("FriendInvites");
         assert.equal(registered["create-friend-invite"], undefined);
         click(render(), "Allow for this session");

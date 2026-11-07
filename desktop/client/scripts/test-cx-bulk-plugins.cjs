@@ -84,7 +84,10 @@ const styles = [cxAppearanceTargets["bot-tags"].css, cxAppearanceTargets["profil
 const combinedTweak = tweak.replace('"HideBotTags"', '"CompactProfiles"').replace('"body { display: none; }"', JSON.stringify(styles));
 const inspectTweak = code => inspectPlugin("tweak.ts", code, "desktop", cxAppearanceTargets);
 assert.deepEqual([...parseCx(inspectTweak(combinedTweak).cx).hiddenTargets], ["bot-tags", "profile-effects"]);
+const reformattedStyles = styles.replaceAll(" { ", "{\n  ").replaceAll(": ", ":").replaceAll("; }", "\n}\n");
+assert.deepEqual([...parseCx(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(reformattedStyles))).cx).hiddenTargets], ["bot-tags", "profile-effects"]);
 assert.equal(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(styles + "body { display: none; }"))).cx, undefined);
+assert.equal(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(styles.replace("none", "block")))).cx, undefined);
 assert.equal(inspectTweak(combinedTweak.replace(');', ', getOptions());')).cx, undefined);
 const bd = [
     "/**",

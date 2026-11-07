@@ -101,6 +101,16 @@ export const cxAppearanceTargets = {
         css: 'article[class*="embed"] { display: none !important; }',
         mobile: ["EmbedCard"],
     },
+    "message-edited-label": {
+        plugin: "HideEditedLabel", label: "the edited label in chat",
+        css: '[class*="edited_"] { display: none !important; }',
+        mobile: { messagePresentation: "edited" },
+    },
+    "message-stickers": {
+        plugin: "HideStickers", label: "stickers in chat",
+        css: '[class*="stickerAsset"] { display: none !important; }',
+        mobile: { messagePresentation: "stickers" },
+    },
     "active-now": {
         plugin: "HideActiveNow", label: "the active friends panel",
         css: '[class*="nowPlayingColumn"] { display: none !important; }',

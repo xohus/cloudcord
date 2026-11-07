@@ -12,7 +12,7 @@ import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
-import { findByProps, findByStoreNameLazy } from "@metro";
+import { findByFilePath, findByProps, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import { ScrollView, Text, TextInput } from "react-native";
@@ -229,7 +229,21 @@ export default function CxExtensions() {
                 },
                 registerProfileMenuAction,
                 hideAppearanceTarget(target) {
-                    return registerJsxAppearance(cxAppearanceTargets[target].mobile, () => null);
+                    const mobile = cxAppearanceTargets[target].mobile;
+                    if (!("messagePresentation" in mobile)) return registerJsxAppearance(mobile, () => null);
+                    const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+                    return overrideCxMethods(renderer, {
+                        default(args, invoke) {
+                            const presentation = invoke(args);
+                            if (!presentation || typeof presentation !== "object") return presentation;
+                            if (mobile.messagePresentation === "edited") {
+                                if ("edited" in presentation && presentation.edited === true) return { ...presentation, edited: false };
+                            } else if ("stickers" in presentation && Array.isArray(presentation.stickers) && presentation.stickers.length) {
+                                return { ...presentation, stickers: [] };
+                            }
+                            return presentation;
+                        },
+                    }, () => !settings.safeMode?.enabled);
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
