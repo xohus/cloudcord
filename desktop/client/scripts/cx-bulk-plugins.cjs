@@ -550,6 +550,28 @@ function compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects) {
     return { capability: "native-effect", lines: ["  needs " + effect.permission, "  use " + recipe.effect] };
 }
 
+const externalLookupRecipes = {
+    WikiLookup: {
+        sha256: "0aa611e0a6bcb1b062b66ab7193f8ef03445eac2aee57bc2c0b0feae627f614d",
+        command: "wiki",
+        service: "wikipedia",
+        input: "message",
+    },
+};
+
+function compileExternalLookup(name, code) {
+    if (!Object.hasOwn(externalLookupRecipes, name)) return;
+    const recipe = externalLookupRecipes[name];
+    const sha256 = createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+    if (sha256 !== recipe.sha256) return;
+    return { capability: "external-lookup", lines: [
+        "  needs commands.register", "  needs reply.local", "  needs lookup." + recipe.service,
+        "  on command " + JSON.stringify(recipe.command) + ":",
+        "    input " + JSON.stringify(recipe.input) + " text",
+        "    lookup " + recipe.service + " " + JSON.stringify(recipe.input),
+    ] };
+}
+
 const mobileSocialRecipes = {
     voicejoinmessages: { event: "VOICE_STATE_UPDATES", rule: "friends-voice", permission: "voice.notifyfriends",
         signatures: ['relationships?.isFriend?.(state.userId)', 'lastChannel.set(state.userId, state.channelId ?? null)', 'showToast('] },
@@ -714,11 +736,12 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
     const storeEffect = platform === "desktop" && factory === "definePlugin" && !entry.isExportEquals
         && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
         && compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects);
+    const externalLookup = platform === "desktop" && compileExternalLookup(name, code);
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)
-        : storeEffect || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
+        : externalLookup || storeEffect || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),

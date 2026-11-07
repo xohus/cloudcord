@@ -1,0 +1,7 @@
+plugin "WikiLookup":
+  needs commands.register
+  needs reply.local
+  needs lookup.wikipedia
+  on command "wiki":
+    input "message" text
+    lookup wikipedia "message"

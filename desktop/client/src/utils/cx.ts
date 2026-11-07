@@ -1,5 +1,5 @@
 import { cxAppearanceTargets, type CxAppearanceTarget, type CxHideTarget, type CxStyleTarget } from "./cxAppearance";
-import { cxClientFunctions, type CxClientFunction, type CxFriendInviteAction } from "./cxClientCommands";
+import { cxClientFunctions, cxExternalLookups, type CxClientFunction, type CxExternalLookup, type CxFriendInviteAction } from "./cxClientCommands";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
@@ -52,6 +52,7 @@ const permissionLabels = {
     "messages.filterlocal": "Hide matching incoming messages and history on this device",
     "typing.suppress": "Suppress your outgoing typing indicator",
     "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
+    "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -77,7 +78,8 @@ const argumentNames = (args: string) => args ? args.split(",").map(name => name.
 
 export type CxPermission = keyof typeof permissionLabels;
 type BasicAction = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
-type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction };
+type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction }
+    | { kind: "lookup"; service: CxExternalLookup; input: string; };
 const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
     toast: ["ui.toast"],
     reply: ["reply.local"],
@@ -86,7 +88,8 @@ const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
     "mark-read": ["servers.markread", "reply.local"],
 };
 const getActionPermissions = (action: Action): CxPermission[] => action.kind === "friend-invites"
-    ? ["reply.local", `friends.invites.${action.operation}`] : actionPermissions[action.kind];
+    ? ["reply.local", `friends.invites.${action.operation}`]
+    : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission] : actionPermissions[action.kind];
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
@@ -335,6 +338,14 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const lookup = /^    lookup ([a-z]+) "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
+        if (lookup && current && !current.actions.length && !current.text && current.inputs.length === 1
+            && current.inputs[0].name === lookup[2] && current.inputs[0].type === "text" && current.inputs[0].required
+            && Object.prototype.hasOwnProperty.call(cxExternalLookups, lookup[1])) {
+            current.actions.push({ kind: "lookup", service: lookup[1] as CxExternalLookup, input: lookup[2] });
+            current = undefined;
+            continue;
+        }
         const pick = /^    send one of (\[.{1,3000}\])$/.exec(line);
         if (pick && current && current.actions.length < 4 && !current.actions.some(sendsMessage)) {
             let choices: unknown;
@@ -483,9 +494,12 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
     if (!document.permissions.every(permission => grants.has(permission))) throw new Error("CX permission approval is required");
 
     const cleanups: (() => void)[] = [];
+    const activeLookups = new Map<CxExternalLookup, AbortController>();
     let active = true;
     function stop() {
         active = false;
+        for (const controller of activeLookups.values()) controller.abort();
+        activeLookups.clear();
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
     }
     try {
@@ -562,6 +576,21 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                 let outgoing: string | undefined;
                 for (const action of command.actions) {
                     if (!getActionPermissions(action).every(permission => grants.has(permission))) continue;
+                    if (action.kind === "lookup") {
+                        const reply = invocation?.reply;
+                        if (!reply || activeLookups.has(action.service)) continue;
+                        const controller = new AbortController();
+                        activeLookups.set(action.service, controller);
+                        const timer = setTimeout(() => controller.abort(), 8000);
+                        void cxExternalLookups[action.service].run(inputs.get(action.input)!, controller.signal).then(
+                            result => { if (active) reply(result); },
+                            () => { if (active) reply("Couldn’t reach the lookup service. Try again."); },
+                        ).finally(() => {
+                            clearTimeout(timer);
+                            activeLookups.delete(action.service);
+                        });
+                        continue;
+                    }
                     if (action.kind === "friend-invites") {
                         const reply = invocation?.reply;
                         if (reply && invocation.friendInvites) {

@@ -12,7 +12,14 @@ const code = buildSync({
     entryPoints: [path.join(root, "desktop/client/src/utils/cx.ts")],
     bundle: true, write: false, format: "cjs", minify: true,
 }).outputFiles[0].text;
-vm.runInNewContext(code, { module: moduleBox });
+let wikiRequest;
+vm.runInNewContext(code, {
+    module: moduleBox, AbortController, setTimeout, clearTimeout,
+    fetch: (url, options) => new Promise((resolve, reject) => {
+        wikiRequest = { url, options, resolve };
+        options.signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true });
+    }),
+});
 const { activateCx, createCxSession, parseCx, reviewCx } = moduleBox.exports;
 const generated = require("../../desktop/client/scripts/sync-cx-catalog.cjs").buildCatalog();
 assert.equal(read("desktop/client/src/utils/cxCatalog.ts").replaceAll("\r\n", "\n"), generated.source, "Shared CX catalog needs regeneration");
@@ -992,6 +999,37 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(acknowledged.length, 1);
 
         const guildContext = { guild: { id: guildId }, channel: { id: "guild-channel", guild_id: guildId } };
+        const wikiSource = cxCatalog.plugins.find(entry => entry.name === "WikiLookup").source;
+        assert.throws(() => activateCx(wikiSource, host, ["commands.register", "reply.local"]), /approval/);
+        assert.throws(() => parseCx(wikiSource.replace('lookup wikipedia "message"', 'lookup webhook "message"')), /Unknown CX instruction/);
+        selectCatalog("WikiLookup");
+        wikiRequest = undefined;
+        click(render(), "Allow for this session");
+        assert.equal(wikiRequest, undefined);
+        const wiki = registered.wiki;
+        assert.equal(wiki.execute([{ name: "message", value: "Earth & Moon" }], guildContext), undefined);
+        const firstRequest = wikiRequest;
+        assert.equal(firstRequest.url, "https://en.wikipedia.org/api/rest_v1/page/summary/Earth%20%26%20Moon");
+        assert.equal(firstRequest.options.credentials, "omit");
+        assert.equal(firstRequest.options.redirect, "error");
+        assert.deepEqual(Object.keys(firstRequest.options.headers), ["Api-User-Agent"]);
+        wiki.execute([{ name: "message", value: "Mars" }], guildContext);
+        assert.equal(wikiRequest, firstRequest);
+        firstRequest.resolve({ ok: true, json: () => ({ title: "Earth", extract: "Planet @everyone",
+            content_urls: { desktop: { page: "https://untrusted.example/wiki/Earth" } } }) });
+        await new Promise(setImmediate);
+        assert.deepEqual(delivered.pop(), ["guild-channel", "**Earth**\nPlanet ＠everyone\n<https://en.wikipedia.org/wiki/Earth%20%26%20Moon>"]);
+        wiki.execute([{ name: "message", value: "Mars" }], guildContext);
+        wikiRequest.resolve({ ok: false, status: 404 });
+        await new Promise(setImmediate);
+        assert.match(delivered.pop()[1], /No Wikipedia article/);
+        wiki.execute([{ name: "message", value: "Mercury" }], guildContext);
+        const replyCount = delivered.length;
+        click(render(), "Disable WikiLookup");
+        assert.equal(wikiRequest.options.signal.aborted, true);
+        await new Promise(setImmediate);
+        assert.equal(delivered.length, replyCount);
+
         selectCatalog("AtSomeone");
         click(render(), "Allow for this session");
         assert.equal(registered.someone.execute([{ name: "message", value: "hi" }], guildContext).content, "<@" + sender + "> hi");

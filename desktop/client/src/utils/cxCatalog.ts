@@ -107,8 +107,9 @@ import plugin105 from "../../../../examples/cx/catalog/plugins/unindent.cx";
 import plugin106 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
 import plugin107 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
 import plugin108 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
-import plugin109 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin110 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin109 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
+import plugin110 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin111 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -320,8 +321,9 @@ export const cxCatalog = {
         { name: "UnitConverter", source: plugin106 },
         { name: "VibeCheck", source: plugin107 },
         { name: "VoiceJoinMessages", source: plugin108 },
-        { name: "WriteUpperCase", source: plugin109 },
-        { name: "ZeroWidthSanitizer", source: plugin110 },
+        { name: "WikiLookup", source: plugin109 },
+        { name: "WriteUpperCase", source: plugin110 },
+        { name: "ZeroWidthSanitizer", source: plugin111 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },

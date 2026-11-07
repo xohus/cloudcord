@@ -8,6 +8,37 @@ export const cxClientFunctions = {
 
 export type CxClientFunction = keyof typeof cxClientFunctions;
 
+// WikiLookup by rootpoi, kraethis and ewlle (GPL-3.0-or-later).
+async function lookupWikipedia(input: string, signal: AbortSignal) {
+    const query = input.trim();
+    if (!query || query.length > 120 || query === "." || query === "..") return "Enter a Wikipedia article title up to 120 characters.";
+    const escaped = (value: string) => value.replace(/@/g, "＠").replace(/[\\\x60*_~|<>[\]]/g, "\\$&");
+    const title = encodeURIComponent(query);
+    const response = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + title, {
+        credentials: "omit",
+        redirect: "error",
+        headers: { "Api-User-Agent": "CloudCord (https://getcloudcord.com)" },
+        signal,
+    });
+    if (response.status === 404) return "No Wikipedia article found for **" + escaped(query) + "**.";
+    if (!response.ok) throw new Error("Wikipedia lookup failed");
+    const data: { type?: unknown; title?: unknown; extract?: unknown; content_urls?: { desktop?: { page?: unknown; }; }; } = await response.json();
+    if (data.type === "disambiguation" || typeof data.extract !== "string" || !data.extract.trim()) {
+        return "**" + escaped(query) + "** is ambiguous. Try a more specific title.";
+    }
+    const heading = typeof data.title === "string" ? data.title : query;
+    const page = data.content_urls?.desktop?.page;
+    const url = typeof page === "string" && /^https:\/\/en\.wikipedia\.org\/wiki\/[^\s<>]{1,500}$/.test(page)
+        ? page : "https://en.wikipedia.org/wiki/" + title;
+    const excerpt = escaped(data.extract.trim().slice(0, 1200));
+    return "**" + escaped(heading.slice(0, 120)) + "**\n" + excerpt.slice(0, 1600) + "\n<" + url + ">";
+}
+
+export const cxExternalLookups = {
+    wikipedia: { permission: "lookup.wikipedia", run: lookupWikipedia },
+} as const;
+export type CxExternalLookup = keyof typeof cxExternalLookups;
+
 type SpotifyTrack = {
     id?: unknown;
     album?: { id?: unknown; };
