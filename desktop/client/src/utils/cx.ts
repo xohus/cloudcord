@@ -8,6 +8,7 @@ import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxN
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
 import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
+import { validateCxWallpaper } from "./cxWallpaper";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
@@ -189,9 +190,7 @@ export function parseCx(source: string): CxDocument {
                 theme.mode = value;
             } else if (key === "wallpaper") {
                 const uri = quoted(value, 384 * 1024);
-                if (!/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(uri) ||
-                    uri.slice(uri.indexOf(",") + 1).length % 4 !== 0)
-                    throw new Error("Wallpaper must be an embedded PNG or JPEG data URL");
+                validateCxWallpaper(uri);
                 theme.wallpaper = uri;
             } else if (key === "wallpaper-opacity") {
                 if (!/^(?:100|[1-9]?[0-9])$/.test(value)) throw new Error("Wallpaper opacity must be an integer from 0 to 100");

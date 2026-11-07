@@ -100,6 +100,17 @@ assert.throws(() => parseCx(theme + '\n  raw BRAND_500: url(https://example.com)
 assert.throws(() => parseCx(theme + '\n  semantic TEXT_PRIMARY: #123456\n  semantic TEXT_PRIMARY: #654321'), /Duplicate/);
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=";
 assert.equal(parseCx(theme + '\n  wallpaper: "' + png + '"').wallpaper, png);
+const wallpaperSource = (type, bytes) => theme + "\n  wallpaper: " + JSON.stringify("data:image/" + type + ";base64," + bytes.toString("base64"));
+const pngHeader = Buffer.from(png.split(",")[1], "base64");
+assert.throws(() => parseCx(wallpaperSource("png", pngHeader.subarray(0, 24))), /valid image dimensions/);
+pngHeader.writeUInt32BE(32768, 16);
+assert.throws(() => parseCx(wallpaperSource("png", pngHeader)), /4096 pixels per side/);
+const jpeg = Buffer.from("ffd8ffe00002ffc0000b080320050001011100ffd9", "hex");
+assert.equal(parseCx(wallpaperSource("jpeg", jpeg)).wallpaper, "data:image/jpeg;base64," + jpeg.toString("base64"));
+jpeg.writeUInt16BE(4096, 11);
+jpeg.writeUInt16BE(4096, 13);
+assert.throws(() => parseCx(wallpaperSource("jpeg", jpeg)), /8 million pixels/);
+assert.throws(() => parseCx(wallpaperSource("jpeg", jpeg.subarray(0, 12))), /valid image dimensions/);
 assert.throws(() => parseCx(theme + '\n  wallpaper-opacity: 75'), /embedded wallpaper/);
 assert.throws(() => parseCx(theme + '\n  wallpaper-blur: 0.6'), /embedded wallpaper/);
 assert.throws(() => parseCx(theme + '\n  wallpaper: "' + png + '"\n  wallpaper-blur: 32.01'), /0 to 32/);
