@@ -15,6 +15,7 @@ const session = createCxSession();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
 let fixFileExtensionUsers = 0;
+let flatAttachmentUsers = 0;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
 
@@ -173,6 +174,9 @@ export function CxSettings() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "flat-attachments":
+                            flatAttachmentUsers++;
+                            return () => { flatAttachmentUsers--; };
                         case "fix-file-extensions":
                             fixFileExtensionUsers++;
                             return () => { fixFileExtensionUsers--; };
@@ -456,7 +460,28 @@ export default definePlugin({
             match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,
             replace: "$self.renderAnonymousUploadButton(arguments[0]),",
         },
+    }, {
+        find: '"PLAINTEXT_PREVIEW":"OTHER"',
+        replacement: {
+            match: /"IMAGE"===\i\|\|"VIDEO"===\i\|\|"CLIP"===\i/,
+            replace: "(!$self.useFlatAttachmentLayout()&&($&))",
+        },
+    }, {
+        find: "return{visualMediaItems:",
+        replacement: {
+            match: /return\{visualMediaItems:.+?props:(\i)(?=.{0,20}?\1\.item\.uniqueId)/,
+            replace: '$&,...($self.useFlatAttachmentLayout()&&["IMAGE","VIDEO","CLIP"].includes($1.item?.type)?{useFullWidth:false}:null)',
+        },
+    }, {
+        find: "renderAttachments(",
+        replacement: {
+            match: /url:(\i)\.url\}\);return /,
+            replace: "$&(!$self.useFlatAttachmentLayout()||$1.content_type?.startsWith('image/'))&&",
+        },
     }],
+    useFlatAttachmentLayout() {
+        return flatAttachmentUsers > 0;
+    },
     fixUploadExtensions(files: unknown) {
         if (fixFileExtensionUsers) fixCxFileExtensions(files);
         uploadAnonymiser?.apply(files);

@@ -1,0 +1,3 @@
+plugin "NoMosaic":
+  needs appearance.style
+  use flat-attachments

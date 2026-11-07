@@ -279,6 +279,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const animatedScrollView = { render: () => null };
         const messagePresentation = Object.freeze({
             mentioned: true, highlightColor: 0x33ffff00,
+            useAttachmentGridLayout: true,
             edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello <t:12345>",
             timestamp: "8:24 PM", timestampTooltip: "November 7 at 8:24 PM", timestampAccessibilityLabel: "8:24 PM",
         });
@@ -1643,6 +1644,51 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const silent = cxCatalog.plugins.find(entry => entry.name === "SilentTyping").source;
         assert.throws(() => activateCx(silent, host, []), /approval/);
         assert.throws(() => parseCx(silent.replace("use silent-typing", "use token")), /Unknown or duplicate client effect/);
+        const flatLayout = desktop ? module.exports.default.useFlatAttachmentLayout
+            : () => messageRenderer.default().useAttachmentGridLayout === false;
+        const desktopLayout = desktop ? (() => {
+            const patches = module.exports.default.patches.filter(patch => patch.replacement.replace.includes("useFlatAttachmentLayout"));
+            const examples = [
+                'function isVisual(kind) { return "IMAGE"===kind||"VIDEO"===kind||"CLIP"===kind; }',
+                'function layout(item) { return{visualMediaItems:[],props:item,key:item.item.uniqueId}; }',
+                'function carousel(a) { sink({url:a.url});return true; }',
+            ];
+            assert.equal(patches.length, examples.length);
+            return examples.map((fixture, index) => {
+                const { match, replace } = patches[index].replacement;
+                const regex = new RegExp(match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"), match.flags);
+                const patched = fixture.replace(regex, replace.replaceAll("$self", "extension"));
+                assert.notEqual(patched, fixture);
+                return vm.runInNewContext("(" + patched + ")", { extension: module.exports.default, sink() {} });
+            });
+        })() : [];
+        function checkDesktopLayout(flat) {
+            if (!desktop) return;
+            const [isVisual, layout, carousel] = desktopLayout;
+            assert.equal(isVisual("IMAGE"), !flat);
+            assert.equal(isVisual("FILE"), false);
+            assert.equal(Object.hasOwn(layout({ item: { type: "IMAGE", uniqueId: "one" } }), "useFullWidth"), flat);
+            assert.equal(Object.hasOwn(layout({ item: { type: "FILE", uniqueId: "one" } }), "useFullWidth"), false);
+            assert.equal(carousel({ content_type: "video/mp4" }), !flat);
+            assert.equal(carousel({ content_type: "image/png" }), true);
+        }
+        assert.equal(flatLayout(), false);
+        checkDesktopLayout(false);
+        selectCatalog("NoMosaic");
+        click(render(), "Allow for this session");
+        assert.equal(flatLayout(), true);
+        checkDesktopLayout(true);
+        if (!desktop) {
+            assert.equal(messageRenderer.default().content, messagePresentation.content);
+            const alreadyFlat = Object.freeze({ ...messagePresentation, useAttachmentGridLayout: false });
+            assert.equal(messageRenderer.default(alreadyFlat), alreadyFlat);
+            settings.safeMode = { enabled: true };
+            assert.equal(flatLayout(), false);
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable NoMosaic");
+        assert.equal(flatLayout(), false);
+        checkDesktopLayout(false);
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
         for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {

@@ -8,6 +8,7 @@ export const cxNativeEffects = {
     "floor-relative-time": { permission: "appearance.style", label: "Round relative timestamps down" },
     "avatar-resolution": { permission: "appearance.avatarresolution", label: "Request higher-resolution Discord avatars" },
     "stop-auto-unread": { permission: "notifications.preventautoupgrade", label: "Keep your chosen channel notification settings" },
+    "flat-attachments": { permission: "appearance.style", label: "Show chat attachments individually without the media grid" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;

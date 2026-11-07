@@ -814,6 +814,17 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "flat-attachments": {
+                            const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+                            return overrideCxMethods(renderer, {
+                                default(args, invoke) {
+                                    const presentation = invoke(args);
+                                    if (!presentation || typeof presentation !== "object"
+                                        || !("useAttachmentGridLayout" in presentation) || presentation.useAttachmentGridLayout !== true) return presentation;
+                                    return { ...presentation, useAttachmentGridLayout: false };
+                                },
+                            }, enabled);
+                        }
                         case "fix-file-extensions": {
                             const uploader = findByFilePath("lib/uploader/native/CloudUploader.tsx")?.default?.prototype;
                             return overrideCxMethods(uploader, {

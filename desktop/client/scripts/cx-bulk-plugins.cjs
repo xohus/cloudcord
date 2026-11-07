@@ -618,6 +618,10 @@ const desktopEffectRecipes = {
         effect: "static-typing-dots",
         sha256: "845c1713b901057cb0fedbbb30db70238b3480da8170f79fccf6b64def7b055a",
     },
+    NoMosaic: {
+        effect: "flat-attachments",
+        sha256: "a28bf52feb55f75f2404b22e42805d1197496153a3cc31796f16c7a6fc0b2a21",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",
