@@ -274,7 +274,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             .map(name => [name, () => name]));
         let routeVisibilityChecks = 0;
         const useRoutePredicate = () => { routeVisibilityChecks++; return true; };
-        const settingsRoutes = new Map(["QuestHomeSetting"].map(name => [name, { usePredicate: useRoutePredicate }]));
+        const settingsRoutes = new Map([
+            ["QuestHomeSetting", { type: "route", usePredicate: useRoutePredicate }],
+            ["PremiumSetting", { type: "route" }],
+        ]);
         const pickerOrder = Object.freeze(["emoji", "gif", "sticker"]);
         const useSegmentedControlState = options => options;
         const design = { useSegmentedControlState };
@@ -760,14 +763,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 continue;
             } else if (rule.mobile.settingsRoute) {
                 const route = settingsRoutes.get(rule.mobile.settingsRoute.split("/").at(-1).replace(".tsx", ""));
+                const hadPredicate = rule.plugin === "HideQuestsTab";
                 const checks = routeVisibilityChecks;
                 assert.equal(route.usePredicate(), false);
-                assert.equal(routeVisibilityChecks, checks + 1);
+                assert.equal(routeVisibilityChecks, checks + Number(hadPredicate));
                 settings.safeMode = { enabled: true };
                 assert.equal(route.usePredicate(), true);
                 settings.safeMode = undefined;
                 click(render(), "Disable " + rule.plugin);
-                assert.equal(route.usePredicate, useRoutePredicate);
+                assert.equal(Object.hasOwn(route, "usePredicate"), hadPredicate);
+                assert.equal(route.usePredicate, hadPredicate ? useRoutePredicate : undefined);
                 assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.hideComponentPaths) {
@@ -1238,7 +1243,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const replyDefaultPort = cxCatalog.plugins.find(entry => entry.name === "NoReplyPing").source;
         assert.throws(() => parseCx(replyDefaultPort.replace('reply-ping-default ""', 'reply-ping-default "always"')), /take no options/);
-        assert.throws(() => parseCx(replyDefaultPort.replace("  needs replies.suppressping\n", "")), /permissions/);
+        const replyDefaultLf = replyDefaultPort.replaceAll("\r\n", "\n");
+        for (const source of [replyDefaultLf, replyDefaultLf.replaceAll("\n", "\r\n")]) {
+            assert.throws(() => parseCx(source.replace(/^  needs replies\.suppressping\r?\n/m, "")), /permissions/);
+        }
         selectCatalog("NoReplyPing");
         click(render(), "Allow for this session");
         const [replyDefault] = incomingHooks;

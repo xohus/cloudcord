@@ -208,6 +208,11 @@ export const cxAppearanceTargets = {
         css: 'a[href="/shop"], [data-list-item-id$="___shop"] { display: none !important; }',
         mobile: ["CollectiblesShopEntryButton"],
     },
+    "nitro-entry": {
+        plugin: "HideNitroTab", label: "the Nitro entry",
+        css: 'a[href="/store"], [data-list-item-id$="___nitro"] { display: none !important; }',
+        mobile: { settingsRoute: "modules/user_settings/defs/native/PremiumSetting.tsx" },
+    },
     "quests-entry": {
         plugin: "HideQuestsTab", label: "the Quests entry",
         css: 'a[href="/quest-home"], [data-list-item-id$="___quests"] { display: none !important; }',

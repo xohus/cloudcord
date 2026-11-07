@@ -1,0 +1,3 @@
+plugin "HideNitroTab":
+  needs appearance.hide
+  hide nitro-entry

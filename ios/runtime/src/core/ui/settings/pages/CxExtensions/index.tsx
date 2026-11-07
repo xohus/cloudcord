@@ -395,6 +395,47 @@ function registerExpressionPickerTab(tab: PickerTab) {
     };
 }
 
+const settingsRouteVisibility = new WeakMap<object, { users: number; restore: () => void; }>();
+
+function hideSettingsRoute(path: string) {
+    const route = findByFilePath(path)?.default;
+    if (route?.type !== "route") throw new Error("Discord's settings route is unavailable");
+    let binding = settingsRouteVisibility.get(route);
+    if (!binding) {
+        const original = route.usePredicate;
+        const descriptor = Object.getOwnPropertyDescriptor(route, "usePredicate");
+        const state = {
+            users: 0,
+            restore() {
+                if (Object.getOwnPropertyDescriptor(route, "usePredicate")?.value !== predicate) return;
+                if (descriptor) Object.defineProperty(route, "usePredicate", descriptor);
+                else Reflect.deleteProperty(route, "usePredicate");
+            },
+        };
+        function predicate(this: unknown, ...args: unknown[]) {
+            // The native predicate can call React hooks even while the route is hidden.
+            const visible = typeof original === "function" ? Reflect.apply(original, this, args) : true;
+            return state.users && !settings.safeMode?.enabled ? false : visible;
+        }
+        Object.defineProperty(route, "usePredicate", descriptor && "value" in descriptor
+            ? { ...descriptor, value: predicate }
+            : { configurable: true, enumerable: descriptor?.enumerable ?? true, writable: true, value: predicate });
+        binding = state;
+        settingsRouteVisibility.set(route, state);
+    }
+    const active = binding;
+    active.users++;
+    let released = false;
+    return () => {
+        if (released) return;
+        released = true;
+        if (--active.users === 0) {
+            settingsRouteVisibility.delete(route);
+            active.restore();
+        }
+    };
+}
+
 function bindChannelDrawerWidths() {
     const drawer = findByFilePath("modules/screen/native/drawer/useDrawerWidth.tsx");
     const layout = findByProps("getChatLayout");
@@ -610,16 +651,7 @@ export default function CxExtensions() {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
                     if ("expressionPickerTab" in mobile) return registerExpressionPickerTab(mobile.expressionPickerTab);
-                    if ("settingsRoute" in mobile) {
-                        const route = findByFilePath(mobile.settingsRoute)?.default;
-                        return overrideCxMethods(route, {
-                            usePredicate(args, invoke) {
-                                // The native visibility predicate can call React hooks.
-                                invoke(args);
-                                return false;
-                            },
-                        }, () => !settings.safeMode?.enabled);
-                    }
+                    if ("settingsRoute" in mobile) return hideSettingsRoute(mobile.settingsRoute);
                     if ("hideComponentPaths" in mobile) {
                         const components = mobile.hideComponentPaths.map(path => findByFilePath(path)?.default);
                         if (components.some(component => !component)) throw new Error("Discord's appearance components are unavailable");
