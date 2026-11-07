@@ -1,0 +1,3 @@
+plugin "NoServerEmojis":
+  needs appearance.hide
+  use unicode-emoji-autocomplete

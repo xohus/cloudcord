@@ -15,7 +15,7 @@ import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } fro
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
-export { animateCxAssets, cxNativeEffects, fixCxFileExtensions, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
+export { animateCxAssets, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";

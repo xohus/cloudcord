@@ -622,6 +622,10 @@ const desktopEffectRecipes = {
         effect: "flat-attachments",
         sha256: "a28bf52feb55f75f2404b22e42805d1197496153a3cc31796f16c7a6fc0b2a21",
     },
+    NoServerEmojis: {
+        effect: "unicode-emoji-autocomplete",
+        sha256: "1e653c4d075137386316ad1f31ebbf68d0f624166394004d0bea2e20f9f294e1",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",

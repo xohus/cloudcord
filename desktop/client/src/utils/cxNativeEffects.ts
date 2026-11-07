@@ -10,6 +10,8 @@ export const cxNativeEffects = {
     "stop-auto-unread": { permission: "notifications.preventautoupgrade", label: "Keep your chosen channel notification settings" },
     "flat-attachments": { permission: "appearance.style", label: "Show chat attachments individually without the media grid" },
     "split-long-messages": { permission: "messages.split", label: "Split long drafts into at most eight messages when slowmode is off" },
+    "unicode-emoji-autocomplete": { permission: "appearance.hide", label: "Show only standard Unicode emoji in chat autocomplete" },
+    "local-emoji-autocomplete": { permission: "appearance.hide", label: "Show Unicode emoji and emoji from the current server in chat autocomplete" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;
@@ -123,6 +125,36 @@ export function overrideCxMethods(target: object | undefined, overrides: Record<
         throw error;
     }
     return stop;
+}
+
+// NoServerEmojis by UlyssesZhan (GPL-3.0-or-later).
+export function filterCxEmojiAutocomplete(store: object | undefined, mode: "unicode" | "local",
+    intentions?: { CHAT?: number; AUTO_SUGGESTION?: number; }, enabled?: () => boolean) {
+    const methods = store as { searchWithoutFetchingLatest?: unknown; getSearchResultsOrder?: unknown; } | undefined;
+    if (typeof methods?.searchWithoutFetchingLatest !== "function" || typeof methods.getSearchResultsOrder !== "function")
+        throw new Error("Discord's emoji search is unavailable");
+    type Channel = { guild_id?: string | null; getGuildId?: () => string | null | undefined; };
+    type Emoji = { type?: number; guildId?: string; };
+    let shouldKeep: ((emoji: Emoji | null | undefined) => boolean) | undefined;
+    return overrideCxMethods(store, {
+        searchWithoutFetchingLatest(args, invoke) {
+            const options = args[0] as { intention?: number; count?: number; channel?: Channel; } | undefined;
+            if (options?.intention == null || !(options.intention === intentions?.AUTO_SUGGESTION
+                || options.intention === (intentions?.CHAT ?? 3) && typeof options.count === "number" && options.count > 0)) return invoke(args);
+            const channel = options.channel;
+            const guild = channel?.getGuildId?.() ?? channel?.guild_id;
+            const previous = shouldKeep;
+            shouldKeep = emoji => emoji?.type !== 1 || mode === "local" && Boolean(guild) && emoji.guildId === guild;
+            try { return invoke(args); }
+            finally { shouldKeep = previous; }
+        },
+        getSearchResultsOrder(args, invoke) {
+            const [emojis, ...rest] = args;
+            if (!shouldKeep || !Array.isArray(emojis)) return invoke(args);
+            const filtered = emojis.filter(shouldKeep);
+            return invoke(filtered.length === emojis.length ? args : [filtered, ...rest]);
+        },
+    }, enabled);
 }
 
 export function animateCxAssets(target: object | undefined, bannerTakesOptions: boolean, enabled?: () => boolean) {

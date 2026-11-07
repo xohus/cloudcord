@@ -219,7 +219,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const reactionActions = { addReaction };
         const emojiConverters = { convertNameToSurrogate: name => name === "thumbsup" ? "👍" : undefined };
-        const customEmoji = { id: me, name: "custom", animated: true };
+        const customEmoji = { id: me, name: "custom", animated: true, type: 1, guildId };
         let latestMessage = { id: "previous", author: { id: me }, content: "Fix a.b twice: a.b", timestamp: Date.now(), channel_id: "test-channel" };
         const dispatch = event => acknowledged.push(event);
         let typingStarts = 0, typingStops = 0;
@@ -263,6 +263,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getLastMessage: () => latestMessage, getLastEditableMessage: () => latestMessage,
             },
             EmojiStore: {
+                getSearchResultsOrder(emojis, _query, count) { return count ? emojis.slice(0, count) : emojis; },
+                searchWithoutFetchingLatest({ count }) {
+                    return {
+                        unlocked: this.getSearchResultsOrder([customEmoji, { type: 0, name: "cat" }], "cat", count),
+                        locked: this.getSearchResultsOrder([{ type: 1, name: "locked", guildId: "another-guild" }], "cat", 0),
+                    };
+                },
                 getUsableGuildEmoji: () => [customEmoji],
                 getUsableCustomEmojiById: id => id === me ? customEmoji : undefined,
                 getGuilds: () => ({ [guildId]: { usableEmojis: [customEmoji] } }),
@@ -1766,6 +1773,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         if (desktop) assert.equal(module.exports.default.canSplitDraft(splitDraft), false);
         commandApi.sendMessage = originalSender;
 
+        const emojiSearch = stores.EmojiStore.searchWithoutFetchingLatest;
+        const emojiOrder = stores.EmojiStore.getSearchResultsOrder;
+        const searchOptions = Object.freeze({ query: "cat", intention: 3, count: 1, channel: { guild_id: guildId } });
+        const searchNames = options => Array.from(stores.EmojiStore.searchWithoutFetchingLatest(options).unlocked, emoji => emoji.name);
+        const ordinaryResults = searchNames(searchOptions);
+        assert.deepEqual(ordinaryResults, [customEmoji.name]);
+        selectCatalog("NoServerEmojis");
+        click(render(), "Allow for this session");
+        assert.deepEqual(searchNames(searchOptions), ["cat"]);
+        assert.equal(stores.EmojiStore.searchWithoutFetchingLatest(searchOptions).locked.length, 0);
+        assert.deepEqual(searchNames({ ...searchOptions, intention: 0 }), ordinaryResults);
+        assert.equal(searchNames({ ...searchOptions, count: 0 }).length, 2);
+        if (!desktop) {
+            settings.safeMode = { enabled: true };
+            assert.deepEqual(searchNames(searchOptions), ordinaryResults);
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable NoServerEmojis");
+        assert.equal(stores.EmojiStore.searchWithoutFetchingLatest, emojiSearch);
+        assert.equal(stores.EmojiStore.getSearchResultsOrder, emojiOrder);
+        const stopLocalEmoji = moduleBox.exports.filterCxEmojiAutocomplete(stores.EmojiStore, "local");
+        assert.deepEqual(searchNames(searchOptions), ordinaryResults);
+        assert.deepEqual(searchNames({ ...searchOptions, channel: {} }), ["cat"]);
+        assert.equal(stores.EmojiStore.searchWithoutFetchingLatest(searchOptions).locked.length, 0);
+        stopLocalEmoji();
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
         for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {

@@ -1,8 +1,7 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
-import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
-import { createCxSplitSender } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -16,7 +15,6 @@ import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
-import type { CxUploadAnonymiser } from "@lib/api/cx";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
@@ -859,6 +857,10 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "unicode-emoji-autocomplete":
+                        case "local-emoji-autocomplete":
+                            return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",
+                                findByProps("EmojiIntention")?.EmojiIntention, enabled);
                         case "split-long-messages":
                             return registerSplitSender();
                         case "flat-attachments": {
