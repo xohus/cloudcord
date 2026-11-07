@@ -190,6 +190,13 @@ function inspectBetterDiscord(file, code, appearance) {
         if (lines) return { ...record, review: { ...review, sha256 }, capability: "outgoing-text",
             cx: ["plugin " + JSON.stringify(name) + ":", ...lines, ""].join("\n") };
     }
+    if (review?.name === name && review.recipe === "reply-ping-default" && !source.parseDiagnostics.length) {
+        return {
+            ...record, review: { ...review, sha256 }, capability: "reply-default",
+            cx: ["plugin " + JSON.stringify(name) + ":", "  needs replies.suppressping",
+                '  on incoming reply-ping-default ""', ""].join("\n"),
+        };
+    }
     if (review?.name === name && review.recipe === "avatar-resolution" && !source.parseDiagnostics.length) {
         const sizes = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
             .find(declaration => identifier(declaration.name) === "VALID_SIZES")?.initializer;

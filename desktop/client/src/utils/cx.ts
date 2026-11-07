@@ -501,6 +501,7 @@ export function reviewCx(source: string) {
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement]
                 : rule.name === "rewriteText" ? [`Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`] : []))
             .concat(document.incoming.flatMap(rule => {
+                if (rule.kind === "reply-ping-default") return ["Turn reply pings off initially and keep the composer toggle available"];
                 if (rule.kind === "hide-profile-themes") return ["Hide other users’ theme colors when their profiles load"];
                 if (rule.kind === "hide-system") return ["Hide system messages for " + rule.values.join(", ")];
                 if (rule.kind === "stickers" && rule.values[0] === "*") return ["Hide all stickers"];

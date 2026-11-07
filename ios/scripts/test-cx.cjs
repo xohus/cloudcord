@@ -1189,6 +1189,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable HideSystemMessages");
         assert.equal(filterSystem({ type: "MESSAGE_CREATE", message: systemMessages[0] }), undefined);
 
+        const replyDefaultPort = cxCatalog.plugins.find(entry => entry.name === "NoReplyPing").source;
+        assert.throws(() => parseCx(replyDefaultPort.replace('reply-ping-default ""', 'reply-ping-default "always"')), /take no options/);
+        assert.throws(() => parseCx(replyDefaultPort.replace("  needs replies.suppressping\n", "")), /permissions/);
+        selectCatalog("NoReplyPing");
+        click(render(), "Allow for this session");
+        const [replyDefault] = incomingHooks;
+        const pendingReply = { type: "CREATE_PENDING_REPLY", message: Object.freeze({ id: "123" }), shouldMention: true, showMentionToggle: true };
+        const replyPatch = replyDefault(pendingReply);
+        const createdReply = { ...pendingReply, ...replyPatch };
+        assert.equal(createdReply.shouldMention, false);
+        assert.equal(createdReply.showMentionToggle, true);
+        assert.equal(createdReply.message, pendingReply.message);
+        const manualToggle = { type: "SET_PENDING_REPLY_SHOULD_MENTION", shouldMention: true };
+        assert.equal(replyDefault(manualToggle), undefined);
+        assert.equal(manualToggle.shouldMention, true);
+        assert.equal(replyDefault({ type: "CREATE_PENDING_REPLY", shouldMention: false }), undefined);
+        if (!desktop) {
+            settings.safeMode = { enabled: true };
+            assert.equal(replyDefault({ ...pendingReply, shouldMention: true }), undefined);
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable NoReplyPing");
+        assert.equal(incomingHooks.length, 0);
+        assert.equal(replyDefault({ ...pendingReply, shouldMention: true }), undefined);
+
         const profilePort = cxCatalog.plugins.find(entry => entry.name === "NoProfileThemes").source;
         assert.throws(() => parseCx(profilePort.replace('hide-profile-themes ""', 'hide-profile-themes "anything"')), /takes no options/);
         assert.ok(reviewCx(profilePort).effects.includes("Hide other users’ theme colors when their profiles load"));

@@ -200,6 +200,18 @@ try {
 } finally {
     delete reviewed[digest];
 }
+const replyDefault = '/**\n * @name Reviewed reply default\n */\nmodule.exports = class {};';
+const replyDigest = require("node:crypto").createHash("sha256").update(replyDefault).digest("hex");
+try {
+    reviewed[replyDigest] = { name: "Reviewed reply default", recipe: "reply-ping-default", license: "Unlicense" };
+    const compiled = inspectBd(replyDefault);
+    assert.equal(compiled.review.sha256, replyDigest);
+    assert.equal(parseCx(compiled.cx).incoming[0].kind, "reply-ping-default");
+    assert.equal(inspectBd(replyDefault + "// modified").cx, undefined);
+    verifyPorts(new Map([["reviewed-reply-default.cx", compiled.cx]]));
+} finally {
+    delete reviewed[replyDigest];
+}
 const bdPort = inspectBd(bd);
 const typingQuirk = [
     "/**", " * @name Reviewed typing rules", " */",

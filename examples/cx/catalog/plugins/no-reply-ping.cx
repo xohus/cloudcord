@@ -1,0 +1,3 @@
+plugin "NoReplyPing":
+  needs replies.suppressping
+  on incoming reply-ping-default ""

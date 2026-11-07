@@ -61,5 +61,12 @@
         "license": "Unlicense",
         "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/VriskaTypingQuirk.plugin.js",
         "recipe": "typing-rules"
+    },
+    "2d8f690664ab3c726c77b5151b62b096052a78a46c83a53f5f9b38de4882ced0": {
+        "name": "NoReplyPing",
+        "author": "Qb",
+        "license": "Unlicense",
+        "source": "https://github.com/BleedingBD/plugin-NoReplyPing/blob/c0376dc67966587d3ed256a828a311c62b91585e/NoReplyPing.plugin.js",
+        "recipe": "reply-ping-default"
     }
 }

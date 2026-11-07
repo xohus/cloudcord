@@ -3,6 +3,7 @@ export const incomingPermissions = {
     stickers: "messages.filterstickers",
     "silence-users": "messages.silencementions",
     "reply-pings": "replies.controlping",
+    "reply-ping-default": "replies.suppressping",
     calls: "calls.suppressring",
     keywords: "messages.watchlocal",
     users: "messages.watchlocal",
@@ -35,6 +36,7 @@ export function parseIncomingRule(name: string, input: string): IncomingRule {
     const values = [...new Set(input.split(textual ? /,/ : /[\s,]+/).map(value => value.trim()).filter(Boolean))];
     if (values.length > 24) throw new Error("Too many incoming rule values");
     if (kind === "follow-voice" && values.length > 1) throw new Error("Choose one friend ID to follow");
+    if (kind === "reply-ping-default" && input.trim()) throw new Error("Reply ping defaults take no options");
     if (kind === "friend-removals" && values.length) throw new Error("Friend removal notices take no options");
     if (kind === "hide-profile-themes" && values.length) throw new Error("Profile theme hiding takes no options");
     if (kind === "hide-system") {
@@ -83,6 +85,10 @@ function stripProfileTheme(profile: Record<string, unknown> | undefined) {
 
 export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, context: IncomingContext) {
     const { type, message } = payload;
+    if (rule.kind === "reply-ping-default") {
+        if (type === "CREATE_PENDING_REPLY" && payload.shouldMention === true) return { shouldMention: false };
+        return;
+    }
     if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals") return;
     if (rule.kind === "hide-profile-themes") {
         if (type !== "USER_PROFILE_FETCH_SUCCESS") return;
