@@ -36783,6 +36783,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             }
           }
         },
+        "transparent-chat-bar": {
+          plugin: "TransparentChatBar",
+          label: "make the chat input background translucent",
+          css: 'form [class*="channelTextArea"] [class*="scrollableContainer"] { background: rgb(0 0 0 / 25%) !important; backdrop-filter: blur(6px); }',
+          style: {
+            semantic: {
+              MOBILE_CHATINPUT_BACKGROUND_DEFAULT: "#00000040",
+              MOBILE_CHATINPUT_BACKGROUND_ACTIVE: "#00000040"
+            }
+          }
+        },
         "round-server-icons": {
           plugin: "RoundServerIcons",
           label: "round server icons",
@@ -40015,6 +40026,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/transparent-chat-bar.cx
+  var transparent_chat_bar_default;
+  var init_transparent_chat_bar = __esm({
+    "../examples/cx/catalog/plugins/transparent-chat-bar.cx"() {
+      transparent_chat_bar_default = 'plugin "TransparentChatBar":\n  needs appearance.style\n  style transparent-chat-bar\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/unindent.cx
   var unindent_default;
   var init_unindent = __esm({
@@ -40984,6 +41003,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_stop_auto_unread();
       init_talk_in_reverse();
       init_text_replace();
+      init_transparent_chat_bar();
       init_unindent();
       init_unit_converter();
       init_vibe_check();
@@ -41516,6 +41536,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "TextReplace",
             source: text_replace_default
+          },
+          {
+            name: "TransparentChatBar",
+            source: transparent_chat_bar_default
           },
           {
             name: "Unindent",
@@ -47624,7 +47648,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "584cef61fee8d52bfab33ca93b17024c4be388ef";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f5f499f663f2e860195581d54c7852dd052e7f4c";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
