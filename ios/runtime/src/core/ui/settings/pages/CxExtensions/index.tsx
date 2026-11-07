@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -277,6 +277,62 @@ function registerMediaLinkCopy() {
         stopMedia();
         throw error;
     }
+}
+
+let attachmentQualityBinding: { stop: () => void; users: number; originals: number; } | undefined;
+
+function patchAttachmentImageQuality() {
+    const enabled = () => !settings.safeMode?.enabled;
+    const chat = findByFilePath("modules/messages/native/renderer/transformMessageAttachments.tsx");
+    const viewer = findByFilePath("modules/media_viewer/native/useMediaViewerSources.tsx");
+    const binding = { users: 0, originals: 0 };
+    const stopChat = overrideCxMethods(chat, {
+        default(args, invoke) {
+            const attachments = invoke(args);
+            if (!Array.isArray(attachments) || !(args[0] as { shouldInlineAttachmentMedia?: boolean; } | undefined)?.shouldInlineAttachmentMedia)
+                return attachments;
+            const next = attachments.map(item => {
+                if (!item || item.obscure || item.isSuspiciousDownload || item.videoUrl || item.inlinePlaybackDisabled) return item;
+                const url = getCxAttachmentImageUrl(item.url, { width: item.width, height: item.height, original: binding.originals > 0,
+                    frozen: item.srcIsAnimated === true && item.isAnimated === false ? true : undefined });
+                return url && url !== item.url ? { ...item, url } : item;
+            });
+            return next.some((item, index) => item !== attachments[index]) ? next : attachments;
+        },
+    }, enabled);
+    try {
+        const stopViewer = overrideCxMethods(viewer, {
+            setMediaViewerSources(args, invoke) {
+                const [options, ...rest] = args;
+                const state = options as { sources?: unknown[]; } | undefined;
+                if (!Array.isArray(state?.sources)) return invoke(args);
+                const sources = state.sources.map(item => {
+                    const source = item as { uri?: unknown; videoURI?: unknown; obscure?: unknown; spoiler?: unknown; } | undefined;
+                    if (!source || source.videoURI || source.obscure || source.spoiler) return item;
+                    const uri = getCxAttachmentImageUrl(source.uri, { original: true });
+                    return uri && uri !== source.uri ? { ...source, uri } : item;
+                });
+                return invoke(sources.some((source, index) => source !== state.sources![index]) ? [{ ...state, sources }, ...rest] : args);
+            },
+        }, enabled);
+        return Object.assign(binding, { stop: () => { stopViewer(); stopChat(); } });
+    } catch (error) {
+        stopChat();
+        throw error;
+    }
+}
+
+function registerAttachmentImageQuality(original: boolean) {
+    const binding = attachmentQualityBinding ??= patchAttachmentImageQuality();
+    binding.users++;
+    if (original) binding.originals++;
+    return () => {
+        if (original) binding.originals--;
+        if (--binding.users === 0) {
+            binding.stop();
+            attachmentQualityBinding = undefined;
+        }
+    };
 }
 
 let memberRowScope: { context: Context<boolean>; stop: () => void; users: number; } | undefined;
@@ -1021,6 +1077,9 @@ export default function CxExtensions() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "attachment-image-quality":
+                        case "original-attachment-images":
+                            return registerAttachmentImageQuality(effect === "original-attachment-images");
                         case "scroll-to-latest": {
                             const actions = findByProps("jumpToMessage", "fetchMessages");
                             if (typeof actions?.jumpToMessage !== "function") throw new Error("Discord message navigation is unavailable");

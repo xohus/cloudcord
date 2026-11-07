@@ -23,6 +23,7 @@ export { createCxPlusReactionHandler } from "./cxPlusReactions";
 export { createCxSplitSender, planCxMessageParts } from "./cxSplitMessages";
 export { filterCxEmojiCategories, filterCxEmojiGrid } from "./cxEmojiPicker";
 export { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "./cxExpressionLinks";
+export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
 
 export const MAX_CX_SOURCE = 512 * 1024;
@@ -37,6 +38,7 @@ const permissionLabels = {
     "messages.split": "Send your long drafts as separate messages in the same channel",
     "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
     "media.clipboard": "Copy a selected media or web link when you choose its menu action",
+    "media.imagequality": "Request higher-resolution image attachments from Discord’s CDN",
     "stickers.links": "Copy or open the selected Discord sticker’s CDN link when you choose its menu action",
     "messages.transform": "Change text before Discord sends messages you compose",
     "messages.edit.transform": "Change text when you submit a message edit",

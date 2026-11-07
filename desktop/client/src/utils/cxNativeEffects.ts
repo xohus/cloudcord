@@ -15,6 +15,8 @@ export const cxNativeEffects = {
     "hide-disabled-emojis": { permission: "appearance.hide", label: "Hide unavailable emoji in Discord’s emoji picker" },
     "copy-emoji-markdown": { permission: "emoji.clipboard", label: "Add a Copy Emoji Markdown action to the emoji menu" },
     "copy-media-link": { permission: "media.clipboard", label: "Add a clipboard action to media and link menus" },
+    "attachment-image-quality": { permission: "media.imagequality", label: "Improve attachment previews and load originals in the media viewer" },
+    "original-attachment-images": { permission: "media.imagequality", label: "Load original attachment images in chat and the media viewer" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },
 } as const;

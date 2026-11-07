@@ -5,7 +5,7 @@ import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink } from "@utils/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, validateCxMediaLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -18,6 +18,8 @@ const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
 let fixFileExtensionUsers = 0;
 let flatAttachmentUsers = 0;
+let attachmentQualityUsers = 0;
+let originalAttachmentUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
@@ -279,6 +281,12 @@ export function CxSettings() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "attachment-image-quality":
+                            attachmentQualityUsers++;
+                            return () => { attachmentQualityUsers--; };
+                        case "original-attachment-images":
+                            originalAttachmentUsers++;
+                            return () => { originalAttachmentUsers--; };
                         case "scroll-to-latest":
                             return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
                                 selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,
@@ -580,6 +588,12 @@ export default definePlugin({
             replace: "$&$self.fixUploadExtensions($1);",
         },
     }, {
+        find: ".handleImageLoad)",
+        replacement: {
+            match: /getSrc\(\i\)\{/,
+            replace: "$&var cxSrc=$self.getAttachmentImageSrc(this?.props,arguments[1]);if(cxSrc)return cxSrc;",
+        },
+    }, {
         find: "#{intl::ATTACHMENT_UTILITIES_SPOILER}",
         replacement: {
             match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,
@@ -621,6 +635,12 @@ export default definePlugin({
     },
     useFlatAttachmentLayout() {
         return flatAttachmentUsers > 0;
+    },
+    getAttachmentImageSrc(props: { src?: string; width?: number; height?: number; contentType?: string; trigger?: unknown; }, frozen?: boolean) {
+        if ((!attachmentQualityUsers && !originalAttachmentUsers) || !props
+            || (props.contentType && (typeof props.contentType !== "string" || !props.contentType.startsWith("image/")))) return;
+        return getCxAttachmentImageUrl(props.src, { width: props.width, height: props.height,
+            original: Boolean(props.trigger || originalAttachmentUsers), frozen: frozen === true });
     },
     fixUploadExtensions(files: unknown) {
         if (fixFileExtensionUsers) fixCxFileExtensions(files);

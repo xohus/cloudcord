@@ -1,0 +1,3 @@
+plugin "FixImagesQuality":
+  needs media.imagequality
+  use attachment-image-quality

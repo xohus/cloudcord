@@ -375,6 +375,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const nativeMediaActions = [{ label: "Download", action() {} }];
         const mediaShare = { useMediaShareActions: () => nativeMediaActions };
         const linkSheet = { showSimpleActionSheet: sheet => sheet };
+        const attachmentRows = { default: ({ attachments }) => attachments };
+        const viewerSources = { setMediaViewerSources: state => state };
         let inMemberRow = false;
         const typingEllipsis = function Ellipsis() {};
         class NativeCloudUploader {
@@ -512,6 +514,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
                 : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
                 : path.endsWith("/MediaShareActions.tsx") ? mediaShare
+                : path.endsWith("/transformMessageAttachments.tsx") ? attachmentRows
+                : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -1817,6 +1821,48 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable NoMosaic");
         assert.equal(flatLayout(), false);
         checkDesktopLayout(false);
+        const attachment = "https://media.discordapp.net/attachments/1/2/image.png?ex=12&hm=abc%2Bdef&width=200&height=100&format=webp";
+        const originalImage = "https://cdn.discordapp.com/attachments/1/2/image.png?ex=12&hm=abc%2Bdef";
+        const rows = Object.freeze([Object.freeze({ url: attachment, width: 4000, height: 2000 }),
+            Object.freeze({ url: attachment, width: 100, height: 100, obscure: true })]);
+        const inline = Object.freeze({ attachments: rows, shouldInlineAttachmentMedia: true });
+        const viewer = Object.freeze({ sources: Object.freeze([{ uri: attachment }, { uri: attachment, spoiler: true }]), initialIndex: 1 });
+        const readImage = (modal = false, src = attachment, frozen) => desktop
+            ? desktopPlugin.getAttachmentImageSrc({ src, width: 4000, height: 2000, trigger: modal ? "media" : undefined }, frozen)
+            : modal ? viewerSources.setMediaViewerSources(viewer).sources[0].uri : attachmentRows.default(inline)[0].url;
+        selectCatalog("FixImagesQuality");
+        click(render(), "Allow for this session");
+        assert.equal(readImage(true), originalImage);
+        const attachmentPreview = new URL(readImage());
+        assert.equal(attachmentPreview.hostname, "media.discordapp.net");
+        assert.equal(attachmentPreview.searchParams.get("hm"), "abc+def");
+        const width = Number(attachmentPreview.searchParams.get("width")), height = Number(attachmentPreview.searchParams.get("height"));
+        assert.ok(width > 200 && width * height <= 2_400_000);
+        if (desktop) {
+            assert.equal(readImage(false, "https://example.com/attachments/1/2/image.png"), undefined);
+            const gif = new URL(readImage(false, attachment.replace("image.png", "image.gif"), true));
+            assert.equal(gif.searchParams.get("animated"), "false");
+            assert.equal(gif.searchParams.get("format"), "webp");
+        } else {
+            assert.equal(viewerSources.setMediaViewerSources(viewer).sources[1], viewer.sources[1]);
+            assert.equal(viewerSources.setMediaViewerSources(viewer).initialIndex, 1);
+            assert.equal(attachmentRows.default(inline)[1], rows[1]);
+            assert.equal(attachmentRows.default({ ...inline, shouldInlineAttachmentMedia: false }), rows);
+            settings.safeMode = { enabled: true };
+            assert.equal(attachmentRows.default(inline), rows);
+            assert.equal(viewerSources.setMediaViewerSources(viewer), viewer);
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable FixImagesQuality");
+        assert.equal(readImage(), desktop ? undefined : attachment);
+        const sourceField = find(render(), element => element.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+        const fullResSource = read("examples/cx/catalog/plugins/fix-images-quality.cx").replace("use attachment-image-quality", "use original-attachment-images");
+        if (desktop) sourceField.props.onChange({ currentTarget: { value: fullResSource } });
+        else sourceField.props.onChangeText(fullResSource);
+        click(render(), "Review CX");
+        click(render(), "Allow for this session");
+        assert.equal(readImage(), originalImage);
+        click(render(), "Disable FixImagesQuality");
         const splitDraft = "a".repeat(1999) + "🙂" + "b".repeat(20);
         const plannedParts = moduleBox.exports.planCxMessageParts(splitDraft);
         assert.equal(plannedParts[0].length, 1999);
