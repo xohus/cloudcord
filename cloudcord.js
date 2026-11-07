@@ -37586,6 +37586,40 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxProfileColors.ts
+  function decodeCxProfileColors(bio) {
+    if (typeof bio !== "string")
+      return;
+    var match = taggedPalette.exec(bio.slice(0, 4096));
+    if (!match)
+      return;
+    return match.slice(1).map((hex) => parseInt([
+      ...hex
+    ].map((char) => String.fromCodePoint(char.codePointAt(0) - tagOffset)).join(""), 16));
+  }
+  function formatCxProfileColors(primary, accent) {
+    var colors = [
+      primary,
+      accent
+    ].map((color) => color.trim().replace(/^#/, "").toLowerCase());
+    if (!colors.every((color) => /^[a-f0-9]{6}$/.test(color)))
+      return;
+    var encoded = [
+      ..."[#" + colors.join(",#") + "]"
+    ].map((char) => String.fromCodePoint(char.charCodeAt(0) + tagOffset)).join("");
+    return "Copy the code block into your Discord bio. The color code is invisible.\n```\n" + encoded + "\n```";
+  }
+  var tagOffset, taggedPalette;
+  var init_cxProfileColors = __esm({
+    "src/lib/api/cxProfileColors.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      tagOffset = 917504;
+      taggedPalette = RegExp("\\u{e005b}\\u{e0023}([\\u{e0061}-\\u{e0066}\\u{e0041}-\\u{e0046}\\u{e0030}-\\u{e0039}]{1,6})\\u{e002c}\\u{e0023}([\\u{e0061}-\\u{e0066}\\u{e0041}-\\u{e0046}\\u{e0030}-\\u{e0039}]{1,6})\\u{e005d}", "u");
+    }
+  });
+
   // src/lib/api/cxIncoming.ts
   function parseIncomingRule(name, input) {
     if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name))
@@ -37616,6 +37650,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           phrase
         ],
         link
+      };
+    }
+    if (kind === "profile-bio-colors") {
+      if (input !== "prefer-native" && input !== "prefer-bio")
+        throw new Error("Choose prefer-native or prefer-bio");
+      return {
+        kind,
+        values: [
+          input
+        ]
       };
     }
     var always = false;
@@ -37704,22 +37748,52 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals")
       return;
-    if (rule.kind === "hide-profile-themes") {
+    if (rule.kind === "profile-bio-colors") {
       if (type !== "USER_PROFILE_FETCH_SUCCESS")
         return;
       var envelope = payload.userProfile ?? payload;
-      var id = envelope.user?.id ?? payload.userId;
+      var profile = envelope.user_profile ?? envelope;
+      if (rule.values[0] === "prefer-native" && [
+        profile.theme_colors,
+        profile.themeColors
+      ].some((colors2) => Array.isArray(colors2) && colors2.length))
+        return;
+      var colors = decodeCxProfileColors(profile.bio);
+      if (!colors)
+        return;
+      var change = {
+        theme_colors: colors,
+        themeColors: colors
+      };
+      var patch = profile === envelope ? change : {
+        user_profile: {
+          ...profile,
+          ...change
+        }
+      };
+      return envelope === payload ? patch : {
+        userProfile: {
+          ...envelope,
+          ...patch
+        }
+      };
+    }
+    if (rule.kind === "hide-profile-themes") {
+      if (type !== "USER_PROFILE_FETCH_SUCCESS")
+        return;
+      var envelope1 = payload.userProfile ?? payload;
+      var id = envelope1.user?.id ?? payload.userId;
       var me = context.currentUser();
       if (!me || typeof id !== "string" || id === me)
         return;
-      var userProfile = envelope.user_profile;
-      var guildProfile = envelope.guild_member_profile;
+      var userProfile = envelope1.user_profile;
+      var guildProfile = envelope1.guild_member_profile;
       var user = stripProfileTheme(userProfile);
       var guild = stripProfileTheme(guildProfile);
-      var profile = !userProfile ? stripProfileTheme(envelope) : envelope;
-      if (user === userProfile && guild === guildProfile && profile === envelope)
+      var profile1 = !userProfile ? stripProfileTheme(envelope1) : envelope1;
+      if (user === userProfile && guild === guildProfile && profile1 === envelope1)
         return;
-      var patch = {
+      var patch1 = {
         ...user !== userProfile ? {
           user_profile: user
         } : {},
@@ -37727,15 +37801,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           guild_member_profile: guild
         } : {}
       };
-      if (envelope !== payload)
+      if (envelope1 !== payload)
         return {
           userProfile: {
-            ...profile,
-            ...patch
+            ...profile1,
+            ...patch1
           }
         };
-      return profile === envelope ? patch : {
-        ...patch,
+      return profile1 === envelope1 ? patch1 : {
+        ...patch1,
         theme_colors: void 0,
         themeColors: void 0
       };
@@ -37884,6 +37958,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_cxMessageTransforms();
+      init_cxProfileColors();
       incomingPermissions = {
         stickers: "messages.filterstickers",
         "silence-users": "messages.silencementions",
@@ -37897,6 +37972,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "hide-blocked": "messages.filterlocal",
         "hide-system": "messages.filterlocal",
         "hide-profile-themes": "appearance.style",
+        "profile-bio-colors": "appearance.style",
         "friends-voice": "voice.notifyfriends",
         "follow-voice": "voice.followfriend",
         "friend-removals": "friends.notifyremoval",
@@ -39428,6 +39504,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return [
             "Hide other users\u2019 theme colors when their profiles load"
           ];
+        if (rule.kind === "profile-bio-colors")
+          return [
+            rule.values[0] === "prefer-native" ? "Show colors encoded in bios when the profile has no native theme" : "Prefer colors encoded in bios over the profile's native theme"
+          ];
         if (rule.kind === "hide-system")
           return [
             "Hide system messages for " + rule.values.join(", ")
@@ -39778,6 +39858,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxMessageTransforms();
       init_cxNativeEffects();
       init_cxPreviousMessage();
+      init_cxProfileColors();
       init_cxTextRules();
       init_cxUploadNames();
       init_cxWallpaper();
@@ -39842,6 +39923,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       };
       textFunctions = {
         ...cxCommandFunctions,
+        profileColors3y3: formatCxProfileColors,
         calculate,
         convert: convertUnits,
         length: (text) => String(text.length),
@@ -40113,6 +40195,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_eridan_typing_quirk = __esm({
     "../examples/cx/catalog/plugins/eridan-typing-quirk.cx"() {
       eridan_typing_quirk_default = 'plugin "EridanTypingQuirk":\n  needs messages.transform\n  before send rewrite-text:\n    replace ["v"] with "vv"\n    replace ["w"] with "ww"\n    replace ["V"] with "VV"\n    replace ["W"] with "WW"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/fake-profile-themes.cx
+  var fake_profile_themes_default;
+  var init_fake_profile_themes = __esm({
+    "../examples/cx/catalog/plugins/fake-profile-themes.cx"() {
+      fake_profile_themes_default = 'plugin "FakeProfileThemes":\n  needs appearance.style\n  needs commands.register\n  needs reply.local\n  on incoming profile-bio-colors "prefer-native"\n  on command "cx-profile-colors":\n    input "primary" text\n    input "accent" text\n    reply "${profileColors3y3(primary, accent)}" else "Enter both colors as six hex digits, like #7289da."\n';
     }
   });
 
@@ -42261,6 +42351,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_embedded_urls();
       init_equius_s_typing_quirk();
       init_eridan_typing_quirk();
+      init_fake_profile_themes();
       init_feferi_typing_quirk();
       init_fix_file_extensions();
       init_floating_chat_bar();
@@ -42582,6 +42673,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "EridanTypingQuirk",
             source: eridan_typing_quirk_default
+          },
+          {
+            name: "FakeProfileThemes",
+            source: fake_profile_themes_default
           },
           {
             name: "FeferiTypingQuirk",
@@ -49659,7 +49754,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "2cef9812bb8cd4538f87a48f5634e886b25db7a0";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "fa24de77eeff8fd078161b73e66f8dcffa0ad084";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
