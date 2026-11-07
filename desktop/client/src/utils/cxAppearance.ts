@@ -198,6 +198,11 @@ export const cxAppearanceTargets = {
         css: 'a[href="/shop"], [data-list-item-id$="___shop"] { display: none !important; }',
         mobile: ["CollectiblesShopEntryButton"],
     },
+    "quests-entry": {
+        plugin: "HideQuestsTab", label: "the Quests entry",
+        css: 'a[href="/quest-home"], [data-list-item-id$="___quests"] { display: none !important; }',
+        mobile: { settingsRoute: "modules/user_settings/defs/native/QuestHomeSetting.tsx" },
+    },
     "inbox-button": {
         plugin: "HideInboxButton", label: "the notifications entry",
         css: '[aria-label="Inbox"] { display: none !important; }',
@@ -231,7 +236,7 @@ export const cxAppearanceTargets = {
         plugin: "HighContrastText", label: "increase text contrast",
         css: ":root { --text-default: #ffffff; --text-normal: #ffffff; --text-muted: #c7c9d1; }",
         style: {
-            semantic: { TEXT_DEFAULT: "#ffffff", TEXT_NORMAL: "#ffffff", TEXT_MUTED: "#c7c9d1", TEXT_SUBTLE: "#c7c9d1" },
+            semantic: { TEXT_DEFAULT: "#ffffff", TEXT_NORMAL: "#ffffff", TEXT_STRONG: "#ffffff", TEXT_MUTED: "#c7c9d1", TEXT_SUBTLE: "#c7c9d1" },
         },
     },
     "cloudcord-accent": {
@@ -259,6 +264,13 @@ export const cxAppearanceTargets = {
         plugin: "BiggerCodeBlocks", label: "increase code block text size",
         css: 'code[class*="hljs"], [class*="codeContainer"] code { font-size: 15px !important; line-height: 1.5 !important; }',
         style: { component: "MarkupCodeBlock", key: "codeBlock", values: { fontSize: 15, lineHeight: 22.5 } },
+    },
+    "colorful-mentions": {
+        plugin: "ColorfulMentions", label: "tint inline mentions purple",
+        css: '[class*="mention"][class*="interactive"] { background: rgb(124 92 255 / 25%) !important; color: #c9bcff !important; border-radius: 6px; }',
+        style: {
+            semantic: { MENTION_BACKGROUND: "#7c5cff40", MENTION_FOREGROUND: "#c9bcff" },
+        },
     },
     "underlined-links": {
         plugin: "HighlightLinks", label: "underline message links",

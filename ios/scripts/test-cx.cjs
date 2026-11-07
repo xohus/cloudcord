@@ -272,6 +272,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
             "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu", "ThreadIcon"]
             .map(name => [name, () => name]));
+        let routeVisibilityChecks = 0;
+        const useRoutePredicate = () => { routeVisibilityChecks++; return true; };
+        const settingsRoutes = new Map(["QuestHomeSetting"].map(name => [name, { usePredicate: useRoutePredicate }]));
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
             "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem", "PresenceActivityStatus"].map(name => [
@@ -420,6 +423,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path.includes("/defs/native/") ? { default: settingsRoutes.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
@@ -668,6 +672,18 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(appearanceHooks.size, 0);
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
+                continue;
+            } else if (rule.mobile.settingsRoute) {
+                const route = settingsRoutes.get(rule.mobile.settingsRoute.split("/").at(-1).replace(".tsx", ""));
+                const checks = routeVisibilityChecks;
+                assert.equal(route.usePredicate(), false);
+                assert.equal(routeVisibilityChecks, checks + 1);
+                settings.safeMode = { enabled: true };
+                assert.equal(route.usePredicate(), true);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(route.usePredicate, useRoutePredicate);
+                assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.hideComponentPaths) {
                 const bindings = rule.mobile.hideComponentPaths.map(path => {

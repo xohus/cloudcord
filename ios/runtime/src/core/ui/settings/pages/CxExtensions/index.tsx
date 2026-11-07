@@ -475,6 +475,16 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
+                    if ("settingsRoute" in mobile) {
+                        const route = findByFilePath(mobile.settingsRoute)?.default;
+                        return overrideCxMethods(route, {
+                            usePredicate(args, invoke) {
+                                // The native visibility predicate can call React hooks.
+                                invoke(args);
+                                return false;
+                            },
+                        }, () => !settings.safeMode?.enabled);
+                    }
                     if ("hideComponentPaths" in mobile) {
                         const components = mobile.hideComponentPaths.map(path => findByFilePath(path)?.default);
                         if (components.some(component => !component)) throw new Error("Discord's appearance components are unavailable");

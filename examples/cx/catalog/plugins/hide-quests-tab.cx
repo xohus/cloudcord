@@ -1,0 +1,3 @@
+plugin "HideQuestsTab":
+  needs appearance.hide
+  hide quests-entry
