@@ -28,3 +28,8 @@ export function validateCxStickerLink(link: unknown) {
     if (typeof link === "string" && /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/stickers\/\d{17,20}\.(?:png|json|gif|webp)(?:\?[a-z0-9_=&-]{1,128})?$/i.test(link))
         return link;
 }
+
+export function validateCxMediaLink(link: unknown) {
+    if (typeof link !== "string" || link.length > 8192 || /[\s\x00-\x1f\x7f\\<>"\u202a-\u202e\u2066-\u2069]/u.test(link)) return;
+    if (/^https?:\/\/(?:[a-z\d.-]+|\[[a-f\d:]+\])(?::\d{1,5})?(?:[/?#]|$)/i.test(link)) return link;
+}

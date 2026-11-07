@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { filterCxEmojiCategories } from "@lib/api/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxStickerLink } from "@lib/api/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -232,6 +232,49 @@ function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links"
             expressionSheetBinding = undefined;
         }
     };
+}
+
+function registerMediaLinkCopy() {
+    let active = true;
+    const enabled = () => active && !settings.safeMode?.enabled;
+    const copy = (link: string) => () => {
+        if (!enabled()) return;
+        clipboard.setString(link);
+        showToast.showCopyToClipboard?.();
+    };
+    const mediaActions = findByFilePath("modules/media_viewer/native/components/MediaShareActions.tsx");
+    const IconComponent = findByProps("LinkIcon")?.LinkIcon;
+    const stopMedia = overrideCxMethods(mediaActions, {
+        useMediaShareActions(args, invoke) {
+            const actions = invoke(args);
+            const media = args[0] as {
+                source?: { shareURI?: unknown; sourceURI?: unknown; uri?: unknown; obscure?: unknown; };
+                shareable?: boolean; disableDownload?: boolean;
+            } | undefined;
+            if (!Array.isArray(actions) || !actions.length || media?.disableDownload || media?.shareable === false || media?.source?.obscure) return actions;
+            const source = media?.source;
+            const link = validateCxMediaLink(source?.shareURI) ?? validateCxMediaLink(source?.sourceURI) ?? validateCxMediaLink(source?.uri);
+            if (!link || actions.some(action => action?.label === "Copy Media Link (CX)")) return actions;
+            return [...actions, { label: "Copy Media Link (CX)", IconComponent, action: copy(link) }];
+        },
+    }, enabled);
+    try {
+        const stopLinks = overrideCxMethods(findByProps("showSimpleActionSheet"), {
+            showSimpleActionSheet(args, invoke) {
+                const [options, ...rest] = args;
+                const sheet = options as { key?: string; header?: { subtitle?: unknown; }; options?: unknown[]; } | undefined;
+                const link = sheet?.key === "LongPressUrl" && validateCxMediaLink(sheet.header?.subtitle);
+                if (!link || !Array.isArray(sheet?.options)) return invoke(args);
+                const actions = [...sheet.options, { label: "Copy Link (CX)", onPress: copy(link) }];
+                return invoke([{ ...sheet, options: actions }, ...rest]);
+            },
+        }, enabled);
+        return () => { active = false; stopLinks(); stopMedia(); };
+    } catch (error) {
+        active = false;
+        stopMedia();
+        throw error;
+    }
 }
 
 let memberRowScope: { context: Context<boolean>; stop: () => void; users: number; } | undefined;
@@ -961,6 +1004,8 @@ export default function CxExtensions() {
                         case "copy-emoji-markdown":
                         case "sticker-links":
                             return registerExpressionLinks(effect);
+                        case "copy-media-link":
+                            return registerMediaLinkCopy();
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",

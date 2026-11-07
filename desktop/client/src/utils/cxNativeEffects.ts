@@ -14,6 +14,7 @@ export const cxNativeEffects = {
     "local-emoji-autocomplete": { permission: "appearance.hide", label: "Show Unicode emoji and emoji from the current server in chat autocomplete" },
     "hide-disabled-emojis": { permission: "appearance.hide", label: "Hide unavailable emoji in Discord’s emoji picker" },
     "copy-emoji-markdown": { permission: "emoji.clipboard", label: "Add a Copy Emoji Markdown action to the emoji menu" },
+    "copy-media-link": { permission: "media.clipboard", label: "Add a clipboard action to media and link menus" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },
 } as const;
 

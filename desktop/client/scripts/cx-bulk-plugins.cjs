@@ -671,6 +671,10 @@ const desktopEffectRecipes = {
         effect: "sticker-links",
         sha256: "65ebb054311ec45e644b5aaf74e6b6865b9da9dd980fecc48bebaa5367eda1e9",
     },
+    CopyMediaLink: {
+        effect: "copy-media-link",
+        sha256: "6c75dd1b89f926cdae07ce2d0ddb0874bf163b0543182cdc198fb8cd11562d17",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",

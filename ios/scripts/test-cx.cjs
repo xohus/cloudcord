@@ -361,6 +361,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const renderSpoiler = Spoiler.prototype.render;
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
+        const nativeMediaActions = [{ label: "Download", action() {} }];
+        const mediaShare = { useMediaShareActions: () => nativeMediaActions };
+        const linkSheet = { showSimpleActionSheet: sheet => sheet };
         let inMemberRow = false;
         const typingEllipsis = function Ellipsis() {};
         class NativeCloudUploader {
@@ -416,7 +419,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/Commands": commandApi,
             "@api/ContextMenu": {
-                addContextMenuPatch: (menus, patch) => { assert.ok(menus.includes("user-context") || menus.includes("expression-picker")); menuPatches.add(patch); },
+                addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
+                findGroupChildrenByChildId: (id, children) => children.some(item => item?.props?.id === id) ? children : null,
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
             "@utils/clipboard": { copyToClipboard: value => { clipboardWrites.push(value); return Promise.resolve(); } },
@@ -496,6 +500,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/MessageEmojiActionSheet.tsx") ? { default: expressionSheets.MessageEmojiActionSheet }
                 : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
                 : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
+                : path.endsWith("/MediaShareActions.tsx") ? mediaShare
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -513,7 +518,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
                             : name === "intl" ? headerMessages : name === "addReaction" ? reactionActions
                                 : name === "convertNameToSurrogate" ? emojiConverters : name in expressionSheets ? expressionSheets
-                                    : name in headerIcons ? headerIcons : undefined },
+                                    : name === "showSimpleActionSheet" ? linkSheet : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : initial === null ? "ExpressionProvider" : "ProfileUserProvider" }),
@@ -1916,6 +1921,50 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable CopyStickerLinks");
             assert.equal(appearanceHooks.has(expressionSheets.BottomSheet), false);
         }
+        const signedMedia = "https://cdn.discordapp.com/attachments/1/2/pic.png?ex=123&hm=abc";
+        const plainLink = "https://example.com/path?a=b#part";
+        const beforeMediaCopy = clipboardWrites.length;
+        selectCatalog("CopyMediaLink");
+        click(render(), "Allow for this session");
+        let copyMedia, copyLink;
+        if (desktop) {
+            const patch = [...menuPatches][0];
+            const actions = [jsx("MenuItem", { id: "copy-native-link" })];
+            patch(actions, { src: signedMedia });
+            patch(actions, { src: signedMedia });
+            assert.equal(actions.length, 2);
+            copyMedia = actions[1].props.action;
+            const links = [];
+            patch(links, { href: "https://user:pass@example.com/" });
+            assert.equal(links.length, 0);
+            patch(links, { itemHref: plainLink });
+            copyLink = links[0].props.action;
+        } else {
+            const options = { source: { shareURI: signedMedia }, shareable: true };
+            const actions = mediaShare.useMediaShareActions(options);
+            assert.equal(actions[0], nativeMediaActions[0]);
+            assert.equal(nativeMediaActions.length, 1);
+            assert.equal(mediaShare.useMediaShareActions({ ...options, shareable: false }), nativeMediaActions);
+            assert.equal(mediaShare.useMediaShareActions({ ...options, source: { ...options.source, obscure: true } }), nativeMediaActions);
+            copyMedia = actions[1].action;
+            const sheet = { key: "LongPressUrl", header: { subtitle: plainLink }, options: [] };
+            copyLink = linkSheet.showSimpleActionSheet(sheet).options[0].onPress;
+            assert.equal(sheet.options.length, 0);
+            const unrelated = { ...sheet, key: "Unrelated" };
+            assert.equal(linkSheet.showSimpleActionSheet(unrelated), unrelated);
+            settings.safeMode = { enabled: true };
+            copyMedia();
+            copyLink();
+            settings.safeMode = undefined;
+        }
+        assert.equal(clipboardWrites.length, beforeMediaCopy);
+        copyMedia();
+        copyLink();
+        assert.deepEqual(clipboardWrites.slice(beforeMediaCopy), [signedMedia, plainLink]);
+        click(render(), "Disable CopyMediaLink");
+        copyMedia();
+        copyLink();
+        assert.equal(clipboardWrites.length, beforeMediaCopy + 2);
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
         for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {

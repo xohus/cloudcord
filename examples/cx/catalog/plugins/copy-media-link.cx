@@ -1,0 +1,3 @@
+plugin "CopyMediaLink":
+  needs media.clipboard
+  use copy-media-link

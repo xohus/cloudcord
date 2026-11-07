@@ -1,11 +1,11 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
-import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { addContextMenuPatch, findGroupChildrenByChildId, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { filterCxEmojiGrid } from "@utils/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink } from "@utils/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -79,6 +79,24 @@ function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links"
     };
     addContextMenuPatch(menus, patch);
     return () => { active = false; removeContextMenuPatch(menus, patch); };
+}
+
+function registerMediaLinkCopy() {
+    let active = true;
+    const id = "cx-copy-media-link";
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        if (!active) return;
+        const media = validateCxMediaLink(props?.src ?? props?.itemSrc);
+        const link = media ?? validateCxMediaLink(props?.href ?? props?.itemHref);
+        if (!link || findGroupChildrenByChildId(id, children)) return;
+        const group = findGroupChildrenByChildId("copy-native-link", children)
+            ?? findGroupChildrenByChildId("open-native-link", children) ?? children;
+        group.push(<Menu.MenuItem id={id} label={media ? "Copy Media Link" : "Copy Link"} action={() => {
+            if (active) void copyToClipboard(link).then(() => showToast("Link copied."), () => showToast("Couldn't copy the link."));
+        }} />);
+    };
+    addContextMenuPatch("image-context", patch);
+    return () => { active = false; removeContextMenuPatch("image-context", patch); };
 }
 
 function subscribeTypingDots(listener: () => void) {
@@ -241,6 +259,8 @@ export function CxSettings() {
                         case "copy-emoji-markdown":
                         case "sticker-links":
                             return registerExpressionLinks(effect);
+                        case "copy-media-link":
+                            return registerMediaLinkCopy();
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",
