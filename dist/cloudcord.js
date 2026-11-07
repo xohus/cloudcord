@@ -36694,12 +36694,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "CollectiblesShopEntryButton"
           ]
         },
+        "help-entry": {
+          plugin: "HideHelpButton",
+          label: "the Help entry",
+          css: 'a[href*="support.discord.com"][class*="anchor"], [aria-label="Help"] { display: none !important; }',
+          mobile: {
+            settingsEntry: "modules/user_settings/defs/native/SupportSetting.tsx"
+          }
+        },
         "nitro-entry": {
           plugin: "HideNitroTab",
           label: "the Nitro entry",
           css: 'a[href="/store"], [data-list-item-id$="___nitro"] { display: none !important; }',
           mobile: {
-            settingsRoute: "modules/user_settings/defs/native/PremiumSetting.tsx"
+            settingsEntry: "modules/user_settings/defs/native/PremiumSetting.tsx"
           }
         },
         "quests-entry": {
@@ -36707,7 +36715,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           label: "the Quests entry",
           css: 'a[href="/quest-home"], [data-list-item-id$="___quests"] { display: none !important; }',
           mobile: {
-            settingsRoute: "modules/user_settings/defs/native/QuestHomeSetting.tsx"
+            settingsEntry: "modules/user_settings/defs/native/QuestHomeSetting.tsx"
           }
         },
         "inbox-button": {
@@ -40356,6 +40364,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-help-button.cx
+  var hide_help_button_default;
+  var init_hide_help_button = __esm({
+    "../examples/cx/catalog/plugins/hide-help-button.cx"() {
+      hide_help_button_default = 'plugin "HideHelpButton":\n  needs appearance.hide\n  hide help-entry\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-image-alt-text.cx
   var hide_image_alt_text_default;
   var init_hide_image_alt_text = __esm({
@@ -42104,6 +42120,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_gif_button();
       init_hide_gift_button();
       init_hide_guild_boost_tag();
+      init_hide_help_button();
       init_hide_image_alt_text();
       init_hide_inbox_button();
       init_hide_jump_to_present();
@@ -42498,6 +42515,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideGuildBoostTag",
             source: hide_guild_boost_tag_default
+          },
+          {
+            name: "HideHelpButton",
+            source: hide_help_button_default
           },
           {
             name: "HideImageAltText",
@@ -43693,11 +43714,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
-  function hideSettingsRoute(path) {
+  function hideSettingsEntry(path) {
     var route = findByFilePath(path)?.default;
-    if (route?.type !== "route")
-      throw new Error("Discord's settings route is unavailable");
-    var binding = settingsRouteVisibility.get(route);
+    if (route?.type !== "route" && route?.type !== "pressable")
+      throw new Error("Discord's settings entry is unavailable");
+    var binding = settingsEntryVisibility.get(route);
     if (!binding) {
       var predicate2 = function(...args) {
         var visible = typeof original === "function" ? Reflect.apply(original, this, args) : true;
@@ -43727,7 +43748,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         value: predicate2
       });
       binding = state2;
-      settingsRouteVisibility.set(route, state2);
+      settingsEntryVisibility.set(route, state2);
     }
     var active = binding;
     active.users++;
@@ -43737,7 +43758,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         return;
       released = true;
       if (--active.users === 0) {
-        settingsRouteVisibility.delete(route);
+        settingsEntryVisibility.delete(route);
         active.restore();
       }
     };
@@ -44023,8 +44044,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               return registerTreeAppearance(mobile);
             if ("expressionPickerTab" in mobile)
               return registerExpressionPickerTab(mobile.expressionPickerTab);
-            if ("settingsRoute" in mobile)
-              return hideSettingsRoute(mobile.settingsRoute);
+            if ("settingsEntry" in mobile)
+              return hideSettingsEntry(mobile.settingsEntry);
             if ("hideComponentPaths" in mobile) {
               var components = mobile.hideComponentPaths.map((path) => findByFilePath(path)?.default);
               if (components.some((component) => !component))
@@ -44731,7 +44752,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsRouteVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -44776,7 +44797,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
       appearanceBindings = /* @__PURE__ */ new Map();
       hasUploadAnonymiser = false;
-      settingsRouteVisibility = /* @__PURE__ */ new WeakMap();
+      settingsEntryVisibility = /* @__PURE__ */ new WeakMap();
       profileMenuActions = /* @__PURE__ */ new Set();
     }
   });
@@ -49414,7 +49435,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "cdf85ab07ebf4e11d16179fa95eab1de55975034";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "4277c2d9e226a50f11c472ebdbc3cf9ece52463b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
