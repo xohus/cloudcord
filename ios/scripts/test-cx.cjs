@@ -1381,6 +1381,40 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const afterDisable = profileEvent(other);
         assert.equal((filterProfile(afterDisable) ?? afterDisable).userProfile.user_profile, userProfile);
 
+        selectCatalog("FakeProfileThemes");
+        click(render(), "Allow for this session");
+        const paletteCommand = registered["cx-profile-colors"];
+        const encodeColors = (primary, accent) => paletteCommand.execute([{ name: "primary", value: primary }, { name: "accent", value: accent }],
+            { channel: { id: "test-channel" } });
+        assert.equal(encodeColors("#7289DA", "00ff88"), undefined);
+        const [replyChannel, paletteReply] = delivered.pop();
+        assert.equal(replyChannel, "test-channel");
+        const encoded = paletteReply.split("\n")[2];
+        assert.equal([...encoded].map(char => String.fromCodePoint(char.codePointAt(0) - 0xe0000)).join(""), "[#7289da,#00ff88]");
+        const [applyBioTheme] = incomingHooks;
+        const bioProfile = Object.freeze({ bio: "hello " + encoded, pronouns: "they/them" });
+        const createBioEvent = profile => ({
+            type: "USER_PROFILE_FETCH_SUCCESS",
+            userProfile: Object.freeze({ user: { id: other }, user_profile: profile, guild_member_profile: guildProfile, badges, premium_type: 0 }),
+        });
+        const event = createBioEvent(bioProfile);
+        const bioResult = (applyBioTheme(event) ?? event).userProfile;
+        assert.deepEqual(Array.from(bioResult.user_profile.theme_colors), [0x7289da, 0x00ff88]);
+        assert.equal(bioResult.user_profile.bio, bioProfile.bio);
+        assert.equal(bioResult.user_profile.pronouns, "they/them");
+        assert.equal(bioResult.guild_member_profile, guildProfile);
+        assert.equal(bioResult.badges, badges);
+        assert.equal(bioResult.premium_type, 0);
+        assert.equal(Object.hasOwn(bioProfile, "theme_colors"), false);
+        const nativePaletteEvent = createBioEvent(Object.freeze({ ...bioProfile, themeColors: colors }));
+        assert.equal(applyBioTheme(nativePaletteEvent), undefined);
+        assert.equal(applyBioTheme(createBioEvent({ bio: "not a color code" })), undefined);
+        assert.equal(encodeColors("not-a-color", "00ff88"), undefined);
+        assert.match(delivered.pop()[1], /six hex digits/);
+        click(render(), "Disable FakeProfileThemes");
+        assert.equal(incomingHooks.length, 0);
+        assert.equal(registered["cx-profile-colors"], undefined);
+
         const avatarPort = cxCatalog.plugins.find(entry => entry.name === "AvatarGrabber").source;
         assert.throws(() => parseCx(avatarPort.replace(/^  needs profile\.avatar\r?\n/m, "")), /permissions/);
         assert.throws(() => parseCx(avatarPort.replace('"user" user optional', '"user" text optional')), /named text functions/);

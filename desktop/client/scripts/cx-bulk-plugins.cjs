@@ -709,16 +709,35 @@ function compileMobileSocialEvents(file, plugin, source) {
     return { capability: "social-event", lines: ["  needs " + recipe.permission, '  on incoming ' + recipe.rule + ' ""'] };
 }
 
-const sharedLinkTriggerSources = {
-    "desktop/client/src/sincordplugins/hopOn/index.tsx": "3ef7972c029f46c30087c04f1d2f84f2b923586d37e4c887f78b634a642e66a4",
-    "ios/runtime/src/core/plugins/hopon/index.ts": "b80f9939dd3697b31430d4e644784ae6a67515ab0f6041dd3b51bd38b8db73ab",
-};
+const sharedSourceRecipes = [
+    {
+        capability: "link-trigger",
+        sources: {
+            "desktop/client/src/sincordplugins/hopOn/index.tsx": "3ef7972c029f46c30087c04f1d2f84f2b923586d37e4c887f78b634a642e66a4",
+            "ios/runtime/src/core/plugins/hopon/index.ts": "b80f9939dd3697b31430d4e644784ae6a67515ab0f6041dd3b51bd38b8db73ab",
+        },
+        lines: ["  needs links.openonmessage", '  on incoming open-link "hop on |"'],
+    },
+    {
+        capability: "profile-bio-colors",
+        sources: {
+            "desktop/client/src/plugins/fakeProfileThemes/index.tsx": "2279c23c2668ecd548d9525d77ccfab45124946f75ac59f00eec7a00c5b41a35",
+            "ios/runtime/src/core/plugins/fakeprofilethemes/index.ts": "2c02ce82a65edf983fd09811095b5bfe07a1ca440eac997b081f24aa255a1ca0",
+        },
+        lines: [
+            "  needs appearance.style", "  needs commands.register", "  needs reply.local",
+            '  on incoming profile-bio-colors "prefer-native"',
+            '  on command "cx-profile-colors":',
+            '    input "primary" text', '    input "accent" text',
+            '    reply "${profileColors3y3(primary, accent)}" else "Enter both colors as six hex digits, like #7289da."',
+        ],
+    },
+];
 
-function compileLinkTrigger(file, code) {
-    if (!Object.hasOwn(sharedLinkTriggerSources, file)) return;
-    const sha256 = createHash("sha256").update(code.replaceAll("\r\n", "\n")).digest("hex");
-    if (sha256 !== sharedLinkTriggerSources[file]) return;
-    return { capability: "link-trigger", lines: ["  needs links.openonmessage", '  on incoming open-link "hop on |"'] };
+function compileSharedSource(file, code) {
+    const recipe = sharedSourceRecipes.find(recipe => Object.hasOwn(recipe.sources, file));
+    if (!recipe || createHash("sha256").update(code.replaceAll("\r\n", "\n")).digest("hex") !== recipe.sources[file]) return;
+    return { capability: recipe.capability, lines: recipe.lines };
 }
 
 function compileMobilePreviousEdit(file, plugin, source) {
@@ -863,7 +882,7 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
         && compileDesktopEffect(name, plugin, source, entry, nativeEffects);
     const externalLookup = platform === "desktop" && compileExternalLookup(name, code);
-    const compiled = compileLinkTrigger(file, code) || (platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
+    const compiled = compileSharedSource(file, code) || (platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)

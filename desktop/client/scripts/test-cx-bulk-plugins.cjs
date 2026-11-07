@@ -108,6 +108,13 @@ for (const port of linkPorts) {
     const original = fs.readFileSync(path.resolve(__dirname, "../../..", port.file), "utf8");
     assert.equal(inspectPlugin(port.file, original + "\n// Source changed", port.platform).cx, undefined);
 }
+const profileColorPorts = matches.filter(record => record.name === "FakeProfileThemes");
+assert.deepEqual(statuses(profileColorPorts), ["ready", "equivalent-source"]);
+for (const port of profileColorPorts) {
+    assert.equal(port.capability, "profile-bio-colors");
+    assert.equal(parseCx(port.cx).incoming[0].values[0], "prefer-native");
+    assert.equal(parseCx(port.cx).commands[0].name, "cx-profile-colors");
+}
 assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], platform: "betterdiscord" }]), ["compare-sources", "source-review"]);
 assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], cx: undefined }]), ["compare-mobile", "needs-adapter"]);
 assert.deepEqual(Array.from(parseCx(reactionPorts[0].cx).permissions), ["messages.reactshortcut"]);

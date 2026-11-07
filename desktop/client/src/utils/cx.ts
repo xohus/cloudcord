@@ -6,6 +6,7 @@ import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewriteCxOrigin } from "./cxMessageTransforms";
 import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
+import { formatCxProfileColors } from "./cxProfileColors";
 import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
 import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
 import { validateCxWallpaper } from "./cxWallpaper";
@@ -68,6 +69,7 @@ const permissionLabels = {
 const leetCharacters: Record<string, string> = { a: "4", e: "3", i: "1", o: "0", s: "5", t: "7", b: "8", g: "9", l: "1" };
 const textFunctions: Record<string, (...args: string[]) => string | undefined> = {
     ...cxCommandFunctions,
+    profileColors3y3: formatCxProfileColors,
     calculate,
     convert: convertUnits,
     length: (text: string) => String(text.length),
@@ -503,6 +505,9 @@ export function reviewCx(source: string) {
             .concat(document.incoming.flatMap(rule => {
                 if (rule.kind === "reply-ping-default") return ["Turn reply pings off initially and keep the composer toggle available"];
                 if (rule.kind === "hide-profile-themes") return ["Hide other users’ theme colors when their profiles load"];
+                if (rule.kind === "profile-bio-colors") return [rule.values[0] === "prefer-native"
+                    ? "Show colors encoded in bios when the profile has no native theme"
+                    : "Prefer colors encoded in bios over the profile's native theme"];
                 if (rule.kind === "hide-system") return ["Hide system messages for " + rule.values.join(", ")];
                 if (rule.kind === "open-link") return [rule.link
                     ? "Open " + rule.link + " when a message contains “" + rule.values[0] + "”"

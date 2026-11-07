@@ -1,0 +1,9 @@
+plugin "FakeProfileThemes":
+  needs appearance.style
+  needs commands.register
+  needs reply.local
+  on incoming profile-bio-colors "prefer-native"
+  on command "cx-profile-colors":
+    input "primary" text
+    input "accent" text
+    reply "${profileColors3y3(primary, accent)}" else "Enter both colors as six hex digits, like #7289da."

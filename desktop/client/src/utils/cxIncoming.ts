@@ -1,4 +1,5 @@
 import { parseCxHttpsOrigin } from "./cxMessageTransforms";
+import { decodeCxProfileColors } from "./cxProfileColors";
 
 // Shared behavior for the original GPL-3.0-or-later CloudCord notification ports.
 export const incomingPermissions = {
@@ -14,6 +15,7 @@ export const incomingPermissions = {
     "hide-blocked": "messages.filterlocal",
     "hide-system": "messages.filterlocal",
     "hide-profile-themes": "appearance.style",
+    "profile-bio-colors": "appearance.style",
     "friends-voice": "voice.notifyfriends",
     "follow-voice": "voice.followfriend",
     "friend-removals": "friends.notifyremoval",
@@ -38,6 +40,10 @@ export function parseIncomingRule(name: string, input: string): IncomingRule {
         try { parseCxHttpsOrigin(match[1]); }
         catch { throw new Error("Use an HTTPS destination without credentials or a custom scheme"); }
         return { kind, values: [phrase], link };
+    }
+    if (kind === "profile-bio-colors") {
+        if (input !== "prefer-native" && input !== "prefer-bio") throw new Error("Choose prefer-native or prefer-bio");
+        return { kind, values: [input] };
     }
     let always = false;
     if (kind === "reply-pings") {
@@ -108,6 +114,18 @@ export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, 
         return;
     }
     if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals") return;
+    if (rule.kind === "profile-bio-colors") {
+        if (type !== "USER_PROFILE_FETCH_SUCCESS") return;
+        const envelope = payload.userProfile ?? payload;
+        const profile = envelope.user_profile ?? envelope;
+        if (rule.values[0] === "prefer-native" && [profile.theme_colors, profile.themeColors]
+            .some(colors => Array.isArray(colors) && colors.length)) return;
+        const colors = decodeCxProfileColors(profile.bio);
+        if (!colors) return;
+        const change = { theme_colors: colors, themeColors: colors };
+        const patch = profile === envelope ? change : { user_profile: { ...profile, ...change } };
+        return envelope === payload ? patch : { userProfile: { ...envelope, ...patch } };
+    }
     if (rule.kind === "hide-profile-themes") {
         if (type !== "USER_PROFILE_FETCH_SUCCESS") return;
         const envelope = payload.userProfile ?? payload;
