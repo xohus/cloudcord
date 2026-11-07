@@ -1,0 +1,41 @@
+plugin "Vriska'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["bait"] with "b8" ignore-case
+    replace ["great"] with "gr8" ignore-case
+    replace ["late"] with "l8" ignore-case
+    replace ["wait"] with "w8" ignore-case
+    replace ["break"] with "br8k" ignore-case
+    replace ["steak"] with "st8k" ignore-case
+    replace ["replace"] with "repl8ce" ignore-case
+    replace ["skate"] with "sk8" ignore-case
+    replace ["skater"] with "sk8r" ignore-case
+    replace ["gatekeep"] with "g8k" ignore-case
+    replace ["gator"] with "g8r" ignore-case
+    replace ["private"] with "priv8" ignore-case
+    replace ["ultimate"] with "ultim8" ignore-case
+    replace ["prostate"] with "prost8" ignore-case
+    replace ["waiter"] with "w8r" ignore-case
+    replace ["ate"] with "8" ignore-case
+    replace ["ait"] with "8" ignore-case
+    replace ["eight"] with "8" ignore-case
+    replace ["create"] with "cre8" ignore-case
+    replace ["update"] with "upd8" ignore-case
+    replace ["date"] with "d8" ignore-case
+    replace ["fate"] with "f8" ignore-case
+    replace ["rate"] with "r8" ignore-case
+    replace ["mate"] with "m8" ignore-case
+    replace ["state"] with "st8" ignore-case
+    replace ["hate"] with "h8" ignore-case
+    replace ["activate"] with "activ8" ignore-case
+    replace ["celebrate"] with "celebr8" ignore-case
+    replace ["translate"] with "transl8" ignore-case
+    replace ["educate"] with "educ8" ignore-case
+    replace ["calculate"] with "calcul8" ignore-case
+    replace ["communicate"] with "communic8" ignore-case
+    replace ["participate"] with "particip8" ignore-case
+    replace ["weight"] with "w8" ignore-case
+    replace ["freight"] with "fr8" ignore-case
+    replace ["straight"] with "str8" ignore-case
+    replace ["trait"] with "tr8" ignore-case
+    replace ["b","B"] with "8"

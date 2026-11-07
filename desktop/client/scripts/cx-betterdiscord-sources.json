@@ -5,5 +5,61 @@
         "license": "MIT",
         "source": "https://github.com/Kawtious/HighResProfileImages/blob/402830211b48dfd57ff4f4641722c29de2a9f279/HighResProfileImages.plugin.js",
         "recipe": "avatar-resolution"
+    },
+    "3e31e20f863c86e08d90568ac4d3f312a1b241c05cde38a68d72a9b653afc6de": {
+        "name": "Equius'sTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/EquiusTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "9d1b3afbd6c4a1b6c45e80d4fffc0b15b5191834b2975218fbeaec09d5639635": {
+        "name": "EridanTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/EridanTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "75da54764696a06bd6333a5203d7baa846324a4831634223f4b287b7e6f83263": {
+        "name": "FeferiTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/FeferiTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "fab9e7555369d19821cb65c860bbc331c4a4e9bbf3eb9bd4ac42d7982311fc0d": {
+        "name": "Gamzee'sTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/GamzeeTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "0f23ede588773561d2d5a616fb278e5783b0cb3b5b60be0dc12db2222f691e9d": {
+        "name": "Nepeta'sTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/NepetaTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "f9aec8e16059a3dfcd0621ef22caf38acd7aa2fe106fc13911b1fb4c3172550a": {
+        "name": "SolluxTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/SolluxTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "a346b5cd1a9b84b5c3f89eb574b53fcc51c402822287ebd5c75da3807fd2fb03": {
+        "name": "TereziTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/TereziTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
+    },
+    "2d2e753395511eb16fb8379515d1ad507a21ae284327eca4d1ea51fb292397a5": {
+        "name": "Vriska'sTypingQuirk",
+        "author": "poff_null",
+        "license": "Unlicense",
+        "source": "https://github.com/poff-null/discord-plugins/blob/80e362d9133630e051953d43d001a2fca5a49c5f/VriskaTypingQuirk.plugin.js",
+        "recipe": "typing-rules"
     }
 }

@@ -1,0 +1,4 @@
+plugin "Gamzee'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    alternate-case

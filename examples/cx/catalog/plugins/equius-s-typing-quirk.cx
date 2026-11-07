@@ -1,0 +1,12 @@
+plugin "Equius'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["loo"] with "100" ignore-case
+    replace ["ool"] with "001" ignore-case
+    replace ["nay"] with "neigh" ignore-case
+    replace ["strong"] with "STRONG" ignore-case
+    replace ["strength"] with "STRONGNESS" ignore-case
+    replace ["strongness"] with "STRONGNESS" ignore-case
+    replace ["cross"] with "%" ignore-case
+    replace ["x","X"] with "%"
+    prefix "D --> "

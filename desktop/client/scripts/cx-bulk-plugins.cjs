@@ -118,6 +118,54 @@ function matchAppearanceStyles(stylesheet, appearance) {
     if (targets.length) return targets;
 }
 
+function compileBetterDiscordTypingRules(source) {
+    const plugin = source.statements.length === 1 && exportAssignment(source.statements[0]);
+    const constructor = plugin && ts.isClassExpression(plugin) && plugin.members.find(ts.isConstructorDeclaration);
+    const setup = constructor?.body?.statements.find(statement => ts.isExpressionStatement(statement)
+        && ts.isBinaryExpression(statement.expression) && printed(statement.expression.left, source) === "this.quirkPatterns");
+    const rules = setup?.expression.right;
+    if (!rules || !ts.isArrayLiteralExpression(rules)) return;
+    const lines = [];
+    for (const rule of rules.elements) {
+        if (!fieldsAre(rule, ["name", "regex", "replace"])) return;
+        const regex = value(rule, "regex");
+        const replacement = value(rule, "replace");
+        if (!regex || !ts.isRegularExpressionLiteral(regex) || !replacement) return;
+        const [, pattern, flags] = /^\/(.+)\/([a-z]*)$/.exec(regex.text) ?? [];
+        const replacementText = literal(replacement);
+        if (pattern === "^" && flags === "" && safeText(replacementText)) {
+            lines.push("    prefix " + JSON.stringify(replacementText));
+            continue;
+        }
+        if (ts.isArrowFunction(replacement) && pattern === String.raw`[\s\S]*` && flags === "") {
+            lines.push("    alternate-case");
+            continue;
+        }
+        if (ts.isArrowFunction(replacement) && pattern === "E+" && flags === "g") {
+            lines.push('    shorten-run "E" with "-"');
+            continue;
+        }
+        if (!pattern || !["g", "gi"].includes(flags) || !safeText(replacementText, true) || /\$[$&'\x60\d]/.test(replacementText)) return;
+        const wholeWord = pattern.startsWith("\\b") && pattern.endsWith("\\b");
+        let literalPattern = wholeWord ? pattern.slice(2, -2) : pattern;
+        let alternatives;
+        if (/^(?:\[[A-Za-z]+\])+$/.test(literalPattern)) {
+            alternatives = [""];
+            for (const [, characters] of literalPattern.matchAll(/\[([A-Za-z]+)\]/g)) {
+                alternatives = [...new Set(alternatives.flatMap(word => [...characters].map(character => word + character)))];
+                if (alternatives.length > 16) return;
+            }
+        } else {
+            if (literalPattern.startsWith("(") && literalPattern.endsWith(")")) literalPattern = literalPattern.slice(1, -1);
+            alternatives = literalPattern.split("|");
+            if (alternatives.some(word => !word.trim() || /[.*+?^$(){}\[\]\\]/.test(word))) return;
+        }
+        lines.push("    replace " + JSON.stringify(alternatives) + " with " + JSON.stringify(replacementText)
+            + (flags === "gi" ? " ignore-case" : "") + (wholeWord ? " whole-word" : ""));
+    }
+    if (lines.length) return ["  needs messages.transform", "  before send rewrite-text:", ...lines];
+}
+
 function inspectBetterDiscord(file, code, appearance) {
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
@@ -133,8 +181,15 @@ function inspectBetterDiscord(file, code, appearance) {
         commands: hooks.has("commands"), outgoing: hooks.has("outgoing-message"), settings: hooks.has("settings"),
         ui: hooks.has("component-render"), styles: hooks.has("appearance"),
     } };
-    const sha256 = createHash("sha256").update(code, "utf8").digest("hex");
+    const rawSha256 = createHash("sha256").update(code, "utf8").digest("hex");
+    const sha256 = reviewedBetterDiscordSources[rawSha256] ? rawSha256
+        : createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
     const review = reviewedBetterDiscordSources[sha256];
+    if (review?.name === name && review.recipe === "typing-rules" && !source.parseDiagnostics.length) {
+        const lines = compileBetterDiscordTypingRules(source);
+        if (lines) return { ...record, review: { ...review, sha256 }, capability: "outgoing-text",
+            cx: ["plugin " + JSON.stringify(name) + ":", ...lines, ""].join("\n") };
+    }
     if (review?.name === name && review.recipe === "avatar-resolution" && !source.parseDiagnostics.length) {
         const sizes = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
             .find(declaration => identifier(declaration.name) === "VALID_SIZES")?.initializer;

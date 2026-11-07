@@ -1,0 +1,168 @@
+plugin "Nepeta'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["perfect"] with "purrfect" ignore-case
+    replace ["awesome"] with "pawsome" ignore-case
+    replace ["muscles"] with "meowscles" ignore-case
+    replace ["mountain"] with "meowntain" ignore-case
+    replace ["personal"] with "purrsonal" ignore-case
+    replace ["fortunate"] with "fur-tunate" ignore-case
+    replace ["mysterious"] with "meowsterious" ignore-case
+    replace ["party"] with "paw-rty" ignore-case
+    replace ["history"] with "hisstory" ignore-case
+    replace ["purchase"] with "purrchase" ignore-case
+    replace ["motivation"] with "meowtivation" ignore-case
+    replace ["friend"] with "furiend" ignore-case
+    replace ["for real","forreal"] with "furreal" ignore-case
+    replace ["attitude"] with "cattitude" ignore-case
+    replace ["persuade"] with "purrsuade" ignore-case
+    replace ["positive"] with "pawsitive" ignore-case
+    replace ["beautiful"] with "mewtiful" ignore-case
+    replace ["forbidden"] with "furbidden" ignore-case
+    replace ["perception"] with "purrception" ignore-case
+    replace ["formidable"] with "furmidable" ignore-case
+    replace ["permanent"] with "purrmanent" ignore-case
+    replace ["possible"] with "pawsible" ignore-case
+    replace ["ferrari"] with "furrari" ignore-case
+    replace ["personality"] with "purrsonality" ignore-case
+    replace ["pause"] with "pawse" ignore-case
+    replace ["police"] with "pawlice" ignore-case
+    replace ["melody"] with "meowlody" ignore-case
+    replace ["perseverance"] with "purrseverance" ignore-case
+    replace ["forever"] with "furever" ignore-case
+    replace ["moment"] with "meowment" ignore-case
+    replace ["autograph"] with "pawtograph" ignore-case
+    replace ["perplexed"] with "purrplexed" ignore-case
+    replace ["amazing"] with "ameowzing" ignore-case
+    replace ["adorable"] with "adorapawl" ignore-case
+    replace ["afraid"] with "afurraid" ignore-case
+    replace ["allow"] with "ameow" ignore-case
+    replace ["amuse"] with "amewse" ignore-case
+    replace ["another"] with "anofur" ignore-case
+    replace ["anymore"] with "anyroar" ignore-case
+    replace ["appalled"] with "appawlled" ignore-case
+    replace ["appetite"] with "appurtite" ignore-case
+    replace ["approach"] with "apurroach" ignore-case
+    replace ["appropriate"] with "appuropriate" ignore-case
+    replace ["approve"] with "apurrove" ignore-case
+    replace ["apology"] with "apawlogy" ignore-case
+    replace ["attitude"] with "catitude" ignore-case
+    replace ["awesome"] with "pawesome" ignore-case
+    replace ["awful"] with "clawful" ignore-case whole-word
+    replace ["awful"] with "pawful" ignore-case whole-word
+    replace ["cause","because"] with "beclawse" ignore-case
+    replace ["bullshit"] with "cat litter" ignore-case
+    replace ["camomile"] with "camewmile" ignore-case
+    replace ["cause"] with "claws" ignore-case
+    replace ["cheater"] with "cheetah" ignore-case
+    replace ["clever"] with "clawver" ignore-case
+    replace ["cosplay"] with "clawsplay" ignore-case
+    replace ["determination"] with "defurrmination" ignore-case
+    replace ["different"] with "diffurent" ignore-case
+    replace ["disappearance"] with "disapurrance" ignore-case
+    replace ["discriminate"] with "discrimeownate" ignore-case
+    replace ["empress","emperess"] with "empurress" ignore-case
+    replace ["especially"] with "espeacpurrly" ignore-case
+    replace ["ever"] with "efur" ignore-case
+    replace ["everyone"] with "effurryone" ignore-case
+    replace ["everything"] with "efurrything" ignore-case
+    replace ["familiar"] with "furmiliar" ignore-case
+    replace ["favourite"] with "favfurite" ignore-case
+    replace ["feeling"] with "feline" ignore-case
+    replace ["ferocious"] with "furocious" ignore-case
+    replace ["for"] with "fur" ignore-case whole-word
+    replace ["forbid"] with "furbid" ignore-case
+    replace ["forever"] with "furever" ignore-case
+    replace ["forget"] with "furget" ignore-case
+    replace ["fortune"] with "furrtune" ignore-case
+    replace ["friend"] with "furiend" ignore-case
+    replace ["from"] with "furrom" ignore-case
+    replace ["frown"] with "furown" ignore-case
+    replace ["got"] with "cat" ignore-case whole-word
+    replace ["hands"] with "paws" ignore-case whole-word
+    replace ["hands"] with "claws" ignore-case whole-word
+    replace ["his"] with "hiss" ignore-case whole-word
+    replace ["history"] with "hisstory" ignore-case
+    replace ["hypocrite"] with "hypurrcrite" ignore-case
+    replace ["hysterical"] with "hissterical" ignore-case
+    replace ["kidding"] with "kitten" ignore-case
+    replace ["kiss"] with "hiss" ignore-case
+    replace ["legion"] with "leijon" ignore-case
+    replace ["letter"] with "litter" ignore-case
+    replace ["lying","liying"] with "lion" ignore-case
+    replace ["me out"] with "meowt" ignore-case
+    replace ["memory"] with "memeowry" ignore-case
+    replace ["moirail"] with "meowrail" ignore-case
+    replace ["moment"] with "mewment" ignore-case
+    replace ["mood"] with "mewd" ignore-case
+    replace ["mostly"] with "meowstly" ignore-case
+    replace ["motherfucker"] with "meowtherfurrker" ignore-case
+    replace ["mountain"] with "meowntain" ignore-case
+    replace ["movie"] with "mewvie" ignore-case
+    replace ["music"] with "mewsic" ignore-case
+    replace ["never"] with "nefur" ignore-case
+    replace ["new"] with "mew" ignore-case
+    replace ["now"] with "nyaw" ignore-case whole-word
+    replace ["oppressed"] with "opurressed" ignore-case
+    replace ["other"] with "ofurr" ignore-case
+    replace ["people"] with "peopurr" ignore-case
+    replace ["passage"] with "pawssage" ignore-case
+    replace ["party"] with "purtty" ignore-case
+    replace ["particular"] with "purrticular" ignore-case
+    replace ["pause"] with "paws" ignore-case
+    replace ["perchance"] with "purrchance" ignore-case
+    replace ["perfect"] with "purrfect" ignore-case
+    replace ["perhaps"] with "purrhaps" ignore-case
+    replace ["permission"] with "purrmission" ignore-case
+    replace ["perform"] with "purrform" ignore-case
+    replace ["performance"] with "purrformance" ignore-case
+    replace ["prepare"] with "prepurr" ignore-case
+    replace ["perpetrator"] with "purrpetrator" ignore-case
+    replace ["persnickety"] with "purrsnickety" ignore-case
+    replace ["persist"] with "purrsist" ignore-case
+    replace ["person"] with "purrson" ignore-case
+    replace ["personal"] with "purrsonal" ignore-case
+    replace ["persuasion"] with "purrsuasion" ignore-case
+    replace ["please"] with "pawlease" ignore-case
+    replace ["pleasure"] with "purrleasure" ignore-case
+    replace ["poetry"] with "pawetry" ignore-case
+    replace ["ponder"] with "pawnder" ignore-case
+    replace ["poor"] with "purr" ignore-case whole-word
+    replace ["popular"] with "pawpular" ignore-case
+    replace ["positive"] with "pawsitive" ignore-case
+    replace ["possible"] with "pawssible" ignore-case
+    replace ["pray"] with "purray" ignore-case
+    replace ["preach"] with "purreach" ignore-case
+    replace ["precious"] with "purrecious" ignore-case
+    replace ["prefer"] with "pawfur" ignore-case
+    replace ["prepare"] with "prepurr" ignore-case
+    replace ["pretend"] with "purretend" ignore-case
+    replace ["pretty"] with "purretty" ignore-case
+    replace ["prey"] with "purrey" ignore-case
+    replace ["problem"] with "purroblem" ignore-case
+    replace ["procrastinate"] with "purrcrastinate" ignore-case
+    replace ["promise"] with "puromise" ignore-case
+    replace ["proper"] with "purropurr" ignore-case
+    replace ["proud"] with "purroud" ignore-case
+    replace ["purple"] with "purrple" ignore-case
+    replace ["purplex","perplex"] with "purrplex" ignore-case
+    replace ["rather"] with "rafur" ignore-case
+    replace ["remember"] with "remempurr" ignore-case
+    replace ["sharper"] with "sharpurr" ignore-case
+    replace ["simply"] with "simpurly" ignore-case
+    replace ["somewhat"] with "somefluff" ignore-case
+    replace ["support"] with "supawrt" ignore-case
+    replace ["support"] with "suppurt" ignore-case
+    replace ["tale","tell"] with "tail" ignore-case
+    replace ["talent"] with "tailent" ignore-case
+    replace ["thankful"] with "thankfur" ignore-case
+    replace ["transparent"] with "transpurrent" ignore-case
+    replace ["theatre"] with "theatfurr" ignore-case
+    replace ["upon"] with "upawn" ignore-case
+    replace ["warfare"] with "warfurr" ignore-case
+    replace ["whenever"] with "whenefur" ignore-case
+    replace ["whisk her","whisper"] with "whisker" ignore-case
+    replace ["whisper"] with "whispurr" ignore-case
+    replace ["wonderful"] with "wonderfur" ignore-case
+    replace ["ee","eE","Ee","EE"] with "33"
+    prefix ":33 < "

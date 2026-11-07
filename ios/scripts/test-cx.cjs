@@ -1503,6 +1503,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             ["AutoVaporwave", "Hi 2", "Ｈｉ　２"],
             ["TextReplace", "hi :shrug:", "hi ¯\\_(ツ)_/¯"],
             ["ZeroWidthSanitizer", "hel\u200blo", "hello"],
+            ["Equius'sTypingQuirk", "LOO strong x https://example.test/X", "D --> 100 STRONG % https://example.test/X"],
+            ["EridanTypingQuirk", "V w v W www.example.test/w", "VV ww vv WW www.example.test/w"],
+            ["FeferiTypingQuirk", "EEE E H", "--E -E )("],
+            ["Gamzee'sTypingQuirk", "aB https://example.test/Cd cd", "Ab https://example.test/Cd Cd"],
+            ["Nepeta'sTypingQuirk", "awesome https://example.test/awesome", ":33 < pawsome https://example.test/awesome"],
+            ["SolluxTypingQuirk", "this is to", "thii2 ii2 two"],
+            ["TereziTypingQuirk", "Ai e", "41 3"],
+            ["Vriska'sTypingQuirk", "great B www.example.test/great", "gr8 8 www.example.test/great"],
         ];
         for (const [name, input, expected] of transforms) {
             const source = cxCatalog.plugins.find(entry => entry.name === name).source;

@@ -166,6 +166,27 @@ try {
     delete reviewed[digest];
 }
 const bdPort = inspectBd(bd);
+const typingQuirk = [
+    "/**", " * @name Reviewed typing rules", " */",
+    "module.exports = class { constructor() { this.quirkPatterns = [",
+    '{ name: "phrase", regex: /\\b(foo|bar)\\b/gi, replace: "test" },',
+    '{ name: "pair", regex: /[eE][eE]/g, replace: "33" },',
+    '{ name: "prefix", regex: /^/, replace: "> " },',
+    "]; } };",
+].join("\n");
+const typingDigest = require("node:crypto").createHash("sha256").update(typingQuirk).digest("hex");
+try {
+    reviewed[typingDigest] = { name: "Reviewed typing rules", recipe: "typing-rules", license: "Unlicense" };
+    const compiled = inspectBd(typingQuirk.replaceAll("\n", "\r\n"));
+    assert.equal(compiled.review.sha256, typingDigest);
+    assert.equal(parseCx(compiled.cx).messageTransforms[0].rules.length, 3);
+    assert.equal(inspectBd(typingQuirk.replace('"test"', '"tampered"')).cx, undefined);
+    assert.throws(() => parseCx(compiled.cx.replace('["foo","bar"]', '[""]')), /text alternatives/);
+    assert.throws(() => parseCx(compiled.cx.replace("    prefix", "    fetch")), /Unknown text rewrite rule/);
+    verifyPorts(new Map([["reviewed-typing-rules.cx", compiled.cx]]));
+} finally {
+    delete reviewed[typingDigest];
+}
 assert.equal(bdPort.capability, "appearance");
 assert.equal(parseCx(bdPort.cx).hiddenTargets.join(","), "bot-tags,profile-effects");
 assert.equal(inspectBd(bd.replace('removeStyle("clean")', 'removeStyle("other")')).cx, undefined);

@@ -1,0 +1,7 @@
+plugin "EridanTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["v"] with "vv"
+    replace ["w"] with "ww"
+    replace ["V"] with "VV"
+    replace ["W"] with "WW"

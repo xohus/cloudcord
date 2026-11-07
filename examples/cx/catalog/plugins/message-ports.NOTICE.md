@@ -1,6 +1,6 @@
 # Outgoing message ports
 
-These GPL-3.0-or-later examples adapt features from the existing CloudCord plugins.
+These GPL-3.0-or-later examples adapt features from CloudCord and BetterDiscord plugins.
 
 - ClearURLs by adryd and thororen.
 - Ingtoninator by zyqunix and BioTomateDE.
@@ -14,5 +14,6 @@ These GPL-3.0-or-later examples adapt features from the existing CloudCord plugi
 - EmbeddedURLs by rootpoi, kraethis, and ewlle (Endcord).
 - SedEnhanced by dawn, Willow, and kat. The CX correction uses literal text with the `g` and `i` flags and keeps the original message if the replacement would be empty.
 - MessageBurst by port. The CX rule merges ordinary text from the same author and channel inside the configured window.
+- The eight TypingQuirk ports adapt poff_null’s BetterDiscord plugins. The converter records the pinned source and Unlicense provenance for each port. [Upstream TypingQuirk sources](https://github.com/poff-null/discord-plugins/tree/80e362d9133630e051953d43d001a2fca5a49c5f)
 
 The [desktop client license](../../../../desktop/client/LICENSE) contains the GPL text.

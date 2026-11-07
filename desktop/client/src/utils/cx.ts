@@ -6,6 +6,7 @@ import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewriteCxOrigin } from "./cxMessageTransforms";
 import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
+import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
@@ -102,7 +103,8 @@ type TransformStage = "send" | "edit";
 type MessageTransform = { stage: TransformStage } & (
     { name: keyof typeof messageTransforms; options?: string } |
     { name: "replaceLiteral"; find: string; replacement: string } |
-    { name: "rewriteOrigin"; find: string; replacement: string }
+    { name: "rewriteOrigin"; find: string; replacement: string } |
+    { name: "rewriteText"; rules: ReturnType<typeof parseCxTextRule>[]; }
 );
 export type CxTheme = {
     kind: "theme";
@@ -216,8 +218,15 @@ export function parseCx(source: string): CxDocument {
     let readsAvatar = false;
     const clientPermissions = new Set<CxPermission>();
     let current: Command | undefined;
+    let textRules: ReturnType<typeof parseCxTextRule>[] | undefined;
     for (const line of lines) {
         if (!line.trim()) continue;
+        if (textRules && line.startsWith("    ")) {
+            if (textRules.length >= 256) throw new Error("Too many text rewrite rules");
+            textRules.push(parseCxTextRule(line, quoted));
+            continue;
+        }
+        textRules = undefined;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
         if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) {
             const permission = declaration[1] as CxPermission;
@@ -279,6 +288,15 @@ export function parseCx(source: string): CxDocument {
         if (previous) {
             if (previousRule) throw new Error("Choose one previous-message rule per plugin");
             previousRule = previous;
+            current = undefined;
+            continue;
+        }
+        const textRewrite = /^  before (send|edit) rewrite-text:$/.exec(line);
+        if (textRewrite) {
+            const stage = textRewrite[1] as TransformStage;
+            if (transforms.some(rule => rule.name === "rewriteText" && rule.stage === stage))
+                throw new Error("Use one text rewrite block per stage");
+            transforms.push({ stage, name: "rewriteText", rules: textRules = [] });
             current = undefined;
             continue;
         }
@@ -419,6 +437,7 @@ export function parseCx(source: string): CxDocument {
         required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
         if (name === "rewriteOrigin") required.add("messages.redirectlinks");
     }
+    if (transforms.some(rule => rule.name === "rewriteText" && !rule.rules.length)) throw new Error("A text rewrite block needs rules");
     for (const { actions } of commands) {
         for (const action of actions) {
             for (const permission of getActionPermissions(action)) required.add(permission);
@@ -447,7 +466,8 @@ export function reviewCx(source: string) {
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
-            .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement] : []))
+            .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement]
+                : rule.name === "rewriteText" ? [`Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`] : []))
             .concat(document.incoming.flatMap(rule => {
                 if (rule.kind === "hide-profile-themes") return ["Hide other users’ theme colors when their profiles load"];
                 if (rule.kind === "hide-system") return ["Hide system messages for " + rule.values.join(", ")];
@@ -556,7 +576,8 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                     if (rule.name === "rewriteOrigin") {
                         if (!rewrote) result = rewriteCxOrigin(result, origins);
                         rewrote = true;
-                    } else if (rule.name === "replaceLiteral") result = result.replaceAll(rule.find, () => rule.replacement);
+                    } else if (rule.name === "rewriteText") result = applyCxTextRules(result, rule.rules);
+                    else if (rule.name === "replaceLiteral") result = result.replaceAll(rule.find, () => rule.replacement);
                     else result = messageTransforms[rule.name](result, rule.options);
                     if (result.length > 4000) return text;
                 }

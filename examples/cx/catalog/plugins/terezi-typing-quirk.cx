@@ -1,0 +1,6 @@
+plugin "TereziTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["A"] with "4" ignore-case
+    replace ["I"] with "1" ignore-case
+    replace ["E"] with "3" ignore-case

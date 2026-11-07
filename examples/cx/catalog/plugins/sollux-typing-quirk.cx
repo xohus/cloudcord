@@ -1,0 +1,7 @@
+plugin "SolluxTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["i"] with "ii"
+    replace ["I"] with "II"
+    replace ["s","S"] with "2" ignore-case
+    replace ["to"] with "two" ignore-case
