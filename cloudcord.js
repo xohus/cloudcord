@@ -36445,6 +36445,26 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "ReanimatedGuildBanner"
           ]
         },
+        "server-boost-progress": {
+          plugin: "HideBoostGoal",
+          label: "the server boost progress bar",
+          css: '[class*="boostProgressBar"], [class*="progressBar"][class*="guild"] { display: none !important; }',
+          mobile: {
+            hideComponentPaths: [
+              "modules/guild_boosting/native/marketing_redesign/GuildBoostingMarketingProgressBar.tsx"
+            ]
+          }
+        },
+        "server-boost-gem": {
+          plugin: "HideGuildBoostTag",
+          label: "the server boost gem",
+          css: '[class*="premiumGuildIcon"], [aria-label*="Server Boost"] svg { display: none !important; }',
+          mobile: {
+            hideComponentPaths: [
+              "modules/premium/powerups/native/GuildPowerupsBoostGem.tsx"
+            ]
+          }
+        },
         "chat-gift-button": {
           plugin: "HideGiftButton",
           label: "the chat gift button",
@@ -39387,6 +39407,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-boost-goal.cx
+  var hide_boost_goal_default;
+  var init_hide_boost_goal = __esm({
+    "../examples/cx/catalog/plugins/hide-boost-goal.cx"() {
+      hide_boost_goal_default = 'plugin "HideBoostGoal":\n  needs appearance.hide\n  hide server-boost-progress\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-bot-tags.cx
   var hide_bot_tags_default;
   var init_hide_bot_tags = __esm({
@@ -39464,6 +39492,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_gift_button = __esm({
     "../examples/cx/catalog/plugins/hide-gift-button.cx"() {
       hide_gift_button_default = 'plugin "HideGiftButton":\n  needs appearance.hide\n  hide chat-gift-button\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-guild-boost-tag.cx
+  var hide_guild_boost_tag_default;
+  var init_hide_guild_boost_tag = __esm({
+    "../examples/cx/catalog/plugins/hide-guild-boost-tag.cx"() {
+      hide_guild_boost_tag_default = 'plugin "HideGuildBoostTag":\n  needs appearance.hide\n  hide server-boost-gem\n';
     }
   });
 
@@ -40872,6 +40908,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_apps_button();
       init_hide_avatar_decorations();
       init_hide_badges();
+      init_hide_boost_goal();
       init_hide_bot_tags();
       init_hide_call_buttons();
       init_hide_channel_topic();
@@ -40882,6 +40919,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_embeds();
       init_hide_empty_folders();
       init_hide_gift_button();
+      init_hide_guild_boost_tag();
       init_hide_image_alt_text();
       init_hide_inbox_button();
       init_hide_jump_to_present();
@@ -41176,6 +41214,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_badges_default
           },
           {
+            name: "HideBoostGoal",
+            source: hide_boost_goal_default
+          },
+          {
             name: "HideBotTags",
             source: hide_bot_tags_default
           },
@@ -41214,6 +41256,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideGiftButton",
             source: hide_gift_button_default
+          },
+          {
+            name: "HideGuildBoostTag",
+            source: hide_guild_boost_tag_default
           },
           {
             name: "HideImageAltText",
@@ -42283,6 +42329,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile)
               return registerTreeAppearance(mobile);
+            if ("hideComponentPaths" in mobile) {
+              var components = mobile.hideComponentPaths.map((path) => findByFilePath(path)?.default);
+              if (components.some((component) => !component))
+                throw new Error("Discord's appearance components are unavailable");
+              return registerJsxAppearance(components, () => null);
+            }
             if ("scrollIndicators" in mobile) {
               var scrollViews = /* @__PURE__ */ new Set([
                 import_react_native41.ScrollView,
@@ -42292,10 +42344,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 import_react_native41.Animated?.FlatList,
                 import_react_native41.Animated?.SectionList
               ]);
-              var components = [
+              var components1 = [
                 ...scrollViews
               ].filter((component) => component != null);
-              return registerJsxAppearance(components, (element) => React2.cloneElement(element, {
+              return registerJsxAppearance(components1, (element) => React2.cloneElement(element, {
                 showsHorizontalScrollIndicator: false,
                 showsVerticalScrollIndicator: false
               }));
@@ -47572,7 +47624,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "7452cf75e9a46a0c39fc6c68abf241f46895e91e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "584cef61fee8d52bfab33ca93b17024c4be388ef";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
