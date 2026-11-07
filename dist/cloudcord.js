@@ -36568,6 +36568,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             hideLongPressMenu: true
           }
         },
+        "channel-threads-button": {
+          plugin: "HideThreadsButton",
+          label: "the threads shortcut in the channel header",
+          css: '[aria-label="Threads"] { display: none !important; }',
+          mobile: {
+            renderComponent: "ChannelActionButtons",
+            hideControlIcons: [
+              "ThreadIcon"
+            ]
+          }
+        },
         "chat-character-counter": {
           plugin: "HideCharacterCount",
           label: "the chat character counter",
@@ -40423,6 +40434,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-threads-button.cx
+  var hide_threads_button_default;
+  var init_hide_threads_button = __esm({
+    "../examples/cx/catalog/plugins/hide-threads-button.cx"() {
+      hide_threads_button_default = 'plugin "HideThreadsButton":\n  needs appearance.hide\n  hide channel-threads-button\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-timestamps.cx
   var hide_timestamps_default;
   var init_hide_timestamps = __esm({
@@ -41966,6 +41985,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_stickers();
       init_hide_stream_previews();
       init_hide_system_messages();
+      init_hide_threads_button();
       init_hide_timestamps();
       init_hide_typing_indicator();
       init_hide_unread_pills();
@@ -42408,6 +42428,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideSystemMessages",
             source: hide_system_messages_default
+          },
+          {
+            name: "HideThreadsButton",
+            source: hide_threads_button_default
           },
           {
             name: "HideTimestamps",
@@ -43320,20 +43344,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     });
   }
   function registerTreeAppearance(rule) {
-    var target = findByFilePath(rule.renderTree)?.default;
-    var inner = target?.$$typeof === Symbol.for("react.memo") ? target.type : void 0;
-    var forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
-    var render = forwardsRef ? inner.render : inner;
-    if (typeof render !== "function") {
+    var target = "renderTree" in rule ? findByFilePath(rule.renderTree)?.default : rule.renderComponent;
+    if (!target)
       throw new Error("Discord's appearance component is unavailable");
-    }
     var getTypes = (names) => new Set(names.map((name) => findByProps(name)?.[name]).filter(Boolean));
     var components = getTypes(rule.hideComponents ?? []);
     var icons = getTypes(rule.hideIcons ?? []);
     var controlIcons = getTypes(rule.hideControlIcons ?? []);
     var longPressMenu = rule.hideLongPressMenu && findByProps("ContextMenu")?.ContextMenu;
     if (rule.hideControlIcons && controlIcons.size !== rule.hideControlIcons.length || rule.hideLongPressMenu && !longPressMenu) {
-      throw new Error("Discord's attachment controls are unavailable");
+      throw new Error("Discord's appearance controls are unavailable");
     }
     var translations = (rule.hideLabels || rule.hideText) && findByProps("intl", "t");
     var translate = (keys = []) => keys.flatMap((key) => {
@@ -43356,23 +43376,40 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var { children, accessibilityRole, accessibilityLabel, onPress, IconComponent, triggerOnLongPress } = props;
       return components.has(type) || Boolean(longPressMenu && type === longPressMenu && triggerOnLongPress === true) || accessibilityRole === "text" && typeof children === "string" && text.has(children) || typeof onPress === "function" && (controlIcons.has(IconComponent) || Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons));
     };
-    function FilteredTree(props, ref) {
-      var tree = render(props, ref);
-      return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
-    }
-    var filtered = React2.memo(forwardsRef ? React2.forwardRef(FilteredTree) : FilteredTree, target.compare);
+    var wrappers = /* @__PURE__ */ new WeakMap();
     return registerJsxAppearance([
       target
     ], (element) => {
-      if (element.type !== target)
+      if (typeof target !== "string" && element.type !== target)
         return element;
+      var component = element.type;
+      var wrapper = wrappers.get(component);
+      if (!wrapper) {
+        var FilteredTree2 = function(props2, ref) {
+          var tree = render(props2, ref);
+          return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
+        };
+        var FilteredTree = FilteredTree2;
+        var memoized = component?.$$typeof === Symbol.for("react.memo");
+        var inner = memoized ? component.type : component;
+        var forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
+        var render = forwardsRef ? inner.render : inner;
+        if (typeof render !== "function" || render.prototype?.isReactComponent)
+          return element;
+        var filtered = forwardsRef ? React2.forwardRef(FilteredTree2) : FilteredTree2;
+        wrapper = {
+          type: memoized ? React2.memo(filtered, component.compare) : filtered,
+          forwardsRef
+        };
+        wrappers.set(component, wrapper);
+      }
       var props = {
         ...element.props,
         key: element.key
       };
-      if (forwardsRef)
+      if (wrapper.forwardsRef)
         props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
-      return React2.createElement(filtered, props);
+      return React2.createElement(wrapper.type, props);
     });
   }
   function registerRenderedChannelStyle(rule) {
@@ -43603,7 +43640,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           registerProfileMenuAction,
           hideAppearanceTarget(target) {
             var mobile = cxAppearanceTargets[target].mobile;
-            if ("renderTree" in mobile)
+            if ("renderTree" in mobile || "renderComponent" in mobile)
               return registerTreeAppearance(mobile);
             if ("hideComponentPaths" in mobile) {
               var components = mobile.hideComponentPaths.map((path) => findByFilePath(path)?.default);
@@ -48991,7 +49028,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "85bba33b902cef0eb8af99f48aba1e4e40e53b2b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "cf6ccbdae8ac23328f55f7bf5a9131a577761a51";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
