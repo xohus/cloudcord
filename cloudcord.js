@@ -38365,6 +38365,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "flat-attachments": {
           permission: "appearance.style",
           label: "Show chat attachments individually without the media grid"
+        },
+        "split-long-messages": {
+          permission: "messages.split",
+          label: "Split long drafts into at most eight messages when slowmode is off"
         }
       };
       cxAvatarResolutions = [
@@ -39003,6 +39007,140 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       shortcut = RegExp("^(\\++)(?::([\\w~-]+):|<a?:[\\w~-]+:(\\d{17,20})>|(\\p{Extended_Pictographic}(?:\\ufe0f|\\p{Emoji_Modifier}|\\u200d\\p{Extended_Pictographic})*|\\p{Regional_Indicator}{2}|[0-9#*]\\ufe0f?\\u20e3))$", "u");
       snowflake = /^\d{17,20}$/;
+    }
+  });
+
+  // src/lib/api/cxSplitMessages.ts
+  function planCxMessageParts(draft, premiumType) {
+    var limit = premiumType === 2 ? 4e3 : 2e3;
+    if (typeof draft !== "string" || draft.length > limit * maxParts)
+      return;
+    var remaining = draft.trim();
+    if (remaining.length <= limit)
+      return;
+    var parts = [];
+    while (remaining.length > limit) {
+      if (parts.length === maxParts - 1)
+        return;
+      var space = Math.max(remaining.lastIndexOf(" ", limit - 1), remaining.lastIndexOf("\n", limit - 1));
+      var end = space >= limit / 2 ? space + 1 : limit;
+      var code = remaining.charCodeAt(end - 1);
+      if (code >= 55296 && code <= 56319)
+        end--;
+      var part = remaining.slice(0, end);
+      if (!part.trim())
+        return;
+      parts.push(part);
+      remaining = remaining.slice(end);
+    }
+    if (!remaining.trim())
+      return;
+    parts.push(remaining);
+    return parts;
+  }
+  function failedSend(result) {
+    return result === false || Boolean(result && typeof result === "object" && ("ok" in result && result.ok === false || "status" in result && typeof result.status === "number" && result.status >= 400));
+  }
+  function createCxSplitSender(host) {
+    var busy = /* @__PURE__ */ new Set();
+    var wait = host.wait ?? (() => new Promise((resolve) => setTimeout(resolve, 1e3)));
+    function plan(channelId, draft) {
+      if (!host.enabled() || typeof channelId !== "string")
+        return;
+      var user = host.currentUser();
+      var channel = host.channel(channelId);
+      if (!user?.id || !channel || (channel.rateLimitPerUser ?? channel.rate_limit_per_user ?? 0) !== 0)
+        return;
+      var key = user.id + ":" + channelId;
+      if (busy.has(key))
+        return;
+      var parts = planCxMessageParts(draft, user.premiumType);
+      if (parts)
+        return {
+          user: user.id,
+          channelId,
+          key,
+          parts
+        };
+    }
+    return {
+      canSplit(channel, text) {
+        return Boolean(plan(channel, text));
+      },
+      send(args, invoke) {
+        var [channel, draft, ready, sendOptions] = args;
+        var message = draft;
+        var options = sendOptions;
+        if (message?.tts || message?.attachments?.length || message?.stickers?.length || message?.stickerIds?.length || options?.uploads?.length || options?.stickers?.length || options?.stickerIds?.length || options?.scheduledTimestamp)
+          return invoke(args);
+        var pending2 = plan(channel, message?.content);
+        if (!pending2)
+          return invoke(args);
+        var { channelId, parts, key, user } = pending2;
+        busy.add(key);
+        return (() => _async_to_generator(function* () {
+          try {
+            var first = yield invoke([
+              channelId,
+              {
+                ...message,
+                content: parts[0]
+              },
+              ...args.slice(2)
+            ]);
+            if (failedSend(first))
+              return first;
+            for (var part of parts.slice(1)) {
+              yield wait();
+              var currentChannel = host.channel(channelId);
+              if (!host.enabled() || host.currentUser()?.id !== user || !currentChannel || (currentChannel.rateLimitPerUser ?? currentChannel.rate_limit_per_user ?? 0) !== 0) {
+                host.failed();
+                break;
+              }
+              try {
+                var followUp = yield invoke([
+                  channelId,
+                  {
+                    content: part,
+                    validNonShortcutEmojis: message?.validNonShortcutEmojis ?? [],
+                    invalidEmojis: [],
+                    tts: false
+                  },
+                  ready,
+                  {
+                    flags: (options?.flags ?? 0) & 4096,
+                    ...options?.allowedMentions ? {
+                      allowedMentions: {
+                        ...options.allowedMentions,
+                        repliedUser: false,
+                        replied_user: false
+                      }
+                    } : {}
+                  }
+                ]);
+                if (!failedSend(followUp))
+                  continue;
+              } catch (e) {
+              }
+              host.failed();
+              break;
+            }
+            return first;
+          } finally {
+            busy.delete(key);
+          }
+        })())();
+      }
+    };
+  }
+  var maxParts;
+  var init_cxSplitMessages = __esm({
+    "src/lib/api/cxSplitMessages.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      maxParts = 8;
     }
   });
 
@@ -39869,6 +40007,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxPreviousMessage();
       init_cxSocialEvents();
       init_cxPlusReactions();
+      init_cxSplitMessages();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -39876,6 +40015,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "ui.toast": "Show local popups",
         "reply.local": "Show a command reply visible only to you",
         "messages.send": "Send the result to the current chat when you run a listed command",
+        "messages.split": "Send your long drafts as separate messages in the same channel",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
@@ -41341,6 +41481,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/split-large-messages.cx
+  var split_large_messages_default;
+  var init_split_large_messages = __esm({
+    "../examples/cx/catalog/plugins/split-large-messages.cx"() {
+      split_large_messages_default = 'plugin "SplitLargeMessages":\n  needs messages.split\n  use split-long-messages\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/spotify-share-commands.cx
   var spotify_share_commands_default;
   var init_spotify_share_commands = __esm({
@@ -42451,6 +42599,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_silent_typing();
       init_sollux_typing_quirk();
       init_space_out();
+      init_split_large_messages();
       init_spotify_share_commands();
       init_starify();
       init_sticker_blocker();
@@ -43075,6 +43224,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: space_out_default
           },
           {
+            name: "SplitLargeMessages",
+            source: split_large_messages_default
+          },
+          {
             name: "SpotifyShareCommands",
             source: spotify_share_commands_default
           },
@@ -43554,6 +43707,60 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   __export(CxExtensions_exports, {
     default: () => CxExtensions
   });
+  function registerSplitSender() {
+    if (splitSender)
+      throw new Error("A CX message splitter is already active");
+    var sender = createCxSplitSender({
+      currentUser: () => UserStore2?.getCurrentUser?.(),
+      channel: (id) => ChannelStore?.getChannel?.(id),
+      enabled: () => splitSender === sender && !settings.safeMode?.enabled,
+      failed: () => {
+        showToast("The remaining message parts were not sent.");
+      }
+    });
+    var limits = findByFilePath("modules/messages/useMessageMaxLength.tsx");
+    var composer = findByFilePath("modules/chat_input/native/accessories/ChatInputSendUtils.tsx");
+    var checkingDraft = false;
+    var cleanups = [];
+    var stop = () => {
+      if (splitSender === sender)
+        splitSender = void 0;
+      for (var cleanup of cleanups.reverse())
+        cleanup();
+    };
+    try {
+      cleanups.push(overrideCxMethods(limits, {
+        getMaxMessageLength: (args, invoke) => checkingDraft ? 32e3 : invoke(args)
+      }));
+      cleanups.push(overrideCxMethods(composer, {
+        chatInputValidateContentLength(args, invoke) {
+          var draft = args[0];
+          var channel = draft?.params?.channel?.id;
+          if (draft?.params?.hasAttachmentsToUpload || !sender.canSplit(channel, draft?.text))
+            return invoke(args);
+          var parsed;
+          var previous = checkingDraft;
+          checkingDraft = true;
+          try {
+            parsed = invoke(args);
+          } finally {
+            checkingDraft = previous;
+          }
+          if (parsed && typeof parsed === "object" && "content" in parsed && sender.canSplit(channel, parsed.content))
+            return parsed;
+          return invoke(args);
+        }
+      }));
+      cleanups.push(overrideCxMethods(messageUtil, {
+        sendMessage: sender.send
+      }));
+    } catch (error) {
+      stop();
+      throw error;
+    }
+    splitSender = sender;
+    return stop;
+  }
   function bindAppearance(name) {
     var revision = 0;
     var changes = /* @__PURE__ */ new Set();
@@ -44600,6 +44807,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "static-typing-dots":
                 return registerStaticTypingDots();
+              case "split-long-messages":
+                return registerSplitSender();
               case "flat-attachments": {
                 var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
                 return overrideCxMethods(renderer, {
@@ -45071,7 +45280,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, splitSender, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -45083,6 +45292,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_patcher();
       init_cx();
       init_cxCatalog();
+      init_cx();
       init_commands();
       init_ccpInspect();
       init_ccpReport();
@@ -49754,7 +49964,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "fa24de77eeff8fd078161b73e66f8dcffa0ad084";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "5dea94cf325cf339e8b8e7ead3a995e58c7640e5";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
