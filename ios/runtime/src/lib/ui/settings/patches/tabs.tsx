@@ -41,21 +41,26 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     ] as const;
     (globalThis as any).__CLOUDCORD_SETTINGS_FALLBACKS__ = fallbackNames;
 
+    // These routes are destinations for code that supplies page params. Native
+    // Settings search indexes the renderer table, so keep the routes out of it.
     const getCustomRoutes = () => ({
         VendettaCustomPage: {
             type: "route",
+            unsearchable: true,
             title: () => "CloudCord",
             useTitle: () => "CloudCord",
             screen: { route: "VendettaCustomPage", getComponent: () => CustomPageRenderer }
         },
         PUPU_CUSTOM_PAGE: {
             type: "route",
+            unsearchable: true,
             title: () => "CloudCord",
             useTitle: () => "CloudCord",
             screen: { route: "PUPU_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
         },
         BUNNY_CUSTOM_PAGE: {
             type: "route",
+            unsearchable: true,
             title: () => "CloudCord",
             useTitle: () => "CloudCord",
             screen: { route: "BUNNY_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
@@ -100,26 +105,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     // internal sections first and incorrectly nest CloudCord inside Account.
     if (!usesModernSettings()) {
         (globalThis as any).__CLOUDCORD_331_ROOT_SETTINGS__ = true;
-        const customRoutes = {
-            VendettaCustomPage: {
-                type: "route",
-                title: () => "CloudCord",
-                useTitle: () => "CloudCord",
-                screen: { route: "VendettaCustomPage", getComponent: () => CustomPageRenderer }
-            },
-            PUPU_CUSTOM_PAGE: {
-                type: "route",
-                title: () => "CloudCord",
-                useTitle: () => "CloudCord",
-                screen: { route: "PUPU_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
-            },
-            BUNNY_CUSTOM_PAGE: {
-                type: "route",
-                title: () => "CloudCord",
-                useTitle: () => "CloudCord",
-                screen: { route: "BUNNY_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
-            }
-        };
+        const customRoutes = getCustomRoutes();
 
         const originalConfig = settingConstants.SETTING_RENDERER_CONFIG;
         let liveConfig = originalConfig;

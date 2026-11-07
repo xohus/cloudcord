@@ -88,6 +88,11 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         }
         assert.equal(nativeTable.CLOUDCORD.key, 'CLOUDCORD', 'captured live renderer table gets rows');
         assert.equal(typeof nativeTable.PUPU_CUSTOM_PAGE.screen.getComponent(), 'function', 'custom page route registered');
+        for (const route of ['VendettaCustomPage', 'PUPU_CUSTOM_PAGE', 'BUNNY_CUSTOM_PAGE']) {
+            assert.equal(nativeTable[route].unsearchable, true, 'generic route must not appear in native settings search');
+            assert.equal(nativeTable[route].screen.route, route, 'direct navigation still resolves the route');
+        }
+        assert.equal(nativeTable.CLOUDCORD.unsearchable, undefined, 'the actual CloudCord row remains searchable');
         // Actual Android 352 list props, cached before injection; frozen like
         // a compiler-owned node. Navigation retains the original screen/list.
         const frozenNode = Object.freeze({ sections: Object.freeze([
