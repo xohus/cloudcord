@@ -820,6 +820,47 @@ function registerRenderedChannelStyle(rule: {
     });
 }
 
+let reducedMotionAppearance: { users: number; restore: () => void; } | undefined;
+
+function registerReducedMotion() {
+    if (!reducedMotionAppearance) {
+        const store = findByStoreName("AccessibilityStore");
+        const key = "useReducedMotion";
+        const previous = store && Object.getOwnPropertyDescriptor(store, key);
+        let descriptor = previous;
+        for (let prototype = store && Object.getPrototypeOf(store); prototype && !descriptor; prototype = Object.getPrototypeOf(prototype))
+            descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+        const original = descriptor?.get;
+        if (!original || typeof store?.emitChange !== "function") throw new Error("Discord's reduced motion setting is unavailable");
+        const read = function (this: unknown) {
+            return settings.safeMode?.enabled ? original.call(this) : true;
+        };
+        Object.defineProperty(store, key, { configurable: true, enumerable: descriptor?.enumerable, get: read, set: descriptor?.set });
+        const restore = () => {
+            if (Object.getOwnPropertyDescriptor(store, key)?.get !== read) return;
+            if (previous) Object.defineProperty(store, key, previous);
+            else Reflect.deleteProperty(store, key);
+        };
+        try {
+            store.emitChange();
+        } catch (error) {
+            restore();
+            throw error;
+        }
+        reducedMotionAppearance = { users: 0, restore() {
+            restore();
+            store.emitChange();
+        } };
+    }
+    const binding = reducedMotionAppearance;
+    binding.users++;
+    return () => {
+        if (--binding.users > 0) return;
+        reducedMotionAppearance = undefined;
+        binding.restore();
+    };
+}
+
 const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
 let stopProfileMenuHooks: (() => void) | undefined;
 
@@ -1072,6 +1113,7 @@ export default function CxExtensions() {
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
+                    if ("reducedMotion" in style) return registerReducedMotion();
                     if ("mentionHighlight" in style) {
                         const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
                         const highlightColor = processColor(style.mentionHighlight);

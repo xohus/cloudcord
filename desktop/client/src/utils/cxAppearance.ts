@@ -380,6 +380,11 @@ export const cxAppearanceTargets = {
         css: '[class*="containerDefault"] [class*="modeMuted"], [class*="containerDefault"]:not(:has([class*="unread"])) [class*="name_"] { opacity: .6; }',
         style: { renderedComponents: ["ChannelTitle"], condition: "inactive", values: { opacity: 0.6 } },
     },
+    "reduced-motion": {
+        plugin: "NoAnimations", label: "reduce interface animations and transitions",
+        css: "*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }",
+        style: { reducedMotion: true },
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;

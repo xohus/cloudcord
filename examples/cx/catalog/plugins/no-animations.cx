@@ -1,0 +1,3 @@
+plugin "NoAnimations":
+  needs appearance.style
+  style reduced-motion

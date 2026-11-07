@@ -246,7 +246,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const splitComposer = { chatInputValidateContentLength: ({ text }) => text.length <= splitLimit.getMaxMessageLength() ? { content: text } : undefined };
         const upgradeChannel = function (channelId) { assert.equal(this, stores.UnreadSettingNoticeStore2); autoUpgrades++; return channelId; };
         let pingDnd = false, pingMuted = false;
+        let motionPreference = false;
+        let motionUpdates = 0;
+        class AccessibilityStore {
+            get useReducedMotion() { return motionPreference; }
+            emitChange() { motionUpdates++; }
+        }
         const stores = {
+            AccessibilityStore: new AccessibilityStore(),
             PresenceStore: { getStatus: () => pingDnd ? "dnd" : "online" },
             UserGuildSettingsStore: { isMuted: () => pingMuted },
             UnreadSettingNoticeStore2: { maybeAutoUpgradeChannel: upgradeChannel },
@@ -617,6 +624,22 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", style: baseStyle, styles: originalStyles }) });
             const wraps = [];
             if (desktop) assert.equal(stylesheet.textContent, rule.css);
+            else if (rule.style?.reducedMotion) {
+                const store = stores.AccessibilityStore;
+                assert.equal(store.useReducedMotion, true);
+                assert.equal(motionUpdates, 1);
+                settings.safeMode = { enabled: true };
+                assert.equal(store.useReducedMotion, false);
+                motionPreference = true;
+                assert.equal(store.useReducedMotion, true);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(Object.hasOwn(store, "useReducedMotion"), false);
+                assert.equal(store.useReducedMotion, true);
+                assert.equal(motionUpdates, 2);
+                motionPreference = false;
+                continue;
+            }
             else if (rule.style?.mentionHighlight) {
                 const highlighted = messageRenderer.default();
                 assert.notEqual(highlighted, messagePresentation);
@@ -2652,6 +2675,52 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         if (desktop) assert.match(stylesheet.textContent, /color-scheme: light/);
         else assert.equal(nativeMode, "light");
         click(render(), "Disable Midnight - Light");
+
+        const activationFailures = [];
+        const installedHooks = () => ({
+            commands: Object.keys(registered).sort(),
+            send: transformHooks.size,
+            edit: editHooks.size,
+            incoming: incomingHooks.length,
+            menus: menuPatches.size,
+            appearance: appearanceHooks.size,
+            colors: colorOverlays.size,
+            pendingEmojiPicker: emojiPickerWaiters.size,
+            stylesheet,
+        });
+        const baseline = installedHooks();
+        for (const entry of cxCatalog.plugins) {
+            selectCatalog(entry.name);
+            click(render(), "Allow for this session");
+            const deactivate = "Disable " + entry.name;
+            if (!button(render(), deactivate)) {
+                const status = find(render(), item => item.props.accessibilityLiveRegion === "polite" || item.props.role === "status");
+                activationFailures.push([entry.name, status?.props.children]);
+                continue;
+            }
+            click(render(), deactivate);
+            assert.equal(button(render(), deactivate), undefined, entry.name + " should deactivate");
+            assert.deepEqual(installedHooks(), baseline, entry.name + " should release its adapter registrations");
+        }
+        assert.deepEqual(activationFailures, [], (desktop ? "Desktop" : "Mobile") + " CX catalog activation failures");
+        for (const entry of cxCatalog.themes) {
+            const theme = parseCx(entry.source);
+            selectCatalog(entry.name);
+            click(render(), "Allow for this session");
+            if (desktop) {
+                assert.ok(stylesheet?.textContent.includes("--background-primary: " + theme.background), entry.name);
+                if (theme.wallpaper) assert.ok(stylesheet.textContent.includes(theme.wallpaper), entry.name);
+            } else {
+                assert.equal(nativeTheme.name, entry.name);
+                assert.equal(nativeMode, theme.mode, entry.name);
+                assert.equal(nativeTheme.background?.url, theme.wallpaper, entry.name);
+                assert.equal(nativeTheme.background?.alpha, theme.wallpaper ? theme.wallpaperOpacity ?? 1 : undefined, entry.name);
+                assert.equal(nativeTheme.background?.blur, theme.wallpaperBlur, entry.name);
+            }
+            click(render(), "Disable " + entry.name);
+            assert.equal(stylesheet, undefined, entry.name);
+            assert.equal(nativeTheme, selectedTheme, entry.name);
+        }
     }
     const { migrateCxPalette } = await import("../../desktop/client/scripts/cx-migrate-palette.mjs");
     assert.equal(parseCx(migrateCxPalette(":root { --background-primary: #123; --brand-500: #8765ab; }", "Test")).background, "#112233");
