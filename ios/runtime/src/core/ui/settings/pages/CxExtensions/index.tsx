@@ -1,6 +1,6 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
-import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -246,7 +246,7 @@ export default function CxExtensions() {
                     if (!isThemeSupported()) throw new Error("This loader does not support color overrides");
                     return registerColorOverlay(style);
                 },
-                registerNativeEffect(effect) {
+                registerNativeEffect(effect, avatarResolution = 256) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
                         case "silent-typing":
@@ -259,6 +259,8 @@ export default function CxExtensions() {
                             return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), false, enabled);
                         case "floor-relative-time":
                             return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"), enabled);
+                        case "avatar-resolution":
+                            return raiseCxAvatarResolution(findByProps("getUserAvatarURL", "getGuildIconURL"), avatarResolution, enabled);
                     }
                 },
                 registerReplyPingSuppression() {

@@ -2,7 +2,7 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -109,7 +109,7 @@ export function CxSettings() {
                 },
                 hideAppearanceTarget: applyAppearanceCss,
                 styleAppearanceTarget: applyAppearanceCss,
-                registerNativeEffect(effect) {
+                registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
                         case "silent-typing":
                             return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
@@ -121,6 +121,8 @@ export function CxSettings() {
                             return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), true);
                         case "floor-relative-time":
                             return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"));
+                        case "avatar-resolution":
+                            return raiseCxAvatarResolution(findByProps("getUserAvatarURL", "getGuildIconURL"), avatarResolution);
                     }
                 },
                 registerReplyPingSuppression() {

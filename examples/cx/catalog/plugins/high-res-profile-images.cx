@@ -1,0 +1,3 @@
+plugin "High-Res Profile Images":
+  needs appearance.avatarresolution
+  use avatar-resolution 256

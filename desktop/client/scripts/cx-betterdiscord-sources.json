@@ -1,0 +1,9 @@
+{
+    "7f4189573fd5bad08e47e3c087bba279b05022e37ab28d7e343918dfecd1ebda": {
+        "name": "High-Res Profile Images",
+        "author": "Z'ark Ashveil",
+        "license": "MIT",
+        "source": "https://github.com/Kawtious/HighResProfileImages/blob/402830211b48dfd57ff4f4641722c29de2a9f279/HighResProfileImages.plugin.js",
+        "recipe": "avatar-resolution"
+    }
+}

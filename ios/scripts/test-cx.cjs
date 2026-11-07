@@ -710,6 +710,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable AlwaysAnimate");
         click(render(), "Disable DontRoundMyTimestamps");
         assert.equal(rounding, Math.ceil);
+        const highRes = cxCatalog.plugins.find(entry => entry.name === "High-Res Profile Images").source;
+        const originalAvatarGetter = icons.getUserAvatarURL;
+        assert.throws(() => parseCx(highRes.replace("256", "255")), /avatar size/);
+        assert.throws(() => activateCx(highRes, host, []), /approval/);
+        selectCatalog("High-Res Profile Images");
+        const avatarSource = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+        const configuredAvatar = avatarSource.props.value.replace("avatar-resolution 256", "avatar-resolution 2048");
+        if (desktop) avatarSource.props.onChange({ currentTarget: { value: configuredAvatar } });
+        else avatarSource.props.onChangeText(configuredAvatar);
+        click(render(), "Review CX");
+        click(render(), "Allow for this session");
+        assert.match(icons.getUserAvatarURL({ id: sender }, true, 1024), /\?size=2048$/);
+        assert.match(icons.getUserAvatarURL({ id: other }, true, 1024), /^https:\/\/evil\.example\//);
+        assert.equal(icons.getUserAvatarURL({ id: me }, true, 1024), "//cdn.discordapp.com/embed/avatars/0.png");
+        if (!desktop) {
+            settings.safeMode.enabled = true;
+            assert.match(icons.getUserAvatarURL({ id: sender }, true, 1024), /\?size=1024$/);
+            settings.safeMode.enabled = false;
+        }
+        selectCatalog("AlwaysAnimate");
+        click(render(), "Allow for this session");
+        click(render(), "Disable High-Res Profile Images");
+        assert.match(icons.getUserAvatarURL({ id: sender }, true, 1024), /\?size=1024$/);
+        click(render(), "Disable AlwaysAnimate");
+        assert.equal(icons.getUserAvatarURL, originalAvatarGetter);
         assert.equal(typing.startTyping, startTyping);
         assert.equal(stores.RelationshipStore.getPendingCount(), 3);
         assert.equal(icons.getGuildIconURL(iconOptions), false);

@@ -3,9 +3,12 @@ export const cxNativeEffects = {
     "pending-friend-count": { permission: "appearance.hide", label: "Hide the pending friend request count" },
     "animated-assets": { permission: "appearance.style", label: "Animate avatars, banners, and server icons" },
     "floor-relative-time": { permission: "appearance.style", label: "Round relative timestamps down" },
+    "avatar-resolution": { permission: "appearance.avatarresolution", label: "Request higher-resolution Discord avatars" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;
+export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
+export type CxAvatarResolution = typeof cxAvatarResolutions[number];
 
 type Rounding = (value: number) => number;
 type MomentRounding = {
@@ -36,6 +39,12 @@ export function floorCxRelativeTime(target: MomentRounding | undefined, enabled 
 }
 
 type MethodOverride = (args: unknown[], invoke: (args: unknown[]) => unknown) => unknown;
+const overrideLayers = new WeakMap<object, {
+    target: object;
+    key: string;
+    previous: PropertyDescriptor | undefined;
+    active: () => boolean;
+}>();
 
 export function overrideCxMethods(target: object | undefined, overrides: Record<string, MethodOverride>, enabled = () => true) {
     const cleanups: (() => void)[] = [];
@@ -61,10 +70,17 @@ export function overrideCxMethods(target: object | undefined, overrides: Record<
             } else {
                 Object.defineProperty(target, key, { value: wrapped, writable: true, configurable: true, enumerable: previous?.enumerable ?? false });
             }
+            overrideLayers.set(wrapped, { target, key, previous, active: () => active });
             cleanups.push(() => {
                 const current = Object.getOwnPropertyDescriptor(target, key);
                 if (current?.value !== wrapped) return;
-                if (previous) Object.defineProperty(target, key, previous);
+                let restore = previous;
+                while (typeof restore?.value === "function") {
+                    const layer = overrideLayers.get(restore.value);
+                    if (!layer || layer.target !== target || layer.key !== key || layer.active()) break;
+                    restore = layer.previous;
+                }
+                if (restore) Object.defineProperty(target, key, restore);
                 else Reflect.deleteProperty(target, key);
             });
         }
@@ -89,5 +105,22 @@ export function animateCxAssets(target: object | undefined, bannerTakesOptions: 
         getGuildMemberAvatarURL: animateArgument,
         getUserBannerURL: bannerTakesOptions ? animateOptions : animateArgument,
         getGuildIconURL: animateOptions,
+    }, enabled);
+}
+
+export function raiseCxAvatarResolution(target: object | undefined, size: CxAvatarResolution, enabled?: () => boolean) {
+    const avatarUrl = /^(https:\/\/|\/\/)(?:cdn\.discordapp\.com|media\.discordapp\.net)\/(?:guilds\/\d+\/users\/\d+\/)?avatars\/\d+\/[\w-]+\.(?:png|webp|gif|jpe?g|avif)(\?[^#\s]*)?$/i;
+    return overrideCxMethods(target, {
+        getUserAvatarURL(args, invoke) {
+            const url = invoke(args);
+            if (typeof url !== "string") return url;
+            const match = avatarUrl.exec(url);
+            if (!match) return url;
+            const existingSize = /([?&])size=([^&]*)/i;
+            const existing = Number(existingSize.exec(url)?.[2] ?? 0);
+            if (existing >= size) return url;
+            if (existingSize.test(url)) return url.replace(existingSize, "$1size=" + size);
+            return url + (/[?&]$/.test(url) ? "" : match[2] ? "&" : "?") + "size=" + size;
+        },
     }, enabled);
 }

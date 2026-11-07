@@ -4,14 +4,14 @@ import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewriteCxOrigin } from "./cxMessageTransforms";
-import { cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
+import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
-export { animateCxAssets, cxNativeEffects, floorCxRelativeTime, overrideCxMethods } from "./cxNativeEffects";
+export { animateCxAssets, cxNativeEffects, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
 
@@ -40,6 +40,7 @@ const permissionLabels = {
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
     "appearance.hide": "Hide the listed interface elements on this device",
     "appearance.style": "Apply the listed visual changes on this device",
+    "appearance.avatarresolution": "Change image size requests for avatars hosted on Discord’s CDN",
     "messages.filterstickers": "Filter stickers from incoming messages on this device",
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
@@ -120,6 +121,7 @@ type CxPlugin = {
     hiddenTargets: CxHideTarget[];
     styledTargets: CxStyleTarget[];
     nativeEffects: CxNativeEffect[];
+    avatarResolution?: CxAvatarResolution;
     previousRule?: CxPreviousRule;
     profileActions: CxProfileMenuAction[];
     incoming: IncomingRule[];
@@ -197,6 +199,7 @@ export function parseCx(source: string): CxDocument {
     const hiddenTargets = new Set<CxHideTarget>();
     const styledTargets = new Set<CxStyleTarget>();
     const nativeEffects = new Set<CxNativeEffect>();
+    let avatarResolution: CxAvatarResolution | undefined;
     let previousRule: CxPreviousRule | undefined;
     const profileActions = new Set<CxProfileMenuAction>();
     const incoming: IncomingRule[] = [];
@@ -244,11 +247,16 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
-        const effect = /^  use ([a-z-]+)$/.exec(line);
+        const effect = /^  use ([a-z-]+)(?: (\d+))?$/.exec(line);
         if (effect) {
             const name = effect[1] as CxNativeEffect;
             if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name) || nativeEffects.has(name))
                 throw new Error("Unknown or duplicate client effect");
+            if (name === "avatar-resolution") {
+                const size = Number(effect[2]) as CxAvatarResolution;
+                if (!cxAvatarResolutions.includes(size)) throw new Error("Choose an avatar size of 256, 512, 1024, 2048, or 4096");
+                avatarResolution = size;
+            } else if (effect[2]) throw new Error("This client effect takes no options");
             nativeEffects.add(name);
             current = undefined;
             continue;
@@ -401,7 +409,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], avatarResolution, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -416,7 +424,7 @@ export function reviewCx(source: string) {
             .concat(document.profileActions.map(action => cxProfileMenuActions[action].label))
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
-            .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label))
+            .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement] : []))
             .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
                 ? ["Hide all stickers"] : rule.kind === "follow-voice" && rule.values[0]
@@ -446,7 +454,7 @@ type CxHost = {
     registerProfileMenuAction?: (action: CxProfileMenuAction) => () => void;
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
-    registerNativeEffect?: (effect: CxNativeEffect) => () => void;
+    registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution) => () => void;
     registerPreviousMessageRule?: (rule: CxPreviousRule) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
@@ -494,7 +502,7 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         }
         for (const effect of document.nativeEffects) {
             if (!host.registerNativeEffect) throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());
-            cleanups.push(host.registerNativeEffect(effect));
+            cleanups.push(host.registerNativeEffect(effect, effect === "avatar-resolution" ? document.avatarResolution : undefined));
         }
         if (document.suppressReplyPing) {
             if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");

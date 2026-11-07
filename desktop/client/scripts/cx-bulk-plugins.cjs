@@ -1,6 +1,8 @@
 const fs = require("node:fs");
+const { createHash } = require("node:crypto");
 const path = require("node:path");
 const ts = require("typescript");
+const reviewedBetterDiscordSources = require("./cx-betterdiscord-sources.json");
 
 const root = path.resolve(__dirname, "../../..");
 const desktopGroups = ["plugins", "cloudcordplugins", "endcordplugins", "equicordplugins", "sincordplugins", "userplugins"];
@@ -84,7 +86,28 @@ function inspectBetterDiscord(file, code, appearance) {
     const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
     const name = header?.match(/^\s*\*\s*@name\s+([^\r\n*]+?)\s*$/m)?.[1];
     if (!name || !safeText(name) || name.length > 64) return;
-    const record = { name, file, platform: "betterdiscord", hooks: inventoryHooks(source), flags: {} };
+    const hooks = new Set(inventoryHooks(source));
+    if (/\b(?:Webpack|BDFDB\.LibraryModules)\b/.test(code)) hooks.add("app-state");
+    if (/\b(?:Patcher|BDFDB\.PatchUtils)\b/.test(code)) hooks.add("component-render");
+    if (/\b(?:buildSettingsPanel|getSettingsPanel|BDFDB\.DataUtils)\b/.test(code)) hooks.add("settings");
+    if (/\b(?:addStyle|removeStyle|BDFDB\.DOMUtils)\b/.test(code)) hooks.add("appearance");
+    const record = { name, file, platform: "betterdiscord", hooks: [...hooks].sort(), flags: {
+        commands: hooks.has("commands"), outgoing: hooks.has("outgoing-message"), settings: hooks.has("settings"),
+        ui: hooks.has("component-render"), styles: hooks.has("appearance"),
+    } };
+    const sha256 = createHash("sha256").update(code, "utf8").digest("hex");
+    const review = reviewedBetterDiscordSources[sha256];
+    if (review?.name === name && review.recipe === "avatar-resolution" && !source.parseDiagnostics.length) {
+        const sizes = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
+            .find(declaration => identifier(declaration.name) === "VALID_SIZES")?.initializer;
+        const first = sizes && ts.isArrayLiteralExpression(sizes) && sizes.elements[0];
+        if (first && ts.isNumericLiteral(first)) {
+            return {
+                ...record, review: { ...review, sha256 }, capability: "native-effect",
+                cx: ["plugin " + JSON.stringify(name) + ":", "  needs appearance.avatarresolution", "  use avatar-resolution " + first.text, ""].join("\n"),
+            };
+        }
+    }
     const license = /SPDX-License-Identifier:\s*(?:GPL-3\.0-or-later|MIT|BSD-3-Clause|Apache-2\.0)\b/.test(code);
     const plugin = source.statements.length === 1 && exportAssignment(source.statements[0]);
     if (!license || source.parseDiagnostics.length || !plugin || !ts.isClassExpression(plugin) || plugin.heritageClauses?.length
@@ -628,6 +651,7 @@ function scan(sourceDir) {
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
+                : record.platform === "betterdiscord" && !record.review ? "source-review"
                 : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect", "previous-edit", "social-event"].includes(record.capability) ? "ready"
                     : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
                     : variants.get(key).length > 1 ? "compare-sources"
@@ -695,7 +719,7 @@ const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --out-dir <new
 function portFiles(ports) {
     const files = new Map();
     for (const record of ports) {
-        const name = record.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase() + ".cx";
+        const name = record.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + ".cx";
         if (!/^[a-z][a-z0-9-]*\.cx$/.test(name) || files.has(name)) throw new Error("Ambiguous output name " + name);
         files.set(name, record.cx);
     }
@@ -743,19 +767,18 @@ function main(rawArgs) {
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
     if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--add-ready"].includes(args[0])))
         throw new Error(usage);
-    if (sourceDir && args[0] === "--add-ready") throw new Error("Export BetterDiscord candidates for source and license review first");
     const records = scan(sourceDir && path.resolve(sourceDir));
     if (args[0] === "--add-ready") {
         addReady(records.filter(record => record.status === "ready"));
         return;
     }
     if (output) {
-        const ports = records.filter(record => record.cx && ["ready", "in-catalog"].includes(record.status));
+        const ports = records.filter(record => record.cx && ["ready", "in-catalog", "source-review"].includes(record.status));
         const files = portFiles(ports);
         verifyPorts(files);
         fs.mkdirSync(output);
         for (const [name, source] of files) fs.writeFileSync(path.join(output, name), source, { flag: "wx" });
-        fs.writeFileSync(path.join(output, "sources.json"), JSON.stringify(ports.map(({ name, file, platform, status }) => ({ name, file, platform, status })), null, 2) + "\n");
+        fs.writeFileSync(path.join(output, "sources.json"), JSON.stringify(ports.map(({ name, file, platform, status, review }) => ({ name, file, platform, status, review })), null, 2) + "\n");
         console.log("Exported " + files.size + " validated CX ports to " + output);
     }
     if (args.includes("--json")) {
@@ -769,7 +792,7 @@ function main(rawArgs) {
     const counts = ["desktop", "mobile", "betterdiscord"].map(platform =>
         records.filter(record => record.platform === platform).length + " " + platform);
     console.log("Inspected " + counts.join(", ") + " plugin sources.");
-    for (const status of ["ready", "compare-mobile", "compare-sources", "in-catalog", "needs-adapter"]) {
+    for (const status of ["ready", "source-review", "compare-mobile", "compare-sources", "in-catalog", "needs-adapter"]) {
         const matches = records.filter(record => record.status === status);
         console.log(status + ": " + matches.length + (matches.length && matches.length <= 20 ? " (" + matches.map(record => record.name).join(", ") + ")" : ""));
     }

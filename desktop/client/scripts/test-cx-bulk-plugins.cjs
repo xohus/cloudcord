@@ -97,6 +97,17 @@ const bd = [
     "};",
 ].join("\n");
 const inspectBd = code => inspectPlugin("example.plugin.js", code, "betterdiscord", cxAppearanceTargets);
+const external = '/**\n * @name Reviewed avatar test\n */\nconst VALID_SIZES = [256, 512];';
+const reviewed = require("./cx-betterdiscord-sources.json");
+const digest = require("node:crypto").createHash("sha256").update(external, "utf8").digest("hex");
+try {
+    reviewed[digest] = { name: "Reviewed avatar test", recipe: "avatar-resolution", license: "MIT" };
+    assert.equal(parseCx(inspectBd(external).cx).avatarResolution, 256);
+    assert.equal(inspectBd(external).review.sha256, digest);
+    assert.equal(inspectBd(external.replace("256", "4096")).cx, undefined);
+} finally {
+    delete reviewed[digest];
+}
 const bdPort = inspectBd(bd);
 assert.equal(bdPort.capability, "appearance");
 assert.equal(parseCx(bdPort.cx).hiddenTargets.join(","), "bot-tags,profile-effects");
