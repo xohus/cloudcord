@@ -1,0 +1,3 @@
+plugin "NoTypingAnimation":
+  needs appearance.style
+  use static-typing-dots

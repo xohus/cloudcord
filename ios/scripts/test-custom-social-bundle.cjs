@@ -37,6 +37,7 @@ if(upstream){
 }
 const entry=path.join(runtime,'src/core/ui/settings/pages/FakeProfile/index.tsx');
 assert.ok(virtual.has(canonical(entry)),'generated editor is required');
+const sharedCx=path.join(root,'desktop/client/src/utils');
 const shimNames=[...fs.readFileSync(path.join(runtime,'shims/depsModule.ts'),'utf8').matchAll(/^\s*"([^"]+)":/gm)].map(match=>match[1]);
 const seen=new Set();
 const sourcePlugin={name:'workflow-sources-and-hermes-transform',setup(build){
@@ -52,6 +53,7 @@ const sourcePlugin={name:'workflow-sources-and-hermes-transform',setup(build){
         else if(args.path.startsWith('@ui/'))target=path.join(runtime,'src/lib/ui',args.path.slice(4));
         else if(args.path==='@types')target=path.join(runtime,'src/lib/utils/types.ts');
         else if(args.path.startsWith('@swc/helpers/'))return {path:require.resolve(args.path,{paths:[runtime]})};
+        if(/^@lib\/api\/cx\w*$/.test(args.path))return {path:path.join(sharedCx,args.path.split('/').at(-1)+'.ts')};
         if(upstream&&target&&canonical(target).startsWith(canonical(upstream)+path.sep))target=path.join(runtime,path.relative(upstream,target));
         if(target)for(const suffix of ['', '.ts','.tsx','.js','.json','/index.ts','/index.tsx'])if(virtual.has(canonical(target+suffix)))return {path:path.resolve(target+suffix)};
         // CI starts from clean upstream and overlays only selected runtime files.
@@ -75,10 +77,10 @@ const sourcePlugin={name:'workflow-sources-and-hermes-transform',setup(build){
 (async()=>{
     for(const entryPoint of [entry,path.join(runtime,'src/entry.ts')]) for(const minify of [false,true]){
         seen.clear();
-        const result=await esbuild.build({absWorkingDir:runtime,nodePaths:[path.join(runtime,'node_modules')],entryPoints:[entryPoint],bundle:true,write:false,outfile:'dist/custom-social-check.js',format:'iife',jsx:'automatic',minify,supported:{'const-and-let':false},define:{window:'globalThis',__DEV__:'false'},loader:{'.png':'dataurl'},inject:['./shims/asyncIteratorSymbol.js','./shims/promiseAllSettled.js'],alias:{'!cloudcord-deps-shim!':'./shims/depsModule.ts',spitroast:'./node_modules/spitroast','react/jsx-runtime':'./shims/jsxRuntime'},plugins:[sourcePlugin,globals(Object.fromEntries(shimNames.map(name=>[name,`require("!cloudcord-deps-shim!")[${JSON.stringify(name)}]`])))]});
+        const result=await esbuild.build({absWorkingDir:runtime,nodePaths:[path.join(runtime,'node_modules')],entryPoints:[entryPoint],bundle:true,write:false,outfile:'dist/custom-social-check.js',format:'iife',jsx:'automatic',minify,supported:{'const-and-let':false},define:{window:'globalThis',__DEV__:'false'},loader:{'.png':'dataurl','.cx':'text'},inject:['./shims/asyncIteratorSymbol.js','./shims/promiseAllSettled.js'],alias:{'!cloudcord-deps-shim!':'./shims/depsModule.ts',spitroast:'./node_modules/spitroast','react/jsx-runtime':'./shims/jsxRuntime'},plugins:[sourcePlugin,globals(Object.fromEntries(shimNames.map(name=>[name,`require("!cloudcord-deps-shim!")[${JSON.stringify(name)}]`])))]});
         assert.ok(seen.has(canonical(path.join(runtime,'src/core/ui/settings/components/CustomSocial.tsx'))),'new mobile editor must actually be bundled');
         assert.ok(seen.has(canonical(path.join(runtime,'src/lib/api/profileAppearance.ts'))),'new shared schema must actually be bundled');
-        if(entryPoint!==entry) for(const page of ['Addons','PluginBrowser']) assert.ok(seen.has(canonical(path.join(runtime,`src/core/ui/settings/pages/${page}/index.tsx`))),`${page} overlay must actually be bundled in startup`);
+        if(entryPoint!==entry) for(const page of ['Addons','PluginBrowser','CxExtensions']) assert.ok(seen.has(canonical(path.join(runtime,`src/core/ui/settings/pages/${page}/index.tsx`))),`${page} overlay must actually be bundled in startup`);
         if(entryPoint!==entry&&upstream) assert.ok(seen.has(canonical(path.join(runtime,'src/core/plugins/ccpCharacterCounter/index.ts'))),'CCP adapter must be registered in mobile startup');
         console.log(`Generated mobile ${entryPoint===entry?'editor':'entrypoint'} dependency bundle (${minify?'minified':'readable'}): ${result.outputFiles[0].contents.length} bytes; Hermes transforms passed.`);
     }

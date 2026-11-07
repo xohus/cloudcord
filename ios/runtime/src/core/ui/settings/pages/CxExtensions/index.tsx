@@ -13,6 +13,7 @@ import { NativeFileModule } from "@lib/api/native/modules";
 import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
+import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
@@ -110,6 +111,38 @@ function registerMemberRowAppearance(target: string | object, change: Appearance
         if (--scope.users === 0) {
             scope.stop();
             memberRowScope = undefined;
+        }
+    };
+}
+
+let staticTypingDots: { stop: () => void; users: number; } | undefined;
+
+function registerStaticTypingDots() {
+    if (!staticTypingDots) {
+        const ellipsis = findByFilePath("design/components/Button/native/ButtonEllipsis.native.tsx")?.Ellipsis;
+        if (!ellipsis) throw new Error("Discord's typing dots are unavailable");
+        const InTypingIndicator = React.createContext(false);
+        function TypingDots({ element }: { element: JSX.Element; }) {
+            const inside = React.useContext(InTypingIndicator);
+            if (!inside || settings.safeMode?.enabled) return element;
+            const backgroundColor = resolveSemanticColor(semanticColors.INTERACTIVE_TEXT_DEFAULT ?? semanticColors.INTERACTIVE_ICON_DEFAULT)
+                ?? "#949ba4";
+            const dot = { width: 5, height: 5, borderRadius: 3, backgroundColor };
+            return <View style={{ flexDirection: "row", gap: 4 }} accessible={false}>
+                <View style={dot} /><View style={dot} /><View style={dot} />
+            </View>;
+        }
+        const stopScope = registerJsxAppearance(["TypingIndicatorInner"], element =>
+            <InTypingIndicator.Provider value={true}>{element}</InTypingIndicator.Provider>);
+        const stopDots = registerJsxAppearance([ellipsis], element => <TypingDots element={element} />);
+        staticTypingDots = { stop: () => { stopDots(); stopScope(); }, users: 0 };
+    }
+    const binding = staticTypingDots;
+    binding.users++;
+    return () => {
+        if (--binding.users === 0) {
+            binding.stop();
+            staticTypingDots = undefined;
         }
     };
 }
@@ -510,6 +543,8 @@ export default function CxExtensions() {
                 registerNativeEffect(effect, avatarResolution = 256) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
+                        case "static-typing-dots":
+                            return registerStaticTypingDots();
                         case "silent-typing":
                             return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
                                 startTyping: () => undefined,

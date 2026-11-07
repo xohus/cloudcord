@@ -522,7 +522,11 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
-const desktopStoreEffectRecipes = {
+const desktopEffectRecipes = {
+    NoTypingAnimation: {
+        effect: "static-typing-dots",
+        sha256: "845c1713b901057cb0fedbbb30db70238b3480da8170f79fccf6b64def7b055a",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",
@@ -531,12 +535,19 @@ const desktopStoreEffectRecipes = {
     },
 };
 
-function compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects) {
-    if (!Object.hasOwn(desktopStoreEffectRecipes, name)
+function compileDesktopEffect(name, plugin, source, entry, nativeEffects) {
+    if (!Object.hasOwn(desktopEffectRecipes, name)
         || !fieldsAre(plugin, ["name", "description", "authors", "tags", "patches"])
         || !source.statements.every(node => node === entry || ts.isImportDeclaration(node)
             && ["@utils/constants", "@utils/types"].includes(node.moduleSpecifier.text))) return;
-    const recipe = desktopStoreEffectRecipes[name];
+    const recipe = desktopEffectRecipes[name];
+    const effect = nativeEffects[recipe.effect];
+    if (!effect) return;
+    const compiled = { capability: "native-effect", lines: ["  needs " + effect.permission, "  use " + recipe.effect] };
+    if (recipe.sha256) {
+        const sha256 = createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+        return sha256 === recipe.sha256 ? compiled : undefined;
+    }
     const patches = value(plugin, "patches");
     if (!patches || !ts.isArrayLiteralExpression(patches) || patches.elements.length !== 1) return;
     const [patch] = patches.elements;
@@ -544,10 +555,9 @@ function compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects) {
     const replacement = value(patch, "replacement");
     if (!replacement || !fieldsAre(replacement, ["match", "replace"])) return;
     const match = value(replacement, "match");
-    const effect = nativeEffects[recipe.effect];
-    if (!effect || !match || !ts.isRegularExpressionLiteral(match) || match.text !== recipe.match
+    if (!match || !ts.isRegularExpressionLiteral(match) || match.text !== recipe.match
         || literal(value(replacement, "replace")) !== recipe.replace) return;
-    return { capability: "native-effect", lines: ["  needs " + effect.permission, "  use " + recipe.effect] };
+    return compiled;
 }
 
 const externalLookupRecipes = {
@@ -735,7 +745,7 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         && safeText(name) && name.length <= 64 && compileManagedStyle(plugin, source, entry, appearance, readStylesheet);
     const storeEffect = platform === "desktop" && factory === "definePlugin" && !entry.isExportEquals
         && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
-        && compileDesktopStoreEffect(name, plugin, source, entry, nativeEffects);
+        && compileDesktopEffect(name, plugin, source, entry, nativeEffects);
     const externalLookup = platform === "desktop" && compileExternalLookup(name, code);
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)

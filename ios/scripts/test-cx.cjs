@@ -279,6 +279,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
         let inMemberRow = false;
+        const typingEllipsis = function Ellipsis() {};
+        const typingSubscribers = new Set();
         let protectedReads = 0;
         const diagnosticExports = {
             getAccount() { throw new Error("Reports must not call arbitrary methods"); },
@@ -340,7 +342,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name], findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
                     : key === "removeRelationship" ? relationshipActions : undefined },
-            "@webpack/common": { useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
+            "@webpack/common": { React: { useSyncExternalStore: (subscribe, read) => {
+                subscribe(() => typingSubscribers.add(read()));
+                return read();
+            } }, useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 dispatch,
@@ -377,11 +382,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 },
             },
             "@lib/ui/toasts": { showToast: message => notifications.push(message) },
+            "@lib/ui/color": { resolveSemanticColor: value => value, semanticColors: { INTERACTIVE_TEXT_DEFAULT: "#bbbbbb" } },
             "@lib/api/flux": { intercept(callback) {
                 incomingHooks.push(callback);
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
-            "@metro": { findByFilePath: path => path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+            "@metro": { findByFilePath: path => path.endsWith("/ButtonEllipsis.native.tsx") ? { Ellipsis: typingEllipsis }
+                : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
@@ -401,7 +408,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": {
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
-                Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput",
+                Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput", View: "View",
             },
         };
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
@@ -1194,6 +1201,37 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.ok(delivered.every(([, text]) => !text.includes("discord.gg/late")));
         createInvite.execute([], guildContext);
         assert.deepEqual(inviteCalls, ["list", "revoke", "create", "create"]);
+
+        const focus = { focused: true };
+        const desktopPlugin = module.exports.default;
+        if (desktop) assert.equal(desktopPlugin.useTypingFocus(focus), focus);
+        selectCatalog("NoTypingAnimation");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            assert.equal(desktopPlugin.useTypingFocus(focus).focused, false);
+            assert.deepEqual([...typingSubscribers], [true]);
+        } else {
+            const indicator = jsx("TypingIndicatorInner", { children: "User is typing" });
+            const scope = appearanceHooks.get("TypingIndicatorInner")(null, indicator);
+            assert.equal(scope.type(scope.props).props.children, indicator);
+            const nativeDots = jsx(typingEllipsis, {});
+            const wrapped = appearanceHooks.get(typingEllipsis)(null, nativeDots);
+            const scopedDots = wrapped.type(wrapped.props);
+            assert.equal(scopedDots.type(scopedDots.props), nativeDots);
+            inMemberRow = true; // The context mock uses the same switch for boolean scopes.
+            const renderedDots = scopedDots.type(scopedDots.props);
+            assert.equal(renderedDots.props.children.length, 3);
+            assert.equal(renderedDots.props.children[0].props.style.backgroundColor, "#bbbbbb");
+            settings.safeMode = { enabled: true };
+            assert.equal(scopedDots.type(scopedDots.props), nativeDots);
+            settings.safeMode = undefined;
+            inMemberRow = false;
+        }
+        click(render(), "Disable NoTypingAnimation");
+        if (desktop) {
+            assert.equal(desktopPlugin.useTypingFocus(focus), focus);
+            assert.deepEqual([...typingSubscribers], [true, false]);
+        } else assert.equal(appearanceHooks.size, 0);
 
         const silent = cxCatalog.plugins.find(entry => entry.name === "SilentTyping").source;
         assert.throws(() => activateCx(silent, host, []), /approval/);

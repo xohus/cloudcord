@@ -8,9 +8,24 @@ import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps, findStore, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, React, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 
 const session = createCxSession();
+const typingDotListeners = new Set<() => void>();
+let staticTypingDotUsers = 0;
+const staticTypingDots = () => staticTypingDotUsers > 0;
+
+function subscribeTypingDots(listener: () => void) {
+    typingDotListeners.add(listener);
+    return () => { typingDotListeners.delete(listener); };
+}
+
+function registerStaticTypingDots() {
+    if (++staticTypingDotUsers === 1) typingDotListeners.forEach(listener => listener());
+    return () => {
+        if (--staticTypingDotUsers === 0) typingDotListeners.forEach(listener => listener());
+    };
+}
 
 function applyAppearanceCss(target: keyof typeof cxAppearanceTargets) {
     const style = document.createElement("style");
@@ -132,6 +147,8 @@ export function CxSettings() {
                 styleAppearanceTarget: applyAppearanceCss,
                 registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
+                        case "static-typing-dots":
+                            return registerStaticTypingDots();
                         case "silent-typing":
                             return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
                                 startTyping: () => Promise.resolve(),
@@ -377,6 +394,17 @@ export default definePlugin({
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
     dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI"],
+    patches: [{
+        find: "dotCycle:",
+        replacement: {
+            match: /(\{focused:\i\}=)(\(0,\i\.\i\)\(\))/g,
+            replace: "$1$self.useTypingFocus($2)",
+        },
+    }],
+    useTypingFocus(focus: { focused: boolean; }) {
+        const isStatic = React.useSyncExternalStore(subscribeTypingDots, staticTypingDots);
+        return isStatic ? { focused: false } : focus;
+    },
     stop() {
         session.clear();
     },

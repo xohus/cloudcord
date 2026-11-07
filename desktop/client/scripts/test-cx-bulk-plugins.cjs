@@ -58,6 +58,11 @@ assert.deepEqual(Array.from(parseCx(stopAutoUnread.cx).nativeEffects), ["stop-au
 assert.deepEqual(Array.from(parseCx(stopAutoUnread.cx).permissions), ["notifications.preventautoupgrade"]);
 const stopAutoUnreadSource = fs.readFileSync(path.join(__dirname, "../../..", stopAutoUnread.file), "utf8");
 assert.equal(inspectPlugin(stopAutoUnread.file, stopAutoUnreadSource.replace("return !1;", "return !0;"), "desktop", {}, cxNativeEffects).cx, undefined);
+const staticTyping = matches.find(record => record.name === "NoTypingAnimation");
+assert.equal(staticTyping?.capability, "native-effect");
+assert.deepEqual(Array.from(parseCx(staticTyping.cx).nativeEffects), ["static-typing-dots"]);
+const staticTypingSource = fs.readFileSync(path.join(__dirname, "../../..", staticTyping.file), "utf8");
+assert.equal(inspectPlugin(staticTyping.file, staticTypingSource.replace("dotCycle", "otherCycle"), "desktop", {}, cxNativeEffects).cx, undefined);
 for (const [name, platform, rule] of [["HideSystemMessages", "desktop", "hide-system"], ["NoProfileThemes", "mobile", "hide-profile-themes"]]) {
     const port = matches.find(record => record.name === name && record.platform === platform);
     assert.equal(port?.capability, "incoming-filter");
