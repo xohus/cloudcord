@@ -38274,6 +38274,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     return stop;
   }
+  function filterCxEmojiAutocomplete(store, mode, intentions, enabled) {
+    var methods = store;
+    if (typeof methods?.searchWithoutFetchingLatest !== "function" || typeof methods.getSearchResultsOrder !== "function")
+      throw new Error("Discord's emoji search is unavailable");
+    var shouldKeep;
+    return overrideCxMethods(store, {
+      searchWithoutFetchingLatest(args, invoke) {
+        var options = args[0];
+        if (options?.intention == null || !(options.intention === intentions?.AUTO_SUGGESTION || options.intention === (intentions?.CHAT ?? 3) && typeof options.count === "number" && options.count > 0))
+          return invoke(args);
+        var channel = options.channel;
+        var guild = channel?.getGuildId?.() ?? channel?.guild_id;
+        var previous = shouldKeep;
+        shouldKeep = (emoji) => emoji?.type !== 1 || mode === "local" && Boolean(guild) && emoji.guildId === guild;
+        try {
+          return invoke(args);
+        } finally {
+          shouldKeep = previous;
+        }
+      },
+      getSearchResultsOrder(args, invoke) {
+        var [emojis, ...rest] = args;
+        if (!shouldKeep || !Array.isArray(emojis))
+          return invoke(args);
+        var filtered = emojis.filter(shouldKeep);
+        return invoke(filtered.length === emojis.length ? args : [
+          filtered,
+          ...rest
+        ]);
+      }
+    }, enabled);
+  }
   function animateCxAssets(target, bannerTakesOptions, enabled) {
     var animateArgument = (args, invoke) => {
       var next = [
@@ -38369,6 +38401,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "split-long-messages": {
           permission: "messages.split",
           label: "Split long drafts into at most eight messages when slowmode is off"
+        },
+        "unicode-emoji-autocomplete": {
+          permission: "appearance.hide",
+          label: "Show only standard Unicode emoji in chat autocomplete"
+        },
+        "local-emoji-autocomplete": {
+          permission: "appearance.hide",
+          label: "Show Unicode emoji and emoji from the current server in chat autocomplete"
         }
       };
       cxAvatarResolutions = [
@@ -41329,6 +41369,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-server-emojis.cx
+  var no_server_emojis_default;
+  var init_no_server_emojis = __esm({
+    "../examples/cx/catalog/plugins/no-server-emojis.cx"() {
+      no_server_emojis_default = 'plugin "NoServerEmojis":\n  needs appearance.hide\n  use unicode-emoji-autocomplete\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-typing-animation.cx
   var no_typing_animation_default;
   var init_no_typing_animation = __esm({
@@ -42580,6 +42628,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_no_profile_themes();
       init_no_reply_mention();
       init_no_reply_ping();
+      init_no_server_emojis();
       init_no_typing_animation();
       init_normalize_message_links();
       init_polish_wording();
@@ -43146,6 +43195,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "NoReplyPing",
             source: no_reply_ping_default
+          },
+          {
+            name: "NoServerEmojis",
+            source: no_server_emojis_default
           },
           {
             name: "NoTypingAnimation",
@@ -44807,6 +44860,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "static-typing-dots":
                 return registerStaticTypingDots();
+              case "unicode-emoji-autocomplete":
+              case "local-emoji-autocomplete":
+                return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode", findByProps("EmojiIntention")?.EmojiIntention, enabled);
               case "split-long-messages":
                 return registerSplitSender();
               case "flat-attachments": {
@@ -45292,7 +45348,6 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_patcher();
       init_cx();
       init_cxCatalog();
-      init_cx();
       init_commands();
       init_ccpInspect();
       init_ccpReport();
@@ -49964,7 +50019,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "5dea94cf325cf339e8b8e7ead3a995e58c7640e5";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "e547516801f89eef3c049b85b7b785f7ad3ecdc6";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
