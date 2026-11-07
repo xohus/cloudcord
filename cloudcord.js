@@ -648,42 +648,42 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     writeFile: () => writeFile
   });
   function clearFolder(_0) {
-    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
+    return _async_to_generator(function* (path, { prefix: prefix2 = dataPrefix } = {}) {
       if (typeof NativeFileModule.clearFolder !== "function")
         throw new Error("'fs.clearFolder' is not supported");
-      return void (yield NativeFileModule.clearFolder("documents", `${prefix}${path}`));
+      return void (yield NativeFileModule.clearFolder("documents", `${prefix2}${path}`));
     }).apply(this, arguments);
   }
   function removeFile(_0) {
-    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
+    return _async_to_generator(function* (path, { prefix: prefix2 = dataPrefix } = {}) {
       if (typeof NativeFileModule.removeFile !== "function")
         throw new Error("'fs.removeFile' is not supported");
-      return void (yield NativeFileModule.removeFile("documents", `${prefix}${path}`));
+      return void (yield NativeFileModule.removeFile("documents", `${prefix2}${path}`));
     }).apply(this, arguments);
   }
   function removeCacheFile(_0) {
-    return _async_to_generator(function* (path, prefix = dataPrefix) {
+    return _async_to_generator(function* (path, prefix2 = dataPrefix) {
       if (typeof NativeFileModule.removeFile !== "function")
         throw new Error("'fs.removeFile' is not supported");
-      return void (yield NativeFileModule.removeFile("cache", `${prefix}${path}`));
+      return void (yield NativeFileModule.removeFile("cache", `${prefix2}${path}`));
     }).apply(this, arguments);
   }
   function fileExists(_0) {
-    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
-      return yield NativeFileModule.fileExists(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix}${path}`);
+    return _async_to_generator(function* (path, { prefix: prefix2 = dataPrefix } = {}) {
+      return yield NativeFileModule.fileExists(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix2}${path}`);
     }).apply(this, arguments);
   }
   function writeFile(_0, _1) {
-    return _async_to_generator(function* (path, data, { prefix = dataPrefix } = {}) {
+    return _async_to_generator(function* (path, data, { prefix: prefix2 = dataPrefix } = {}) {
       if (typeof data !== "string")
         throw new Error("Argument 'data' must be a string");
-      return void (yield NativeFileModule.writeFile("documents", `${prefix}${path}`, data, "utf8"));
+      return void (yield NativeFileModule.writeFile("documents", `${prefix2}${path}`, data, "utf8"));
     }).apply(this, arguments);
   }
   function readFile(_0) {
-    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
+    return _async_to_generator(function* (path, { prefix: prefix2 = dataPrefix } = {}) {
       try {
-        return yield NativeFileModule.readFile(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix}${path}`, "utf8");
+        return yield NativeFileModule.readFile(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix2}${path}`, "utf8");
       } catch (err) {
         throw new Error(`An error occured while writing to '${path}'`, {
           cause: err
@@ -692,14 +692,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }).apply(this, arguments);
   }
   function downloadFile(_0, _1) {
-    return _async_to_generator(function* (url2, path, { prefix = dataPrefix } = {}) {
+    return _async_to_generator(function* (url2, path, { prefix: prefix2 = dataPrefix } = {}) {
       var response = yield fetch(url2);
       if (!response.ok) {
         throw new Error(`Failed to download file from ${url2}: ${response.status}`);
       }
       var arrayBuffer = yield response.arrayBuffer();
       var data = Buffer.from(arrayBuffer).toString("base64");
-      yield NativeFileModule.writeFile("documents", `${prefix}${path}`, data, "base64");
+      yield NativeFileModule.writeFile("documents", `${prefix2}${path}`, data, "base64");
     }).apply(this, arguments);
   }
   var dataPrefix;
@@ -2770,8 +2770,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     if (condition)
       return;
     var resolvedMessage = typeof message === "function" ? message() : message;
-    var prefix = "[Invariant Violation]";
-    var value = resolvedMessage ? `${prefix}: ${resolvedMessage}` : prefix;
+    var prefix2 = "[Invariant Violation]";
+    var value = resolvedMessage ? `${prefix2}: ${resolvedMessage}` : prefix2;
     throw new Error(value);
   }
   var init_invariant = __esm({
@@ -16033,7 +16033,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           errors.push(`${label2}: enter a name or ${connection ? "account" : "user"} ID, or remove this unfinished entry.`);
         if (!connection && entry.userId && !/^\d{15,22}$/.test(entry.userId))
           errors.push(`${label2}: enter a valid Discord user ID or clear the optional ID.`);
-        var links = [
+        var links2 = [
           entry.avatar,
           entry.banner,
           ...connection ? [
@@ -16044,7 +16044,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             ])
           ] : (entry.badges || []).map((badge) => badge.icon)
         ];
-        if (links.some((link) => textField(link, 4096) && !customPreviewURL(link)))
+        if (links2.some((link) => textField(link, 4096) && !customPreviewURL(link)))
           errors.push(`${label2}: image and account/content links must use HTTPS without embedded credentials.`);
         if (connection && entry.items?.some((item) => !textField(item.title, 150)))
           errors.push(`${label2}: every selected item needs a title.`);
@@ -16793,7 +16793,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var match = path.match(/^\/users\/@me\/connections\/[^/]+\/(cloudcord-local:[^/?]+)(?:\?.*)?$/);
           if (!match)
             return original(...args);
-          var scoped = match[1].slice(prefix.length);
+          var scoped = match[1].slice(prefix2.length);
           var separator = scoped.indexOf(":");
           if (separator < 0 || scoped.slice(0, separator) !== options.ownId())
             return Promise.resolve({
@@ -16833,7 +16833,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       };
     }
     var cleanups = [];
-    var prefix = "cloudcord-local:";
+    var prefix2 = "cloudcord-local:";
     var protectedWrites = false;
     var previous, fingerprint = "", snapshot2;
     var wrap = (object, key, handler) => {
@@ -16879,7 +16879,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         ...real,
         ...custom.map((account) => ({
           ...account,
-          id: prefix + owner + ":" + account.cloudcordPreview.id,
+          id: prefix2 + owner + ":" + account.cloudcordPreview.id,
           verified: false,
           revoked: false,
           friend_sync: false,
@@ -37725,12 +37725,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     return destination ? destination + path + query : text;
   }
   function ingtonify(text) {
-    var links = [
+    var links2 = [
       ...text.matchAll(/https?:\/\/[^\s]+\.[^\s]+/gi)
     ];
     var words = [
       ...text.matchAll(RegExp("\\p{L}+", "gu"))
-    ].filter(({ 0: word2, index }) => !/^(?:i)$/i.test(word2) && !/[aeouy]$/i.test(word2) && !links.some((link) => index >= link.index && index < link.index + link[0].length));
+    ].filter(({ 0: word2, index }) => !/^(?:i)$/i.test(word2) && !/[aeouy]$/i.test(word2) && !links2.some((link) => index >= link.index && index < link.index + link[0].length));
     var match = words[Math.floor(Math.random() * words.length)];
     if (!match)
       return text;
@@ -37886,8 +37886,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         }),
         // WriteUpperCase by Samwich and KrystalSkull.
         capitalizeSentences: (text, exclusions = "http, https, ok") => {
-          var prefixes = exclusions.split(",").map((prefix) => prefix.trim().toLowerCase()).filter(Boolean);
-          return text.split(/([.!?]+['")\]]*\s+)/).map((part, index) => index % 2 || prefixes.some((prefix) => part.toLowerCase().startsWith(prefix)) ? part : part.charAt(0).toUpperCase() + part.slice(1)).join("");
+          var prefixes = exclusions.split(",").map((prefix2) => prefix2.trim().toLowerCase()).filter(Boolean);
+          return text.split(/([.!?]+['")\]]*\s+)/).map((part, index) => index % 2 || prefixes.some((prefix2) => part.toLowerCase().startsWith(prefix2)) ? part : part.charAt(0).toUpperCase() + part.slice(1)).join("");
         },
         ingtonify,
         polishWording,
@@ -38181,6 +38181,103 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxTextRules.ts
+  function parseCxTextRule(line, quoted2) {
+    var replacement = replace.exec(line);
+    if (replacement) {
+      var [, alternatives, value, ignoreCase, wholeWord] = replacement;
+      var words;
+      try {
+        words = JSON.parse(alternatives);
+      } catch (e) {
+        throw new Error("Use a list of literal text alternatives");
+      }
+      if (!Array.isArray(words) || words.length < 1 || words.length > 16 || new Set(words).size !== words.length || words.some((word) => typeof word !== "string" || !word.trim() || word.length > 64 || RegExp("[\\x00-\\x1f\\x7f-\\x9f\\u202a-\\u202e\\u2066-\\u2069]", "u").test(word)))
+        throw new Error("Use up to 16 distinct, nonempty text alternatives");
+      if (wholeWord && words.some((word) => !RegExp("^\\w(?:.*\\w)?$", "u").test(word)))
+        throw new Error("Whole-word alternatives must begin and end with word characters");
+      var boundary = wholeWord ? "\\b" : "";
+      return {
+        kind: "replace",
+        pattern: new RegExp(boundary + "(?:" + words.map(escape).join("|") + ")" + boundary, ignoreCase ? "gi" : "g"),
+        replacement: quoted2(value, 64, true)
+      };
+    }
+    var prepend = prefix.exec(line);
+    if (prepend)
+      return {
+        kind: "prefix",
+        value: quoted2(prepend[1], 64)
+      };
+    if (line === "    alternate-case")
+      return {
+        kind: "alternate-case"
+      };
+    var shorten = shortenRun.exec(line);
+    if (shorten) {
+      var letter = quoted2(shorten[1], 1);
+      return {
+        kind: "shorten-run",
+        pattern: new RegExp(escape(letter) + "+", "g"),
+        fill: quoted2(shorten[2], 1)
+      };
+    }
+    throw new Error("Unknown text rewrite rule");
+  }
+  function applyCxTextRules(text, rules) {
+    var _loop2 = function(rule2) {
+      if (rule2.kind === "prefix") {
+        parts[0] = rule2.value + parts[0];
+        return "continue";
+      }
+      var upper = true;
+      var length = 0;
+      for (var i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) {
+          if (rule2.kind === "replace")
+            parts[i] = parts[i].replace(rule2.pattern, () => rule2.replacement);
+          else if (rule2.kind === "shorten-run")
+            parts[i] = parts[i].replace(rule2.pattern, (run) => rule2.fill.repeat(Math.max(1, run.length - 1)) + run[0]);
+          else
+            parts[i] = parts[i].replace(/[a-z]/gi, (letter) => {
+              var value = upper ? letter.toUpperCase() : letter.toLowerCase();
+              upper = !upper;
+              return value;
+            });
+        }
+        length += parts[i].length;
+        if (length > 4e3)
+          return {
+            v: text
+          };
+      }
+    };
+    if (!text.trim())
+      return text;
+    var parts = text.split(links);
+    for (var rule of rules) {
+      var _ret = _loop2(rule);
+      if (_type_of(_ret) === "object")
+        return _ret.v;
+    }
+    return parts.join("");
+  }
+  var quotedText, replace, prefix, shortenRun, escape, links;
+  var init_cxTextRules = __esm({
+    "src/lib/api/cxTextRules.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_type_of();
+      quotedText = '"(?:[^"\\\\]|\\\\.)*"';
+      replace = new RegExp(`^    replace (\\[.{1,1800}\\]) with (${quotedText})( ignore-case)?( whole-word)?$`);
+      prefix = new RegExp(`^    prefix (${quotedText})$`);
+      shortenRun = new RegExp(`^    shorten-run (${quotedText}) with (${quotedText})$`);
+      escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      links = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    }
+  });
+
   // src/lib/api/cxProfileMenu.ts
   function isCxProfileUserId(id) {
     return typeof id === "string" && /^\d{17,20}$/.test(id);
@@ -38451,6 +38548,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var _loop2 = function(line12) {
       if (!line12.trim())
         return "continue";
+      if (textRules && line12.startsWith("    ")) {
+        if (textRules.length >= 256)
+          throw new Error("Too many text rewrite rules");
+        textRules.push(parseCxTextRule(line12, quoted));
+        return "continue";
+      }
+      textRules = void 0;
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
       if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) {
         var permission2 = declaration2[1];
@@ -38519,22 +38623,35 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
-      var replace = /^  before (send|edit) (replace|rewrite-origin) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
-      if (replace) {
-        var stage2 = replace[1];
-        var name12 = replace[2] === "replace" ? "replaceLiteral" : "rewriteOrigin";
-        var find = quoted(replace[3], 240);
-        var replacement = quoted(replace[4], 240, true);
+      var textRewrite = /^  before (send|edit) rewrite-text:$/.exec(line12);
+      if (textRewrite) {
+        var stage2 = textRewrite[1];
+        if (transforms.some((rule2) => rule2.name === "rewriteText" && rule2.stage === stage2))
+          throw new Error("Use one text rewrite block per stage");
+        transforms.push({
+          stage: stage2,
+          name: "rewriteText",
+          rules: textRules = []
+        });
+        current = void 0;
+        return "continue";
+      }
+      var replace2 = /^  before (send|edit) (replace|rewrite-origin) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
+      if (replace2) {
+        var stage1 = replace2[1];
+        var name12 = replace2[2] === "replace" ? "replaceLiteral" : "rewriteOrigin";
+        var find = quoted(replace2[3], 240);
+        var replacement = quoted(replace2[4], 240, true);
         if (name12 === "rewriteOrigin") {
           find = parseCxHttpsOrigin(find);
           replacement = parseCxHttpsOrigin(replacement);
           if (find === replacement)
             throw new Error("Use a different destination for link rewrites");
         }
-        if (transforms.length >= 32 || transforms.some((rule2) => rule2.stage === stage2 && rule2.name === name12 && rule2.find === find))
+        if (transforms.length >= 32 || transforms.some((rule2) => rule2.stage === stage1 && rule2.name === name12 && rule2.find === find))
           throw new Error("Duplicate or too many replacement rules");
         transforms.push({
-          stage: stage2,
+          stage: stage1,
           name: name12,
           find,
           replacement
@@ -38544,9 +38661,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       var transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line12);
       if (transform) {
-        var stage1 = transform[1];
+        var stage22 = transform[1];
         var name22 = transform[2];
-        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name22) || transforms.some((entry) => entry.name === name22 && entry.stage === stage1))
+        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name22) || transforms.some((entry) => entry.name === name22 && entry.stage === stage22))
           throw new Error("Unknown or duplicate outgoing text transform");
         if (transform[3] && name22 !== "capitalizeSentences" && name22 !== "signature" && name22 !== "polishWording")
           throw new Error("This transform takes no options");
@@ -38554,7 +38671,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (name22 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
           throw new Error("Unknown PolishWording option");
         transforms.push({
-          stage: stage1,
+          stage: stage22,
           name: name22,
           options
         });
@@ -38763,6 +38880,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var readsAvatar = false;
     var clientPermissions = /* @__PURE__ */ new Set();
     var current;
+    var textRules;
     for (var line1 of lines)
       _loop2(line1);
     if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
@@ -38793,6 +38911,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (name2 === "rewriteOrigin")
         required.add("messages.redirectlinks");
     }
+    if (transforms.some((rule) => rule.name === "rewriteText" && !rule.rules.length))
+      throw new Error("A text rewrite block needs rules");
     for (var { actions } of commands3) {
       for (var action of actions) {
         for (var permission1 of getActionPermissions(action))
@@ -38852,6 +38972,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       permissions: document.permissions,
       effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : ""))).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
         rule.find + " \u2192 " + rule.replacement
+      ] : rule.name === "rewriteText" ? [
+        `Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`
       ] : [])).concat(document.incoming.flatMap((rule) => {
         if (rule.kind === "hide-profile-themes")
           return [
@@ -38933,7 +39055,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               if (!rewrote)
                 result = rewriteCxOrigin(result, origins);
               rewrote = true;
-            } else if (rule2.name === "replaceLiteral")
+            } else if (rule2.name === "rewriteText")
+              result = applyCxTextRules(result, rule2.rules);
+            else if (rule2.name === "replaceLiteral")
               result = result.replaceAll(rule2.find, () => rule2.replacement);
             else
               result = messageTransforms[rule2.name](result, rule2.options);
@@ -39189,6 +39313,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxMessageTransforms();
       init_cxNativeEffects();
       init_cxPreviousMessage();
+      init_cxTextRules();
       init_cxProfileMenu();
       init_cxProfileMenu();
       init_cxClientCommands();
@@ -39475,6 +39600,213 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/equius-s-typing-quirk.cx
+  var equius_s_typing_quirk_default;
+  var init_equius_s_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/equius-s-typing-quirk.cx"() {
+      equius_s_typing_quirk_default = `plugin "Equius'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["loo"] with "100" ignore-case
+    replace ["ool"] with "001" ignore-case
+    replace ["nay"] with "neigh" ignore-case
+    replace ["strong"] with "STRONG" ignore-case
+    replace ["strength"] with "STRONGNESS" ignore-case
+    replace ["strongness"] with "STRONGNESS" ignore-case
+    replace ["cross"] with "%" ignore-case
+    replace ["x","X"] with "%"
+    prefix "D --> "
+`;
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/eridan-typing-quirk.cx
+  var eridan_typing_quirk_default;
+  var init_eridan_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/eridan-typing-quirk.cx"() {
+      eridan_typing_quirk_default = 'plugin "EridanTypingQuirk":\n  needs messages.transform\n  before send rewrite-text:\n    replace ["v"] with "vv"\n    replace ["w"] with "ww"\n    replace ["V"] with "VV"\n    replace ["W"] with "WW"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/feferi-typing-quirk.cx
+  var feferi_typing_quirk_default;
+  var init_feferi_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/feferi-typing-quirk.cx"() {
+      feferi_typing_quirk_default = `plugin "FeferiTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["H"] with ")("
+    replace ["really"] with "reely" ignore-case
+    replace ["real"] with "reel" ignore-case
+    replace ["guilty"] with "gillty" ignore-case
+    replace ["god"] with "cod" ignore-case
+    replace ["kill"] with "krill" ignore-case
+    replace ["pwn","pawn"] with "prawn" ignore-case
+    replace ["something"] with "somefin" ignore-case
+    replace ["nothing"] with "nofin" ignore-case
+    replace ["whatever"] with "waterever" ignore-case
+    replace ["whatever"] with "whatebber" ignore-case
+    replace ["sardonic"] with "sardinonic" ignore-case
+    replace ["feeling"] with "eeling" ignore-case
+    replace ["hero"] with "heroe" ignore-case
+    replace ["heroine"] with "heroeine" ignore-case
+    replace ["row"] with "roe" ignore-case
+    replace ["impudent"] with "shrimpudent" ignore-case
+    replace ["routine"] with "roetine" ignore-case
+    replace ["opportunity"] with "opportunaty" ignore-case
+    replace ["opportunity"] with "opperchtunaty" ignore-case
+    replace ["purchase"] with "perchase" ignore-case
+    replace ["well"] with "whale" ignore-case
+    replace ["welcome"] with "whalecome" ignore-case
+    replace ["hilarious"] with "gillarious" ignore-case
+    replace ["illegal"] with "gillegal" ignore-case
+    replace ["debate"] with "debait" ignore-case
+    replace ["bait"] with "fishbait" ignore-case
+    replace ["doofus"] with "doofish" ignore-case
+    replace ["meant"] with "manta" ignore-case
+    replace ["slammin","summon"] with "salmon" ignore-case
+    replace ["creative"] with "crayative" ignore-case
+    replace ["creature"] with "crayture" ignore-case
+    replace ["had"] with "haddock" ignore-case
+    replace ["mack"] with "mackerel" ignore-case
+    replace ["choir","core"] with "coral" ignore-case
+    replace ["melancholic","melancholy"] with "melancoley" ignore-case
+    replace ["outrageous"] with "outraygeous" ignore-case
+    replace ["cuddle"] with "cuttle" ignore-case
+    replace ["hullabaloo"] with "hullabeluga" ignore-case
+    replace ["pick","like"] with "pike" ignore-case
+    replace ["possible"] with "posshipbly" ignore-case
+    replace ["possibly"] with "possibubbly" ignore-case
+    replace ["purpose","prepose","propose"] with "porpoise" ignore-case
+    replace ["appreciate"] with "carppreciate" ignore-case
+    replace ["appreciation"] with "carppreciation" ignore-case
+    replace ["insanity"] with "insmanatee" ignore-case
+    replace ["it\u2019s cool","s'cool"] with "s(\u2019)chool" ignore-case
+    replace ["coy"] with "koi" ignore-case
+    replace ["hate"] with "hake" ignore-case
+    replace ["brilliant"] with "krilliant" ignore-case
+    replace ["crappy"] with "crappie" ignore-case
+    replace ["hearing"] with "herring" ignore-case
+    replace ["official"] with "ofishial" ignore-case
+    replace ["bet","better","betcha"] with "betta" ignore-case
+    replace ["selfish"] with "shellfish" ignore-case
+    replace ["lmao","lmfao"] with "eelmao" ignore-case
+    replace ["fantastic"] with "fintastic" ignore-case
+    replace ["fantasy"] with "fintasy" ignore-case
+    replace ["fun","fan","fine"] with "fin" ignore-case
+    replace ["hell of it"] with "halibut" ignore-case
+    replace ["talking"] with "carping" ignore-case
+    replace ["chatting"] with "glubbing" ignore-case
+    replace ["lotsa"] with "lobsta" ignore-case
+    replace ["observations"] with "lobstervations" ignore-case
+    replace ["fumbling"] with "floundering" ignore-case
+    replace ["believe"] with "bereef" ignore-case
+    replace ["practicing"] with "pracfishing" ignore-case
+    replace ["enemy","any"] with "anemone" ignore-case
+    replace ["body"] with "moby" ignore-case
+    replace ["simmer"] with "swimmer" ignore-case
+    replace ["or"] with "oar" ignore-case
+    replace ["sealed"] with "sea eeled" ignore-case
+    replace ["basically"] with "bassically" ignore-case
+    replace ["inaccurate"] with "finaccurate" ignore-case
+    replace ["important"] with "finportant" ignore-case
+    replace ["simple"] with "shrimple" ignore-case
+    replace ["simply"] with "shrimply" ignore-case
+    replace ["myself"] with "myshellf" ignore-case
+    replace ["yourself"] with "yourshellf" ignore-case
+    replace ["shoulder"] with "schoalder" ignore-case
+    replace ["me know"] with "minnow" ignore-case
+    replace ["asshole"] with "basshole" ignore-case
+    replace ["pawn","pwn"] with "prawn" ignore-case
+    replace ["show"] with "shoal" ignore-case
+    replace ["definitely"] with "dolphinitely" ignore-case
+    replace ["elated"] with "eelated" ignore-case
+    replace ["convienent"] with "conchvienent" ignore-case
+    replace ["concerned"] with "conchcerned" ignore-case
+    replace ["confused"] with "conchfused" ignore-case
+    replace ["amscray"] with "clamscray" ignore-case
+    replace ["more"] with "moray" ignore-case
+    replace ["more"] with "moor" ignore-case
+    replace ["moirail"] with "moireel" ignore-case
+    replace ["moirail"] with "morayrail" ignore-case
+    replace ["moirail"] with "moray-eel" ignore-case
+    replace ["kismesis"] with "fishmesis" ignore-case
+    replace ["auspistice"] with "ausfishtice" ignore-case
+    replace ["snap"] with "snapper" ignore-case
+    replace ["must"] with "mast" ignore-case
+    replace ["wailing"] with "whaling" ignore-case
+    replace ["special"] with "speshell" ignore-case
+    replace ["sell","hell"] with "shell" ignore-case
+    replace ["muscle"] with "mussel" ignore-case
+    replace ["go be"] with "goby" ignore-case
+    replace ["help"] with "kelp" ignore-case
+    replace ["girl"] with "gill" ignore-case
+    replace ["endorphins"] with "endolphins" ignore-case
+    replace ["endorse"] with "endorsal" ignore-case
+    replace ["friend","fond"] with "frond" ignore-case
+    replace ["probably"] with "probubbly" ignore-case
+    replace ["flipping"] with "flippering" ignore-case
+    replace ["kidding"] with "squidding" ignore-case
+    replace ["sure"] with "shore" ignore-case
+    replace ["moola"] with "mola" ignore-case
+    replace ["see"] with "sea" ignore-case
+    replace ["weapon"] with "weaprawn" ignore-case
+    replace ["appear"] with "appier" ignore-case
+    replace ["disappear"] with "disappier" ignore-case
+    replace ["disappear"] with "disaspeared" ignore-case
+    replace ["aspire"] with "aspear" ignore-case
+    replace ["discernible"] with "fishcernable" ignore-case
+    replace ["discernible"] with "discernabubble" ignore-case
+    replace ["issues"] with "fishues" ignore-case
+    replace ["net"] with "fishnet" ignore-case
+    replace ["place"] with "plaice" ignore-case
+    replace ["discuss"] with "discus" ignore-case
+    replace ["clamoring"] with "clamering" ignore-case
+    replace ["each","bitch"] with "beach" ignore-case
+    replace ["specific"] with "pacific" ignore-case
+    replace ["surgeon"] with "sturgeon" ignore-case
+    replace ["what are"] with "water" ignore-case
+    replace ["always"] with "alwaves" ignore-case
+    replace ["attitude"] with "attitide" ignore-case
+    replace ["title"] with "tidal" ignore-case
+    replace ["accquianted"] with "aquainted" ignore-case
+    replace ["serious"] with "searious" ignore-case
+    replace ["secret"] with "seacret" ignore-case
+    replace ["seen"] with "sean" ignore-case
+    replace ["not"] with "naut" ignore-case
+    replace ["naughty"] with "nauty" ignore-case
+    replace ["actually"] with "actshoally" ignore-case
+    replace ["tidy"] with "tidey" ignore-case
+    replace ["tad"] with "shad" ignore-case
+    replace ["totally"] with "tidally" ignore-case
+    replace ["sanitary"] with "sanditary" ignore-case
+    replace ["teamwork"] with "teamfork" ignore-case
+    replace ["gullible"] with "seagullible" ignore-case
+    replace ["puffing"] with "puffin" ignore-case
+    replace ["crazy"] with "craysea" ignore-case
+    replace ["turn"] with "tern" ignore-case
+    replace ["wish"] with "fish" ignore-case
+    replace ["wishes"] with "fishes" ignore-case
+    replace ["lunacy"] with "lunasea" ignore-case
+    replace ["otherwise"] with "otterwise" ignore-case
+    replace ["asshole"] with "asshoal" ignore-case
+    replace ["shirk","stark"] with "shark" ignore-case
+    replace ["tone of","tune"] with "tuna" ignore-case
+    replace ["boy"] with "buoy" ignore-case
+    replace ["about"] with "aboat" ignore-case
+    replace ["bout"] with "boat" ignore-case
+    replace ["jealous"] with "jellyfish" ignore-case
+    replace ["what about"] with "waterboat" ignore-case
+    replace ["kill"] with "keel" ignore-case
+    replace ["hell","haul"] with "hull" ignore-case
+    replace ["sooner"] with "schooner" ignore-case
+    replace ["sell"] with "sail" ignore-case
+    replace ["fucking","fuckin"] with "glubbin" ignore-case
+    shorten-run "E" with "-"
+`;
+    }
+  });
+
   // ../examples/cx/catalog/plugins/floating-chat-bar.cx
   var floating_chat_bar_default;
   var init_floating_chat_bar = __esm({
@@ -39496,6 +39828,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_friend_invites = __esm({
     "../examples/cx/catalog/plugins/friend-invites.cx"() {
       friend_invites_default = 'plugin "FriendInvites":\n  needs commands.register\n  needs reply.local\n  needs friends.invites.create\n  needs friends.invites.list\n  needs friends.invites.revoke\n  on command "create-friend-invite":\n    create friend invites\n  on command "view-friend-invites":\n    list friend invites\n  on command "revoke-friend-invites":\n    revoke friend invites\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/gamzee-s-typing-quirk.cx
+  var gamzee_s_typing_quirk_default;
+  var init_gamzee_s_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/gamzee-s-typing-quirk.cx"() {
+      gamzee_s_typing_quirk_default = `plugin "Gamzee'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    alternate-case
+`;
     }
   });
 
@@ -39955,6 +40299,182 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/nepeta-s-typing-quirk.cx
+  var nepeta_s_typing_quirk_default;
+  var init_nepeta_s_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/nepeta-s-typing-quirk.cx"() {
+      nepeta_s_typing_quirk_default = `plugin "Nepeta'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["perfect"] with "purrfect" ignore-case
+    replace ["awesome"] with "pawsome" ignore-case
+    replace ["muscles"] with "meowscles" ignore-case
+    replace ["mountain"] with "meowntain" ignore-case
+    replace ["personal"] with "purrsonal" ignore-case
+    replace ["fortunate"] with "fur-tunate" ignore-case
+    replace ["mysterious"] with "meowsterious" ignore-case
+    replace ["party"] with "paw-rty" ignore-case
+    replace ["history"] with "hisstory" ignore-case
+    replace ["purchase"] with "purrchase" ignore-case
+    replace ["motivation"] with "meowtivation" ignore-case
+    replace ["friend"] with "furiend" ignore-case
+    replace ["for real","forreal"] with "furreal" ignore-case
+    replace ["attitude"] with "cattitude" ignore-case
+    replace ["persuade"] with "purrsuade" ignore-case
+    replace ["positive"] with "pawsitive" ignore-case
+    replace ["beautiful"] with "mewtiful" ignore-case
+    replace ["forbidden"] with "furbidden" ignore-case
+    replace ["perception"] with "purrception" ignore-case
+    replace ["formidable"] with "furmidable" ignore-case
+    replace ["permanent"] with "purrmanent" ignore-case
+    replace ["possible"] with "pawsible" ignore-case
+    replace ["ferrari"] with "furrari" ignore-case
+    replace ["personality"] with "purrsonality" ignore-case
+    replace ["pause"] with "pawse" ignore-case
+    replace ["police"] with "pawlice" ignore-case
+    replace ["melody"] with "meowlody" ignore-case
+    replace ["perseverance"] with "purrseverance" ignore-case
+    replace ["forever"] with "furever" ignore-case
+    replace ["moment"] with "meowment" ignore-case
+    replace ["autograph"] with "pawtograph" ignore-case
+    replace ["perplexed"] with "purrplexed" ignore-case
+    replace ["amazing"] with "ameowzing" ignore-case
+    replace ["adorable"] with "adorapawl" ignore-case
+    replace ["afraid"] with "afurraid" ignore-case
+    replace ["allow"] with "ameow" ignore-case
+    replace ["amuse"] with "amewse" ignore-case
+    replace ["another"] with "anofur" ignore-case
+    replace ["anymore"] with "anyroar" ignore-case
+    replace ["appalled"] with "appawlled" ignore-case
+    replace ["appetite"] with "appurtite" ignore-case
+    replace ["approach"] with "apurroach" ignore-case
+    replace ["appropriate"] with "appuropriate" ignore-case
+    replace ["approve"] with "apurrove" ignore-case
+    replace ["apology"] with "apawlogy" ignore-case
+    replace ["attitude"] with "catitude" ignore-case
+    replace ["awesome"] with "pawesome" ignore-case
+    replace ["awful"] with "clawful" ignore-case whole-word
+    replace ["awful"] with "pawful" ignore-case whole-word
+    replace ["cause","because"] with "beclawse" ignore-case
+    replace ["bullshit"] with "cat litter" ignore-case
+    replace ["camomile"] with "camewmile" ignore-case
+    replace ["cause"] with "claws" ignore-case
+    replace ["cheater"] with "cheetah" ignore-case
+    replace ["clever"] with "clawver" ignore-case
+    replace ["cosplay"] with "clawsplay" ignore-case
+    replace ["determination"] with "defurrmination" ignore-case
+    replace ["different"] with "diffurent" ignore-case
+    replace ["disappearance"] with "disapurrance" ignore-case
+    replace ["discriminate"] with "discrimeownate" ignore-case
+    replace ["empress","emperess"] with "empurress" ignore-case
+    replace ["especially"] with "espeacpurrly" ignore-case
+    replace ["ever"] with "efur" ignore-case
+    replace ["everyone"] with "effurryone" ignore-case
+    replace ["everything"] with "efurrything" ignore-case
+    replace ["familiar"] with "furmiliar" ignore-case
+    replace ["favourite"] with "favfurite" ignore-case
+    replace ["feeling"] with "feline" ignore-case
+    replace ["ferocious"] with "furocious" ignore-case
+    replace ["for"] with "fur" ignore-case whole-word
+    replace ["forbid"] with "furbid" ignore-case
+    replace ["forever"] with "furever" ignore-case
+    replace ["forget"] with "furget" ignore-case
+    replace ["fortune"] with "furrtune" ignore-case
+    replace ["friend"] with "furiend" ignore-case
+    replace ["from"] with "furrom" ignore-case
+    replace ["frown"] with "furown" ignore-case
+    replace ["got"] with "cat" ignore-case whole-word
+    replace ["hands"] with "paws" ignore-case whole-word
+    replace ["hands"] with "claws" ignore-case whole-word
+    replace ["his"] with "hiss" ignore-case whole-word
+    replace ["history"] with "hisstory" ignore-case
+    replace ["hypocrite"] with "hypurrcrite" ignore-case
+    replace ["hysterical"] with "hissterical" ignore-case
+    replace ["kidding"] with "kitten" ignore-case
+    replace ["kiss"] with "hiss" ignore-case
+    replace ["legion"] with "leijon" ignore-case
+    replace ["letter"] with "litter" ignore-case
+    replace ["lying","liying"] with "lion" ignore-case
+    replace ["me out"] with "meowt" ignore-case
+    replace ["memory"] with "memeowry" ignore-case
+    replace ["moirail"] with "meowrail" ignore-case
+    replace ["moment"] with "mewment" ignore-case
+    replace ["mood"] with "mewd" ignore-case
+    replace ["mostly"] with "meowstly" ignore-case
+    replace ["motherfucker"] with "meowtherfurrker" ignore-case
+    replace ["mountain"] with "meowntain" ignore-case
+    replace ["movie"] with "mewvie" ignore-case
+    replace ["music"] with "mewsic" ignore-case
+    replace ["never"] with "nefur" ignore-case
+    replace ["new"] with "mew" ignore-case
+    replace ["now"] with "nyaw" ignore-case whole-word
+    replace ["oppressed"] with "opurressed" ignore-case
+    replace ["other"] with "ofurr" ignore-case
+    replace ["people"] with "peopurr" ignore-case
+    replace ["passage"] with "pawssage" ignore-case
+    replace ["party"] with "purtty" ignore-case
+    replace ["particular"] with "purrticular" ignore-case
+    replace ["pause"] with "paws" ignore-case
+    replace ["perchance"] with "purrchance" ignore-case
+    replace ["perfect"] with "purrfect" ignore-case
+    replace ["perhaps"] with "purrhaps" ignore-case
+    replace ["permission"] with "purrmission" ignore-case
+    replace ["perform"] with "purrform" ignore-case
+    replace ["performance"] with "purrformance" ignore-case
+    replace ["prepare"] with "prepurr" ignore-case
+    replace ["perpetrator"] with "purrpetrator" ignore-case
+    replace ["persnickety"] with "purrsnickety" ignore-case
+    replace ["persist"] with "purrsist" ignore-case
+    replace ["person"] with "purrson" ignore-case
+    replace ["personal"] with "purrsonal" ignore-case
+    replace ["persuasion"] with "purrsuasion" ignore-case
+    replace ["please"] with "pawlease" ignore-case
+    replace ["pleasure"] with "purrleasure" ignore-case
+    replace ["poetry"] with "pawetry" ignore-case
+    replace ["ponder"] with "pawnder" ignore-case
+    replace ["poor"] with "purr" ignore-case whole-word
+    replace ["popular"] with "pawpular" ignore-case
+    replace ["positive"] with "pawsitive" ignore-case
+    replace ["possible"] with "pawssible" ignore-case
+    replace ["pray"] with "purray" ignore-case
+    replace ["preach"] with "purreach" ignore-case
+    replace ["precious"] with "purrecious" ignore-case
+    replace ["prefer"] with "pawfur" ignore-case
+    replace ["prepare"] with "prepurr" ignore-case
+    replace ["pretend"] with "purretend" ignore-case
+    replace ["pretty"] with "purretty" ignore-case
+    replace ["prey"] with "purrey" ignore-case
+    replace ["problem"] with "purroblem" ignore-case
+    replace ["procrastinate"] with "purrcrastinate" ignore-case
+    replace ["promise"] with "puromise" ignore-case
+    replace ["proper"] with "purropurr" ignore-case
+    replace ["proud"] with "purroud" ignore-case
+    replace ["purple"] with "purrple" ignore-case
+    replace ["purplex","perplex"] with "purrplex" ignore-case
+    replace ["rather"] with "rafur" ignore-case
+    replace ["remember"] with "remempurr" ignore-case
+    replace ["sharper"] with "sharpurr" ignore-case
+    replace ["simply"] with "simpurly" ignore-case
+    replace ["somewhat"] with "somefluff" ignore-case
+    replace ["support"] with "supawrt" ignore-case
+    replace ["support"] with "suppurt" ignore-case
+    replace ["tale","tell"] with "tail" ignore-case
+    replace ["talent"] with "tailent" ignore-case
+    replace ["thankful"] with "thankfur" ignore-case
+    replace ["transparent"] with "transpurrent" ignore-case
+    replace ["theatre"] with "theatfurr" ignore-case
+    replace ["upon"] with "upawn" ignore-case
+    replace ["warfare"] with "warfurr" ignore-case
+    replace ["whenever"] with "whenefur" ignore-case
+    replace ["whisk her","whisper"] with "whisker" ignore-case
+    replace ["whisper"] with "whispurr" ignore-case
+    replace ["wonderful"] with "wonderfur" ignore-case
+    replace ["ee","eE","Ee","EE"] with "33"
+    prefix ":33 < "
+`;
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-blocked-messages.cx
   var no_blocked_messages_default;
   var init_no_blocked_messages = __esm({
@@ -40123,6 +40643,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/sollux-typing-quirk.cx
+  var sollux_typing_quirk_default;
+  var init_sollux_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/sollux-typing-quirk.cx"() {
+      sollux_typing_quirk_default = 'plugin "SolluxTypingQuirk":\n  needs messages.transform\n  before send rewrite-text:\n    replace ["i"] with "ii"\n    replace ["I"] with "II"\n    replace ["s","S"] with "2" ignore-case\n    replace ["to"] with "two" ignore-case\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/space-out.cx
   var space_out_default;
   var init_space_out = __esm({
@@ -40171,6 +40699,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/terezi-typing-quirk.cx
+  var terezi_typing_quirk_default;
+  var init_terezi_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/terezi-typing-quirk.cx"() {
+      terezi_typing_quirk_default = 'plugin "TereziTypingQuirk":\n  needs messages.transform\n  before send rewrite-text:\n    replace ["A"] with "4" ignore-case\n    replace ["I"] with "1" ignore-case\n    replace ["E"] with "3" ignore-case\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/text-replace.cx
   var text_replace_default;
   var init_text_replace = __esm({
@@ -40216,6 +40752,55 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_voice_join_messages = __esm({
     "../examples/cx/catalog/plugins/voice-join-messages.cx"() {
       voice_join_messages_default = 'plugin "VoiceJoinMessages":\n  needs voice.notifyfriends\n  on incoming friends-voice ""\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx
+  var vriska_s_typing_quirk_default;
+  var init_vriska_s_typing_quirk = __esm({
+    "../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx"() {
+      vriska_s_typing_quirk_default = `plugin "Vriska'sTypingQuirk":
+  needs messages.transform
+  before send rewrite-text:
+    replace ["bait"] with "b8" ignore-case
+    replace ["great"] with "gr8" ignore-case
+    replace ["late"] with "l8" ignore-case
+    replace ["wait"] with "w8" ignore-case
+    replace ["break"] with "br8k" ignore-case
+    replace ["steak"] with "st8k" ignore-case
+    replace ["replace"] with "repl8ce" ignore-case
+    replace ["skate"] with "sk8" ignore-case
+    replace ["skater"] with "sk8r" ignore-case
+    replace ["gatekeep"] with "g8k" ignore-case
+    replace ["gator"] with "g8r" ignore-case
+    replace ["private"] with "priv8" ignore-case
+    replace ["ultimate"] with "ultim8" ignore-case
+    replace ["prostate"] with "prost8" ignore-case
+    replace ["waiter"] with "w8r" ignore-case
+    replace ["ate"] with "8" ignore-case
+    replace ["ait"] with "8" ignore-case
+    replace ["eight"] with "8" ignore-case
+    replace ["create"] with "cre8" ignore-case
+    replace ["update"] with "upd8" ignore-case
+    replace ["date"] with "d8" ignore-case
+    replace ["fate"] with "f8" ignore-case
+    replace ["rate"] with "r8" ignore-case
+    replace ["mate"] with "m8" ignore-case
+    replace ["state"] with "st8" ignore-case
+    replace ["hate"] with "h8" ignore-case
+    replace ["activate"] with "activ8" ignore-case
+    replace ["celebrate"] with "celebr8" ignore-case
+    replace ["translate"] with "transl8" ignore-case
+    replace ["educate"] with "educ8" ignore-case
+    replace ["calculate"] with "calcul8" ignore-case
+    replace ["communicate"] with "communic8" ignore-case
+    replace ["participate"] with "particip8" ignore-case
+    replace ["weight"] with "w8" ignore-case
+    replace ["freight"] with "fr8" ignore-case
+    replace ["straight"] with "str8" ignore-case
+    replace ["trait"] with "tr8" ignore-case
+    replace ["b","B"] with "8"
+`;
     }
   });
 
@@ -41072,9 +41657,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_dim_inactive_channels();
       init_dont_round_my_timestamps();
       init_embedded_urls();
+      init_equius_s_typing_quirk();
+      init_eridan_typing_quirk();
+      init_feferi_typing_quirk();
       init_floating_chat_bar();
       init_follow_voice_user();
       init_friend_invites();
+      init_gamzee_s_typing_quirk();
       init_google_that();
       init_hide_active_now();
       init_hide_add_server_button();
@@ -41132,6 +41721,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_message_notifier();
       init_more_commands();
       init_muted_channels_faded();
+      init_nepeta_s_typing_quirk();
       init_no_blocked_messages();
       init_no_pending_count();
       init_no_profile_themes();
@@ -41153,18 +41743,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_silence_users();
       init_silent_message_toggle();
       init_silent_typing();
+      init_sollux_typing_quirk();
       init_space_out();
       init_spotify_share_commands();
       init_starify();
       init_sticker_blocker();
       init_stop_auto_unread();
       init_talk_in_reverse();
+      init_terezi_typing_quirk();
       init_text_replace();
       init_transparent_chat_bar();
       init_unindent();
       init_unit_converter();
       init_vibe_check();
       init_voice_join_messages();
+      init_vriska_s_typing_quirk();
       init_wiki_lookup();
       init_write_upper_case();
       init_zero_width_sanitizer();
@@ -41359,6 +41952,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: embedded_urls_default
           },
           {
+            name: "Equius'sTypingQuirk",
+            source: equius_s_typing_quirk_default
+          },
+          {
+            name: "EridanTypingQuirk",
+            source: eridan_typing_quirk_default
+          },
+          {
+            name: "FeferiTypingQuirk",
+            source: feferi_typing_quirk_default
+          },
+          {
             name: "FloatingChatBar",
             source: floating_chat_bar_default
           },
@@ -41369,6 +41974,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "FriendInvites",
             source: friend_invites_default
+          },
+          {
+            name: "Gamzee'sTypingQuirk",
+            source: gamzee_s_typing_quirk_default
           },
           {
             name: "GoogleThat",
@@ -41599,6 +42208,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: muted_channels_faded_default
           },
           {
+            name: "Nepeta'sTypingQuirk",
+            source: nepeta_s_typing_quirk_default
+          },
+          {
             name: "NoBlockedMessages",
             source: no_blocked_messages_default
           },
@@ -41683,6 +42296,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: silent_typing_default
           },
           {
+            name: "SolluxTypingQuirk",
+            source: sollux_typing_quirk_default
+          },
+          {
             name: "SpaceOut",
             source: space_out_default
           },
@@ -41707,6 +42324,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: talk_in_reverse_default
           },
           {
+            name: "TereziTypingQuirk",
+            source: terezi_typing_quirk_default
+          },
+          {
             name: "TextReplace",
             source: text_replace_default
           },
@@ -41729,6 +42350,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "VoiceJoinMessages",
             source: voice_join_messages_default
+          },
+          {
+            name: "Vriska'sTypingQuirk",
+            source: vriska_s_typing_quirk_default
           },
           {
             name: "WikiLookup",
@@ -46524,11 +47149,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             func = this.utcOffset() === 0 ? "moment.utc" : "moment.parseZone";
             zone = "Z";
           }
-          var prefix = "[" + func + '("]';
+          var prefix2 = "[" + func + '("]';
           var year = 0 <= this.year() && this.year() <= 9999 ? "YYYY" : "YYYYYY";
           var datetime = "-MM-DD[T]HH:mm:ss.SSS";
           var suffix = zone + '[")]';
-          return this.format(prefix + year + datetime + suffix);
+          return this.format(prefix2 + year + datetime + suffix);
         }
         function format(inputString) {
           if (!inputString) {
@@ -48006,7 +48631,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6e9862b17c625176365cd5e5ddb047dd5a7f0346";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "5c170260b1ec660c0b6aadfb837a0fb04abc3923";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
