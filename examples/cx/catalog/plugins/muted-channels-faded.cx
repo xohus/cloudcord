@@ -1,0 +1,3 @@
+plugin "MutedChannelsFaded":
+  needs appearance.style
+  style muted-channel-opacity

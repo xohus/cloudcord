@@ -1,0 +1,3 @@
+plugin "DimInactiveChannels":
+  needs appearance.style
+  style inactive-channel-opacity

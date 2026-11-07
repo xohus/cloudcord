@@ -1,0 +1,3 @@
+plugin "HideMentionBadges":
+  needs appearance.hide
+  hide mention-badges

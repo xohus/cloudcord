@@ -408,6 +408,34 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     assert.equal(styles[1], rule.style.values);
                 }
                 wraps.push(wrapped);
+            } else if (rule.style?.renderedComponents) {
+                const enabled = [];
+                function Channel(props) { return jsx("Text", { children: props.title, style: baseStyle }); }
+                for (const name of rule.style.renderedComponents) {
+                    const hook = appearanceHooks.get(name);
+                    const type = name === "ChannelContent" ? Channel : { $$typeof: Symbol.for("react.memo"), type: Channel };
+                    const active = jsx(type, { title: "active", muted: false, unread: true });
+                    const quiet = jsx(type, { title: "quiet", muted: false, unread: false });
+                    const muted = jsx(type, { title: "muted", muted: true, unread: true });
+                    const renderHook = element => {
+                        const wrapped = hook(null, element);
+                        return wrapped.type(wrapped.props);
+                    };
+                    assert.equal(renderHook(active), active);
+                    const mutedStyle = renderHook(muted);
+                    assert.equal(mutedStyle.type(mutedStyle.props).props.style[0], baseStyle);
+                    assert.equal(mutedStyle.type(mutedStyle.props).props.style[1], rule.style.values);
+                    assert.equal(mutedStyle.type(mutedStyle.props).props.children, "muted");
+                    assert.equal(renderHook(muted).type, mutedStyle.type);
+                    const quietStyle = renderHook(quiet);
+                    if (rule.style.condition === "inactive") assert.equal(quietStyle.type(quietStyle.props).props.style[1], rule.style.values);
+                    else assert.equal(quietStyle, quiet);
+                    enabled.push([hook(null, muted), muted]);
+                }
+                click(render(), "Disable " + rule.plugin);
+                for (const [wrapped, original] of enabled) assert.equal(wrapped.type(wrapped.props), original);
+                assert.equal(appearanceHooks.size, 0);
+                continue;
             } else if (rule.style?.spoilerOutline) {
                 const hiddenText = new Spoiler(original, false);
                 const revealedText = new Spoiler(original, true);
@@ -470,6 +498,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(appearanceHooks.size, 0);
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
+                continue;
+            } else if (rule.mobile.mentionBadges) {
+                const badge = appearanceHooks.get("Badge");
+                const marked = jsx("NativeBadge", { value: 3, isMentionLowImportance: false });
+                const unrelated = jsx("NativeBadge", { value: 3 });
+                const modern = badge(null, marked);
+                const legacy = appearanceHooks.get("MentionsBadge")(null, original);
+                assert.equal(modern.type(modern.props), null);
+                assert.equal(legacy.type(legacy.props), null);
+                const other = badge(null, unrelated);
+                assert.equal(other.type(other.props), unrelated);
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(modern.type(modern.props), marked);
+                assert.equal(legacy.type(legacy.props), original);
+                assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.messagePresentation) {
                 const rendered = messageRenderer.default();

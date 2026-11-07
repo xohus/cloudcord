@@ -15,7 +15,7 @@ import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
-import type { ReactElement, ReactNode } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 import { ScrollView, Text, TextInput } from "react-native";
 
 const session = createCxSession();
@@ -150,6 +150,32 @@ function registerTreeAppearance(rule: {
     }, target.compare);
     return registerJsxAppearance([component], element => element.type === target
         ? React.createElement(FilteredTree, { ...element.props, key: element.key }) : element);
+}
+
+function registerRenderedChannelStyle(rule: {
+    renderedComponents: readonly string[]; condition: "muted" | "inactive"; values: { opacity: number; };
+}) {
+    const wrappers = new WeakMap<object, ComponentType<{ originalProps: object; }>>();
+    return registerJsxAppearance(rule.renderedComponents, element => {
+        const { muted, unread } = element.props;
+        if (typeof muted !== "boolean" || typeof unread !== "boolean"
+            || !(muted || rule.condition === "inactive" && !unread)) return element;
+
+        const component = element.type as { $$typeof?: symbol; type?: unknown; };
+        const render = component?.$$typeof === Symbol.for("react.memo") ? component.type : component;
+        if (typeof render !== "function" || render.prototype?.isReactComponent) return element;
+        let wrapper = wrappers.get(component);
+        if (!wrapper) {
+            wrapper = function StyledChannel({ originalProps }) {
+                const output = render(originalProps) as ReactNode;
+                if (settings.safeMode?.enabled || !React.isValidElement<{ style?: unknown; }>(output)) return output;
+                if (!("style" in output.props)) return output;
+                return React.cloneElement(output, { style: [output.props.style, rule.values] });
+            };
+            wrappers.set(component, wrapper);
+        }
+        return React.createElement(wrapper, { originalProps: element.props, key: element.key });
+    });
 }
 
 const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
@@ -298,6 +324,13 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile) return registerTreeAppearance(mobile);
+                    if ("mentionBadges" in mobile) {
+                        const stopLegacy = registerJsxAppearance(["MentionsBadge"], () => null);
+                        const stopCount = registerJsxAppearance(["Badge"], element =>
+                            typeof element.props.value === "number" && element.props.value > 0
+                                && "isMentionLowImportance" in element.props ? null : element);
+                        return () => { stopCount(); stopLegacy(); };
+                    }
                     if (!("messagePresentation" in mobile)) return registerJsxAppearance(mobile, () => null);
                     const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
                     return overrideCxMethods(renderer, {
@@ -315,6 +348,7 @@ export default function CxExtensions() {
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
+                    if ("renderedComponents" in style) return registerRenderedChannelStyle(style);
                     if ("spoilerOutline" in style) {
                         const spoiler = findByFilePath("modules/markup/native/Spoiler.tsx")?.default?.prototype;
                         if (typeof spoiler?.render !== "function") throw new Error("Discord's text spoiler is unavailable");

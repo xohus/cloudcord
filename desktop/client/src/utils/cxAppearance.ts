@@ -241,6 +241,21 @@ export const cxAppearanceTargets = {
         css: '[class*="unreadMentionsIndicator"] { display: none !important; }',
         mobile: ["GuildsBarUnreadBars"],
     },
+    "mention-badges": {
+        plugin: "HideMentionBadges", label: "mention count badges",
+        css: '[class*="numberBadge"] { display: none !important; }',
+        mobile: { mentionBadges: true },
+    },
+    "muted-channel-opacity": {
+        plugin: "MutedChannelsFaded", label: "fade muted channels",
+        css: '[class*="modeMuted"] { opacity: .45 !important; }',
+        style: { renderedComponents: ["ChannelContent", "ChannelContentComponent"], condition: "muted", values: { opacity: 0.45 } },
+    },
+    "inactive-channel-opacity": {
+        plugin: "DimInactiveChannels", label: "dim channel names without unread messages",
+        css: '[class*="containerDefault"] [class*="modeMuted"], [class*="containerDefault"]:not(:has([class*="unread"])) [class*="name_"] { opacity: .6; }',
+        style: { renderedComponents: ["ChannelTitle"], condition: "inactive", values: { opacity: 0.6 } },
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;
