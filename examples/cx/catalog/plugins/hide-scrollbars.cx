@@ -1,0 +1,3 @@
+plugin "HideScrollbars":
+  needs appearance.hide
+  hide scrollbars

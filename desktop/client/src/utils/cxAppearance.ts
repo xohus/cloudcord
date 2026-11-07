@@ -265,6 +265,11 @@ export const cxAppearanceTargets = {
         css: '[class*="folder"][class*="expanded"]:empty { display: none !important; }',
         mobile: { emptyServerFolders: true },
     },
+    "scrollbars": {
+        plugin: "HideScrollbars", label: "scroll indicators",
+        css: '::-webkit-scrollbar { width: 0 !important; height: 0 !important; }',
+        mobile: { scrollIndicators: true },
+    },
     "server-unread-pills": {
         plugin: "HideUnreadPills", label: "the server sidebar unread pills",
         css: '[class*="unreadMentionsIndicator"] { display: none !important; }',

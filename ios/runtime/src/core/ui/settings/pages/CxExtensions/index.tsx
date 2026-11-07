@@ -16,7 +16,7 @@ import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } fro
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, ReactElement, ReactNode } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { Animated, FlatList, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
@@ -33,9 +33,9 @@ const SpotifyStore = findByStoreNameLazy("SpotifyStore");
 const SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
 
 type AppearanceChange = (element: JSX.Element) => JSX.Element | null;
-const appearanceBindings = new Map<string, ReturnType<typeof bindAppearance>>();
+const appearanceBindings = new Map<string | object, ReturnType<typeof bindAppearance>>();
 
-function bindAppearance(name: string) {
+function bindAppearance(name: string | object) {
     let revision = 0;
     const changes = new Set<AppearanceChange>();
     const listeners = new Set<() => void>();
@@ -74,7 +74,7 @@ function bindAppearance(name: string) {
     };
 }
 
-function registerJsxAppearance(names: readonly string[], change: AppearanceChange) {
+function registerJsxAppearance(names: readonly (string | object)[], change: AppearanceChange) {
     const cleanups = names.map(name => {
         let bind = appearanceBindings.get(name);
         if (!bind) {
@@ -157,14 +157,12 @@ function registerTreeAppearance(rule: {
                 || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons)
             );
     };
-    const component = target.displayName || inner.displayName || render.displayName || render.name;
-    if (!component) throw new Error("Discord's appearance component has no name");
     function FilteredTree(props: object, ref?: unknown) {
         const tree = render(props, ref) as ReactNode;
         return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
     }
     const filtered = React.memo(forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree, target.compare);
-    return registerJsxAppearance([component], element => {
+    return registerJsxAppearance([target], element => {
         if (element.type !== target) return element;
         const props = { ...element.props, key: element.key };
         if (forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
@@ -344,6 +342,14 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile) return registerTreeAppearance(mobile);
+                    if ("scrollIndicators" in mobile) {
+                        const scrollViews = new Set([ScrollView, FlatList, SectionList, Animated?.ScrollView, Animated?.FlatList, Animated?.SectionList]);
+                        const components = [...scrollViews].filter((component): component is NonNullable<typeof component> => component != null);
+                        return registerJsxAppearance(components, element => React.cloneElement(element, {
+                            showsHorizontalScrollIndicator: false,
+                            showsVerticalScrollIndicator: false,
+                        }));
+                    }
                     if ("customStatusEmojis" in mobile) {
                         return registerJsxAppearance(mobile.customStatusEmojis, element => {
                             const { customStatusActivity } = element.props;

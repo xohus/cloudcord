@@ -23,6 +23,13 @@ for (const component of [ProfileHeader, shortened, { $$typeof: Symbol.for('react
     assert.equal(typeof result.matched, 'function');
 }
 assert.equal(seen, 5);
+const privateComponent = { $$typeof: Symbol.for('react.forward_ref'), render: () => {} };
+const identityHook = (_component, element) => ({ ...element, matchedByIdentity: true });
+api.onJsxCreate(privateComponent, identityHook, true);
+assert.equal(patches.jsxs([privateComponent], { type: privateComponent, props: {} }).matchedByIdentity, true);
+assert.equal(patches.jsxs([{ ...privateComponent }], { type: privateComponent, props: {} }), undefined);
+api.deleteJsxCreate(privateComponent, identityHook, true);
+assert.equal(patches.jsxs([privateComponent], { type: privateComponent, props: {} }), undefined);
 assert.equal(patches.jsx(['RCTText'], { type: 'RCTText', props: {} }), undefined);
 assert.equal(patches.jsx([{}], { type: {}, props: {} }), undefined);
 function FrozenHeader() {}

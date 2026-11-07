@@ -229,6 +229,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
+        const nativeScrollView = () => null;
+        const nativeFlatList = () => null;
+        const nativeSectionList = () => null;
+        const animatedScrollView = { render: () => null };
         const messagePresentation = Object.freeze({
             edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello <t:12345>",
             timestamp: "8:24 PM", timestampTooltip: "November 7 at 8:24 PM", timestampAccessibilityLabel: "8:24 PM",
@@ -363,7 +367,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: { dispatch },
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
-            "react-native": { ScrollView: "ScrollView", Text: "Text", TextInput: "TextInput" },
+            "react-native": {
+                ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
+                Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput",
+            },
         };
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
             module,
@@ -495,7 +502,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
             else if (rule.mobile.hideControlIcons) {
-                const hook = appearanceHooks.get("ChatInputActions");
+                const hook = appearanceHooks.get(chatInputActions);
                 const onPress = () => {};
                 const attachment = jsx("ActionButton", { IconComponent: headerIcons.MediaKeyboardButtonIcon, onPress });
                 const gallery = jsx("ActionButton", { IconComponent: headerIcons.ImageIcon, onPress });
@@ -538,7 +545,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 const row = children => jsx("View", Object.freeze({ children: Object.freeze(children) }));
                 const input = row([text, row([voice, video, search, addFriend, avatar, spoilerLabel, contentWarning])]);
                 const originalHeader = jsx(header, input);
-                const hook = appearanceHooks.get(name);
+                const hook = appearanceHooks.get(header);
                 const unrelated = jsx({ ...header }, input);
                 const unrelatedWrapper = hook(null, unrelated);
                 assert.equal(unrelatedWrapper.type(unrelatedWrapper.props), unrelated);
@@ -565,6 +572,24 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(appearanceHooks.size, 0);
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
+                continue;
+            } else if (rule.mobile.scrollIndicators) {
+                for (const type of [nativeScrollView, nativeFlatList, nativeSectionList, animatedScrollView]) {
+                    const hook = appearanceHooks.get(type);
+                    const scroller = jsx(type, { scrollEnabled: true, showsVerticalScrollIndicator: true, onScroll() {} });
+                    const wrapped = hook(type, scroller);
+                    const hidden = wrapped.type(wrapped.props);
+                    assert.equal(hidden.type, type);
+                    assert.equal(hidden.props.scrollEnabled, true);
+                    assert.equal(hidden.props.onScroll, scroller.props.onScroll);
+                    assert.equal(hidden.props.showsHorizontalScrollIndicator, false);
+                    assert.equal(hidden.props.showsVerticalScrollIndicator, false);
+                    settings.safeMode = { enabled: true };
+                    assert.equal(wrapped.type(wrapped.props), scroller);
+                    settings.safeMode = undefined;
+                }
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.emptyServerFolders) {
                 const hook = appearanceHooks.get("GuildsBarGuildFolder");
