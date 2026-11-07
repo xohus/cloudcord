@@ -267,10 +267,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const nativeSectionList = () => null;
         const animatedScrollView = { render: () => null };
         const messagePresentation = Object.freeze({
+            mentioned: true, highlightColor: 0x33ffff00,
             edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello <t:12345>",
             timestamp: "8:24 PM", timestampTooltip: "November 7 at 8:24 PM", timestampAccessibilityLabel: "8:24 PM",
         });
-        const createMessageContent = () => messagePresentation;
+        const createMessageContent = (presentation = messagePresentation) => presentation;
         const messageRenderer = { default: createMessageContent };
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
             "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu", "ThreadIcon"]
@@ -313,7 +314,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const appContainer = { getBaseAppContainerDimensions: () => ({ width: viewportWidth }) };
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
-            "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem", "PresenceActivityStatus"].map(name => [
+            "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem", "PresenceActivityStatus", "ChatInputExpressionButton"].map(name => [
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
         const forwardedRefs = [];
@@ -488,6 +489,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "react-native": {
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
+                processColor: value => value === "#7c5cff2e" ? 0x2e7c5cff : undefined,
                 Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput", View: "View",
             },
         };
@@ -537,6 +539,22 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", style: baseStyle, styles: originalStyles }) });
             const wraps = [];
             if (desktop) assert.equal(stylesheet.textContent, rule.css);
+            else if (rule.style?.mentionHighlight) {
+                const highlighted = messageRenderer.default();
+                assert.notEqual(highlighted, messagePresentation);
+                assert.equal(highlighted.highlightColor, 0x2e7c5cff);
+                assert.equal(highlighted.content, messagePresentation.content);
+                const plain = Object.freeze({ ...messagePresentation, mentioned: false });
+                assert.equal(messageRenderer.default(plain), plain);
+                const unhighlighted = Object.freeze({ ...messagePresentation, highlightColor: 0 });
+                assert.equal(messageRenderer.default(unhighlighted), unhighlighted);
+                settings.safeMode = { enabled: true };
+                assert.equal(messageRenderer.default(), messagePresentation);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(messageRenderer.default, createMessageContent);
+                continue;
+            }
             else if (rule.style?.component) {
                 const wrapped = appearanceHooks.get(rule.style.component)(null, original);
                 const next = wrapped.type(wrapped.props);

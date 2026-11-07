@@ -1,0 +1,3 @@
+plugin "HighlightMentions":
+  needs appearance.style
+  style highlight-mentions

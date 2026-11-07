@@ -84,6 +84,11 @@ export const cxAppearanceTargets = {
         css: 'button[aria-label="Send a gift"] { display: none !important; }',
         mobile: ["PremiumAnimatedGiftButton"],
     },
+    "chat-emoji-button": {
+        plugin: "HideEmojiButton", label: "the composer expression picker shortcut",
+        css: 'button[aria-label="Select emoji"] { display: none !important; }',
+        mobile: { hideComponentPaths: ["modules/chat_input/native/accessories/ChatInputExpressionButton.tsx"] },
+    },
     "chat-gif-picker": {
         plugin: "HideGifButton", label: "the GIF picker shortcut",
         css: 'button[aria-label="Open GIF picker"] { display: none !important; }',
@@ -291,6 +296,11 @@ export const cxAppearanceTargets = {
         style: {
             semantic: { MENTION_BACKGROUND: "#7c5cff40", MENTION_FOREGROUND: "#c9bcff" },
         },
+    },
+    "highlight-mentions": {
+        plugin: "HighlightMentions", label: "highlight messages that mention you in purple",
+        css: '[class*="mentioned"] { background: rgb(124 92 255 / 18%) !important; box-shadow: inset 3px 0 0 #7c5cff; }',
+        style: { mentionHighlight: "#7c5cff2e" },
     },
     "underlined-links": {
         plugin: "HighlightLinks", label: "underline message links",

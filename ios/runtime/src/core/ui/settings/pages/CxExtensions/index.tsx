@@ -20,7 +20,7 @@ import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } fro
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Animated, FlatList, Linking, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Animated, FlatList, Linking, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
@@ -743,6 +743,19 @@ export default function CxExtensions() {
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
+                    if ("mentionHighlight" in style) {
+                        const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+                        const highlightColor = processColor(style.mentionHighlight);
+                        if (typeof highlightColor !== "number") throw new Error("Discord's message highlight color is unavailable");
+                        return overrideCxMethods(renderer, {
+                            default(args, invoke) {
+                                const message = invoke(args);
+                                if (!message || typeof message !== "object" || !("mentioned" in message) || message.mentioned !== true
+                                    || !("highlightColor" in message) || typeof message.highlightColor !== "number" || message.highlightColor === 0) return message;
+                                return { ...message, highlightColor };
+                            },
+                        }, () => !settings.safeMode?.enabled);
+                    }
                     if ("drawerWidthDelta" in style) return registerChannelDrawerWidth(style.drawerWidthDelta);
                     if ("renderedComponents" in style) return registerRenderedChannelStyle(style);
                     if ("serverIconScale" in style) {
