@@ -261,6 +261,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
         const forwardedRefs = [];
+        function ActivityStatus(props) { return props.output; }
+        nativeHeaders.set("ActivityStatus", ActivityStatus);
         const chatInputActions = {
             $$typeof: Symbol.for("react.memo"), type: {
                 $$typeof: Symbol.for("react.forward_ref"), displayName: "ChatInputActions",
@@ -390,6 +392,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : "ProfileUserProvider" }),
                 useContext: context => context.Provider === "MemberRowProvider" ? inMemberRow : profileUser,
+                Fragment: Symbol.for("react.fragment"),
                 isValidElement: element => !!element?.type && !!element?.props,
                 createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
@@ -700,20 +703,58 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     const status = jsx(presence, { activity: { type }, hideText: false, hideIcon: false });
                     const wrapped = presenceHook(null, status);
                     const result = wrapped.type(wrapped.props);
-                    if (type === 4) assert.equal(result, status);
-                    else {
-                        assert.equal(result.type(result.props), status);
-                        inMemberRow = true;
-                        const hidden = result.type(result.props);
-                        assert.equal(hidden.props.hideText, true);
-                        assert.equal(hidden.props.hideIcon, false);
-                        inMemberRow = false;
-                    }
+                    assert.equal(result.type(result.props), status);
+                    inMemberRow = true;
+                    const hidden = result.type(result.props);
+                    assert.equal(hidden.props.hideText, type !== 4);
+                    assert.equal(hidden.props.hideIcon, false);
+                    inMemberRow = false;
                     tests.push([wrapped, status]);
                 }
                 click(render(), "Disable " + rule.plugin);
                 assert.equal(appearanceHooks.size, 0);
                 for (const [wrapped, status] of tests) assert.equal(wrapped.type(wrapped.props), status);
+                continue;
+            } else if (rule.mobile.memberCustomStatus) {
+                const hook = appearanceHooks.get("ActivityStatus");
+                const presence = jsx("Presence", { label: "Playing Discord" });
+                const separator = jsx("Text", { accessibilityElementsHidden: true, children: " · " });
+                const custom = jsx(Symbol.for("react.fragment"), { children: ["Working", null] });
+                const output = jsx("ActivityContainer", { style: baseStyle, children: Object.freeze([presence, separator, custom]) });
+                const original = jsx(ActivityStatus, { output });
+                const wrapped = hook(null, original);
+                const scoped = wrapped.type(wrapped.props);
+                assert.equal(scoped.type(scoped.props), original);
+                inMemberRow = true;
+                const filtered = scoped.type(scoped.props);
+                assert.deepEqual(Array.from(filtered.type(filtered.props).props.children), [presence, null, null]);
+                assert.equal(output.props.children[2], custom);
+                const unknownOutput = jsx("ActivityContainer", { children: [presence, null, "untagged"] });
+                assert.equal(filtered.type({ originalProps: { output: unknownOutput } }), unknownOutput);
+                settings.safeMode = { enabled: true };
+                assert.equal(scoped.type(scoped.props), original);
+                settings.safeMode = undefined;
+                inMemberRow = false;
+                selectCatalog("HideMemberActivities");
+                click(render(), "Allow for this session");
+                selectCatalog("HideStatusEmojis");
+                click(render(), "Allow for this session");
+                assert.equal(scoped.type(scoped.props), original);
+                const withBoth = wrapped.type(wrapped.props);
+                assert.equal(withBoth.type(withBoth.props).props.hideEmoji, true);
+                inMemberRow = true;
+                assert.equal(withBoth.type(withBoth.props).props.originalProps.hideEmoji, true);
+                inMemberRow = false;
+                click(render(), "Disable HideStatusEmojis");
+                const row = jsx("UserRowSubLabel", { guildId });
+                const rowWrapper = appearanceHooks.get("UserRowSubLabel")(null, row);
+                assert.equal(rowWrapper.type(rowWrapper.props).props.children, row);
+                click(render(), "Disable HideCustomStatuses");
+                assert.equal(wrapped.type(wrapped.props), original);
+                assert.equal(rowWrapper.type(rowWrapper.props).props.children, row);
+                click(render(), "Disable HideMemberActivities");
+                assert.equal(rowWrapper.type(rowWrapper.props), row);
+                assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.mentionBadges) {
                 const badge = appearanceHooks.get("Badge");

@@ -104,6 +104,11 @@ export const cxAppearanceTargets = {
         css: '[class*="member_"] [class*="activityText"] { display: none !important; }',
         mobile: { memberActivityText: true },
     },
+    "member-custom-status": {
+        plugin: "HideCustomStatuses", label: "custom statuses in the member list",
+        css: '[class*="memberInner"] [class*="activity"], [class*="member_"] [class*="subText"] { display: none !important; }',
+        mobile: { memberCustomStatus: true },
+    },
     "reply-previews": {
         plugin: "HideReplyPreviews", label: "reply previews in chat",
         css: '[class*="repliedMessage"] { display: none !important; }',

@@ -17,7 +17,7 @@ import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
-import type { ComponentType, ReactElement, ReactNode } from "react";
+import type { ComponentType, Context, ReactElement, ReactNode } from "react";
 import { Animated, FlatList, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
@@ -39,7 +39,7 @@ const appearanceBindings = new Map<string | object, ReturnType<typeof bindAppear
 
 function bindAppearance(name: string | object) {
     let revision = 0;
-    const changes = new Set<AppearanceChange>();
+    let changes = new Set<AppearanceChange>();
     const listeners = new Set<() => void>();
     const subscribe = (listener: () => void) => {
         listeners.add(listener);
@@ -62,8 +62,9 @@ function bindAppearance(name: string | object) {
         for (const listener of [...listeners]) listener();
     }
     onJsxCreate(name, wrap, true);
-    return (change: AppearanceChange) => {
-        changes.add(change);
+    return (change: AppearanceChange, beforeWrapping: boolean) => {
+        if (beforeWrapping) changes = new Set([change, ...changes]);
+        else changes.add(change);
         refresh();
         return () => {
             if (!changes.delete(change)) return;
@@ -76,16 +77,41 @@ function bindAppearance(name: string | object) {
     };
 }
 
-function registerJsxAppearance(names: readonly (string | object)[], change: AppearanceChange) {
+function registerJsxAppearance(names: readonly (string | object)[], change: AppearanceChange, beforeWrapping = false) {
     const cleanups = names.map(name => {
         let bind = appearanceBindings.get(name);
         if (!bind) {
             bind = bindAppearance(name);
             appearanceBindings.set(name, bind);
         }
-        return bind(change);
+        return bind(change, beforeWrapping);
     });
     return () => { for (const cleanup of cleanups) cleanup(); };
+}
+
+let memberRowScope: { context: Context<boolean>; stop: () => void; users: number; } | undefined;
+
+function registerMemberRowAppearance(target: string | object, change: AppearanceChange) {
+    if (!memberRowScope) {
+        const context = React.createContext(false);
+        const stop = registerJsxAppearance(["UserRowSubLabel"], element => element.props.guildId
+            ? <context.Provider value={true}>{element}</context.Provider> : element);
+        memberRowScope = { context, stop, users: 0 };
+    }
+    const scope = memberRowScope;
+    scope.users++;
+    function MemberAppearance({ element }: { element: JSX.Element; }) {
+        const inMemberRow = React.useContext(scope.context);
+        return inMemberRow && !settings.safeMode?.enabled ? change(element) : element;
+    }
+    const stopAppearance = registerJsxAppearance([target], element => <MemberAppearance element={element} />);
+    return () => {
+        stopAppearance();
+        if (--scope.users === 0) {
+            scope.stop();
+            memberRowScope = undefined;
+        }
+    };
 }
 
 type AppearanceProps = {
@@ -363,26 +389,37 @@ export default function CxExtensions() {
                             if (!customStatusActivity?.emoji) return element;
                             return React.cloneElement(element, { customStatusActivity: { ...customStatusActivity, emoji: undefined } });
                         });
-                        const hideActivityEmoji = registerJsxAppearance(["ActivityStatus"], element => React.cloneElement(element, { hideEmoji: true }));
+                        const hideActivityEmoji = registerJsxAppearance(["ActivityStatus"], element => React.cloneElement(element, { hideEmoji: true }), true);
                         return () => { hideActivityEmoji(); hideBubbleEmoji(); };
                     }
                     if ("memberActivityText" in mobile) {
                         const status = findByFilePath("modules/activity_status/native/PresenceActivityStatus.tsx")?.default;
                         if (!status) throw new Error("Discord's member activity renderer is unavailable");
-                        const MemberRow = React.createContext(false);
-                        function MemberActivity({ element }: { element: JSX.Element; }) {
-                            const inMemberRow = React.useContext(MemberRow);
-                            return inMemberRow && !settings.safeMode?.enabled
-                                ? React.cloneElement(element, { hideText: true }) : element;
-                        }
-                        const stopRow = registerJsxAppearance(["UserRowSubLabel"], element => element.props.guildId
-                            ? <MemberRow.Provider value={true}>{element}</MemberRow.Provider> : element);
-                        const stopActivity = registerJsxAppearance([status], element => {
+                        return registerMemberRowAppearance(status, element => {
                             const type = element.props.activity?.type;
                             // Discord activity types 0 and 2 are Playing and Listening.
-                            return type === 0 || type === 2 ? <MemberActivity element={element} /> : element;
+                            return type === 0 || type === 2 ? React.cloneElement(element, { hideText: true }) : element;
                         });
-                        return () => { stopActivity(); stopRow(); };
+                    }
+                    if ("memberCustomStatus" in mobile) {
+                        const status = findByFilePath("modules/activity_status/native/ActivityStatus.tsx")?.default;
+                        if (typeof status !== "function" || status.prototype?.isReactComponent) {
+                            throw new Error("Discord's custom status renderer is unavailable");
+                        }
+                        function WithoutCustomStatus({ originalProps }: { originalProps: object; }) {
+                            const output: ReactNode = status(originalProps);
+                            if (settings.safeMode?.enabled || !React.isValidElement<{ children?: ReactNode; }>(output)) return output;
+                            const { children } = output.props;
+                            if (!Array.isArray(children) || children.length !== 3) return output;
+                            const [activity, separator, custom] = children;
+                            if (!React.isValidElement(custom) || custom.type !== React.Fragment
+                                || separator != null && (!React.isValidElement<{ accessibilityElementsHidden?: boolean; }>(separator)
+                                    || separator.props.accessibilityElementsHidden !== true)) return output;
+                            // Discord renders the activity, its separator, and the custom status as three siblings.
+                            return React.cloneElement(output, { children: [activity, null, null] });
+                        }
+                        return registerMemberRowAppearance("ActivityStatus", element => element.type === status
+                            ? <WithoutCustomStatus originalProps={element.props} /> : element);
                     }
                     if ("emptyServerFolders" in mobile) {
                         return registerJsxAppearance(["GuildsBarGuildFolder"], element => {
