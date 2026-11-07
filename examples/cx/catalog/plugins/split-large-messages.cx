@@ -1,0 +1,3 @@
+plugin "SplitLargeMessages":
+  needs messages.split
+  use split-long-messages

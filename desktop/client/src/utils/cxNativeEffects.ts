@@ -9,6 +9,7 @@ export const cxNativeEffects = {
     "avatar-resolution": { permission: "appearance.avatarresolution", label: "Request higher-resolution Discord avatars" },
     "stop-auto-unread": { permission: "notifications.preventautoupgrade", label: "Keep your chosen channel notification settings" },
     "flat-attachments": { permission: "appearance.style", label: "Show chat attachments individually without the media grid" },
+    "split-long-messages": { permission: "messages.split", label: "Split long drafts into at most eight messages when slowmode is off" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;

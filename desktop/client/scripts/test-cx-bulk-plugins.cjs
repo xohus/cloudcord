@@ -115,6 +115,9 @@ for (const port of profileColorPorts) {
     assert.equal(parseCx(port.cx).incoming[0].values[0], "prefer-native");
     assert.equal(parseCx(port.cx).commands[0].name, "cx-profile-colors");
 }
+const splitPorts = matches.filter(record => record.name === "SplitLargeMessages");
+assert.deepEqual(statuses(splitPorts), ["ready", "equivalent-source"]);
+assert.deepEqual(Array.from(parseCx(splitPorts[0].cx).nativeEffects), ["split-long-messages"]);
 assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], platform: "betterdiscord" }]), ["compare-sources", "source-review"]);
 assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], cx: undefined }]), ["compare-mobile", "needs-adapter"]);
 assert.deepEqual(Array.from(parseCx(reactionPorts[0].cx).permissions), ["messages.reactshortcut"]);

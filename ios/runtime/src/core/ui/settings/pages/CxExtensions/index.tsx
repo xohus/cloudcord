@@ -2,6 +2,7 @@ import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
+import { createCxSplitSender } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -36,6 +37,50 @@ const ActiveJoinedThreadsStore = findByStoreNameLazy("ActiveJoinedThreadsStore")
 const ReadStateStore = findByStoreNameLazy("ReadStateStore");
 const SpotifyStore = findByStoreNameLazy("SpotifyStore");
 const SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
+let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
+
+function registerSplitSender() {
+    if (splitSender) throw new Error("A CX message splitter is already active");
+    const sender = createCxSplitSender({
+        currentUser: () => UserStore?.getCurrentUser?.(),
+        channel: id => ChannelStore?.getChannel?.(id),
+        enabled: (): boolean => splitSender === sender && !settings.safeMode?.enabled,
+        failed: () => { showToast("The remaining message parts were not sent."); },
+    });
+    const limits = findByFilePath("modules/messages/useMessageMaxLength.tsx");
+    const composer = findByFilePath("modules/chat_input/native/accessories/ChatInputSendUtils.tsx");
+    let checkingDraft = false;
+    const cleanups: (() => void)[] = [];
+    const stop = () => {
+        if (splitSender === sender) splitSender = undefined;
+        for (const cleanup of cleanups.reverse()) cleanup();
+    };
+    try {
+        cleanups.push(overrideCxMethods(limits, {
+            getMaxMessageLength: (args, invoke) => checkingDraft ? 32_000 : invoke(args),
+        }));
+        cleanups.push(overrideCxMethods(composer, {
+            chatInputValidateContentLength(args, invoke) {
+                const draft = args[0] as { text?: string; params?: { channel?: { id?: string; }; hasAttachmentsToUpload?: boolean; }; } | undefined;
+                const channel = draft?.params?.channel?.id;
+                if (draft?.params?.hasAttachmentsToUpload || !sender.canSplit(channel, draft?.text)) return invoke(args);
+                let parsed: unknown;
+                const previous = checkingDraft;
+                checkingDraft = true;
+                try { parsed = invoke(args); }
+                finally { checkingDraft = previous; }
+                if (parsed && typeof parsed === "object" && "content" in parsed && sender.canSplit(channel, parsed.content)) return parsed;
+                return invoke(args);
+            },
+        }));
+        cleanups.push(overrideCxMethods(messageUtil, { sendMessage: sender.send }));
+    } catch (error) {
+        stop();
+        throw error;
+    }
+    splitSender = sender;
+    return stop;
+}
 
 type AppearanceChange = (element: JSX.Element) => JSX.Element | null;
 const appearanceBindings = new Map<string | object, ReturnType<typeof bindAppearance>>();
@@ -814,6 +859,8 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "split-long-messages":
+                            return registerSplitSender();
                         case "flat-attachments": {
                             const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
                             return overrideCxMethods(renderer, {

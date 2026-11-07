@@ -234,6 +234,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : "https://cdn.discordapp.com/avatars/" + user.id + "/" + avatarHash + ".gif?size=" + size;
         }, getGuildIconURL(options) { return options.canAnimate; } };
         let autoUpgrades = 0;
+        const splitLimit = { getMaxMessageLength: () => 2000 };
+        const splitComposer = { chatInputValidateContentLength: ({ text }) => text.length <= splitLimit.getMaxMessageLength() ? { content: text } : undefined };
         const upgradeChannel = function (channelId) { assert.equal(this, stores.UnreadSettingNoticeStore2); autoUpgrades++; return channelId; };
         const stores = {
             UnreadSettingNoticeStore2: { maybeAutoUpgradeChannel: upgradeChannel },
@@ -242,7 +244,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], guild_id: id === "guild-channel" ? guildId : undefined }) },
+            ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], guild_id: id === "guild-channel" ? guildId : undefined,
+                rateLimitPerUser: id === "slow-channel" ? 10 : 0 }) },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
             GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
             GuildChannelStore: { getChannels: () => ({
@@ -469,6 +472,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
             "@metro": { findByFilePath: path => path.endsWith("/ButtonEllipsis.native.tsx") ? { Ellipsis: typingEllipsis }
+                : path.endsWith("/useMessageMaxLength.tsx") ? splitLimit
+                : path.endsWith("/ChatInputSendUtils.tsx") ? splitComposer
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -1723,6 +1728,44 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable NoMosaic");
         assert.equal(flatLayout(), false);
         checkDesktopLayout(false);
+        const splitDraft = "a".repeat(1999) + "🙂" + "b".repeat(20);
+        const plannedParts = moduleBox.exports.planCxMessageParts(splitDraft);
+        assert.equal(plannedParts[0].length, 1999);
+        assert.equal(plannedParts[1].slice(0, 2), "🙂");
+        assert.equal(plannedParts.join(""), splitDraft);
+        assert.equal(moduleBox.exports.planCxMessageParts(splitDraft, 2), undefined);
+        assert.equal(moduleBox.exports.planCxMessageParts("x".repeat(16_001)), undefined);
+        const originalSender = commandApi.sendMessage;
+        const originalValidator = splitComposer.chatInputValidateContentLength;
+        const sentParts = [];
+        commandApi.sendMessage = (...args) => { sentParts.push(args); return Promise.resolve("first result"); };
+        selectCatalog("SplitLargeMessages");
+        click(render(), "Allow for this session");
+        if (desktop) assert.equal(module.exports.default.canSplitDraft(splitDraft), true);
+        else {
+            const validate = (id, hasAttachmentsToUpload) => splitComposer.chatInputValidateContentLength({
+                text: splitDraft, params: { channel: { id }, hasAttachmentsToUpload },
+            });
+            assert.equal(validate("test-channel").content, splitDraft);
+            assert.equal(validate("slow-channel"), undefined);
+            assert.equal(validate("test-channel", true), undefined);
+            assert.equal(splitLimit.getMaxMessageLength(), 2000);
+        }
+        const originalReply = { messageReference: { messageId: "reply" }, flags: 4096 };
+        assert.equal(await commandApi.sendMessage("test-channel", { content: splitDraft }, true, originalReply), "first result");
+        assert.deepEqual(sentParts.map(args => args[1].content), Array.from(plannedParts));
+        assert.equal(sentParts[0][3], originalReply);
+        assert.equal(sentParts[1][3].messageReference, undefined);
+        assert.equal(sentParts[1][3].flags, 4096);
+        sentParts.length = 0;
+        await commandApi.sendMessage("slow-channel", { content: splitDraft });
+        assert.equal(sentParts.length, 1);
+        assert.equal(sentParts[0][1].content, splitDraft);
+        click(render(), "Disable SplitLargeMessages");
+        assert.equal(splitComposer.chatInputValidateContentLength, originalValidator);
+        if (desktop) assert.equal(module.exports.default.canSplitDraft(splitDraft), false);
+        commandApi.sendMessage = originalSender;
+
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
         for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {

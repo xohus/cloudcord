@@ -711,6 +711,14 @@ function compileMobileSocialEvents(file, plugin, source) {
 
 const sharedSourceRecipes = [
     {
+        capability: "split-long-messages",
+        sources: {
+            "desktop/client/src/sincordplugins/splitLargeMessages/index.ts": "5f37baa1f571985f2f990ed3cc5168f3f7da0321beaadba74b91c96c10bf8ba8",
+            "ios/runtime/src/core/plugins/splitlargemessages/index.ts": "d4ca4c2abffa4cea60e4f844b2285121c40cd6cabc8b6c1d6c60d2ec899946a0",
+        },
+        lines: ["  needs messages.split", "  use split-long-messages"],
+    },
+    {
         capability: "link-trigger",
         sources: {
             "desktop/client/src/sincordplugins/hopOn/index.tsx": "3ef7972c029f46c30087c04f1d2f84f2b923586d37e4c887f78b634a642e66a4",

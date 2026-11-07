@@ -4,6 +4,7 @@ import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreE
 import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
+import { createCxSplitSender } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -16,6 +17,7 @@ const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
 let fixFileExtensionUsers = 0;
 let flatAttachmentUsers = 0;
+let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
 
@@ -174,6 +176,18 @@ export function CxSettings() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "split-long-messages": {
+                            if (splitSender) throw new Error("A CX message splitter is already active");
+                            const sender = createCxSplitSender({
+                                currentUser: () => UserStore?.getCurrentUser(),
+                                channel: id => ChannelStore?.getChannel(id),
+                                enabled: (): boolean => splitSender === sender,
+                                failed: () => { showToast("The remaining message parts were not sent."); },
+                            });
+                            const stop = overrideCxMethods(findByProps("sendMessage", "editMessage"), { sendMessage: sender.send });
+                            splitSender = sender;
+                            return () => { splitSender = undefined; stop(); };
+                        }
                         case "flat-attachments":
                             flatAttachmentUsers++;
                             return () => { flatAttachmentUsers--; };
@@ -478,7 +492,22 @@ export default definePlugin({
             match: /url:(\i)\.url\}\);return /,
             replace: "$&(!$self.useFlatAttachmentLayout()||$1.content_type?.startsWith('image/'))&&",
         },
+    }, {
+        find: 'type:"MESSAGE_LENGTH_UPSELL"',
+        replacement: {
+            match: /if\((\i)\.length>(\i)/,
+            replace: "if(!$self.canSplitDraft($1)&&$1.length>$2",
+        },
+    }, {
+        find: ".onHideAutocomplete?",
+        replacement: {
+            match: /(?<=getData\(\i\.type\);)if\((\i)\.length>(\i)\)/,
+            replace: "if(!$self.canSplitDraft($1)&&$1.length>$2)",
+        },
     }],
+    canSplitDraft(text: unknown) {
+        return splitSender?.canSplit(SelectedChannelStore?.getChannelId(), text) === true;
+    },
     useFlatAttachmentLayout() {
         return flatAttachmentUsers > 0;
     },
