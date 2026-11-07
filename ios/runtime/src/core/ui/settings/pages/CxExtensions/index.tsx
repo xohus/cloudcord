@@ -720,17 +720,42 @@ function containsAppearanceType(tree: ReactNode, types: ReadonlySet<unknown>, de
         && (types.has(tree.type) || containsAppearanceType(tree.props.children, types, depth + 1));
 }
 
-function hideAppearanceElements(tree: ReactNode, shouldHide: (element: ReactElement<AppearanceProps>) => boolean, depth = 0): ReactNode {
+function mapAppearanceElements(tree: ReactNode, map: (element: ReactElement<AppearanceProps>) => ReactNode, depth = 0): ReactNode {
     if (depth >= 16) return tree;
     if (Array.isArray(tree)) {
-        const next = tree.map(child => hideAppearanceElements(child, shouldHide, depth + 1));
+        const next = tree.map(child => mapAppearanceElements(child, map, depth + 1));
         return next.every((child, index) => child === tree[index]) ? tree : next;
     }
     if (!React.isValidElement<AppearanceProps>(tree)) return tree;
-    if (shouldHide(tree)) return null;
+    const mapped = map(tree);
+    if (mapped !== tree) return mapped;
     const { children } = tree.props;
-    const next = hideAppearanceElements(children, shouldHide, depth + 1);
+    const next = mapAppearanceElements(children, map, depth + 1);
     return next === children ? tree : React.cloneElement(tree, { children: next });
+}
+
+function hideAppearanceElements(tree: ReactNode, shouldHide: (element: ReactElement<AppearanceProps>) => boolean) {
+    return mapAppearanceElements(tree, element => shouldHide(element) ? null : element);
+}
+
+function registerNoRoleHeaders() {
+    const scope = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/GuildChannelUserList.tsx")?.default;
+    const list = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/UsersFastList.tsx")?.UsersFastList;
+    if (!scope || !list) throw new Error("Discord's member list is unavailable");
+    let active = true;
+    const stop = registerRenderedTree(scope, tree => mapAppearanceElements(tree, element => {
+        if (!active || element.type !== list || element.key === "guild-channel-user-list-search-results") return element;
+        const props = element.props as AppearanceProps & { getSectionProps?: (...args: unknown[]) => unknown; };
+        const original = props.getSectionProps;
+        if (typeof original !== "function") return element;
+        const getSectionProps = function (this: unknown, ...args: unknown[]) {
+            const section = Reflect.apply(original, this, args) as { type?: string; props?: { title?: string; action?: unknown; onTitlePress?: unknown; }; } | undefined;
+            return active && !settings.safeMode?.enabled && section?.type === "section" && typeof section.props?.title === "string"
+                && !section.props.action && !section.props.onTitlePress ? undefined : section;
+        };
+        return React.cloneElement(element as ReactElement<typeof props>, { getSectionProps });
+    }));
+    return () => { active = false; stop(); };
 }
 
 function registerTreeAppearance(rule: {
@@ -1167,6 +1192,7 @@ export default function CxExtensions() {
     const [pages, setPages] = React.useState({ Plugins: 0, Themes: 0 });
     const [status, setStatus] = React.useState("");
     const [candidate, setCandidate] = React.useState<{ source: string; review: ReturnType<typeof reviewCx>; selected: string[]; }>();
+    const [, refreshOptions] = React.useState(0);
     const searchText = search.trim().toLowerCase();
 
     function review(next: string) {
@@ -1426,6 +1452,8 @@ export default function CxExtensions() {
                 registerNativeEffect(effect, avatarResolution = 256) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
+                        case "hide-role-headers":
+                            return registerNoRoleHeaders();
                         case "jump-to-first-message":
                             return navigationControls.register(effect, () => registerJumpToFirst(enabled));
                         case "read-all-servers-button":
@@ -1754,10 +1782,20 @@ export default function CxExtensions() {
                     }} />)}
                 {candidate && <TableRow label="Allow for this session" onPress={enable} />}
                 {candidate && !source && <TableRow label="Edit CX source" onPress={() => setSource(candidate.source)} />}
-                {session.list().map(({ id, name }) => <TableRow key={id} label={`Disable ${name}`} onPress={() => {
-                    session.disable(id);
-                    setStatus(`${name} disabled.`);
-                }} />)}
+                {session.list().flatMap(({ id, name }) => [
+                    ...session.appearanceOptions(id).map(({ target, label, enabled }) => <TableSwitchRow key={`${id}:${target}`}
+                        label={`${name} · ${label}`} value={enabled} onValueChange={(checked: boolean) => {
+                            try {
+                                session.setAppearanceOption(id, target, checked);
+                                setStatus("");
+                                refreshOptions(value => value + 1);
+                            } catch (error) { setStatus(String(error instanceof Error ? error.message : error)); }
+                        }} />),
+                    <TableRow key={id} label={`Disable ${name}`} onPress={() => {
+                        session.disable(id);
+                        setStatus(`${name} disabled.`);
+                    }} />,
+                ])}
             </TableRowGroup>
             <Text accessibilityLiveRegion="polite" style={{ color: "#b5bac1" }}>{status}</Text>
         </Stack>

@@ -626,24 +626,57 @@ function getAvatarUrl(host: CxHost, grants: ReadonlySet<CxPermission>, id: strin
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
 export function activateCx(source: string, host: CxHost, approved: readonly CxPermission[], selected?: readonly string[]) {
+    return bindCx(source, host, approved, selected).stop;
+}
+
+type CxBinding = {
+    stop: () => void;
+    setAppearanceOption?: (target: CxHideTarget, enabled: boolean) => void;
+    isAppearanceOptionEnabled?: (target: CxHideTarget) => boolean;
+};
+
+function bindCx(source: string, host: CxHost, approved: readonly CxPermission[], selected?: readonly string[]): CxBinding {
     const document = parseCx(source);
-    if (document.kind === "theme") return host.applyTheme(document);
+    if (document.kind === "theme") return { stop: host.applyTheme(document) };
     const grants = new Set(approved);
     if (!document.permissions.every(permission => grants.has(permission))) throw new Error("CX permission approval is required");
-    const choices = new Set(selected ?? [...document.optionalHides].filter(([, defaultOn]) => defaultOn).map(([target]) => target));
+    const { optionalHides } = document;
+    const choices = new Set(selected ?? [...optionalHides].filter(([, defaultOn]) => defaultOn).map(([target]) => target));
     for (const choice of choices) {
-        if (!document.optionalHides.has(choice as CxHideTarget)) throw new Error("Unknown selected CX appearance option");
+        if (!optionalHides.has(choice as CxHideTarget)) throw new Error("Unknown selected CX appearance option");
     }
 
     const cleanups: (() => void)[] = [];
+    const optionCleanups = new Map<CxHideTarget, () => void>();
     const activeLookups = new Map<CxExternalLookup, AbortController>();
     let active = true;
     const uploadAnonymiser = document.uploadNaming && createCxUploadAnonymiser(document.uploadNaming);
+    function hideTarget(target: CxHideTarget) {
+        if (!host.hideAppearanceTarget) throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
+        return host.hideAppearanceTarget(target);
+    }
+    function setAppearanceOption(target: CxHideTarget, enabled: boolean) {
+        if (!active || !optionalHides.has(target)) throw new Error("Unknown active CX appearance option");
+        const cleanup = optionCleanups.get(target);
+        if (enabled) {
+            if (!cleanup) optionCleanups.set(target, hideTarget(target));
+        } else if (cleanup) {
+            cleanup();
+            optionCleanups.delete(target);
+        }
+    }
     function stop() {
         active = false;
         for (const controller of activeLookups.values()) controller.abort();
         activeLookups.clear();
-        for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+        const callbacks = [...cleanups.splice(0), ...optionCleanups.values()].reverse();
+        optionCleanups.clear();
+        let firstError: unknown;
+        for (const cleanup of callbacks) {
+            try { cleanup(); }
+            catch (error) { firstError ??= error; }
+        }
+        if (firstError !== undefined) throw firstError;
     }
     try {
         if (uploadAnonymiser) {
@@ -658,10 +691,8 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
             if (!host.registerProfileMenuAction) throw new Error("This client cannot add profile copy actions");
             cleanups.push(host.registerProfileMenuAction(action));
         }
-        for (const target of [...document.hiddenTargets, ...[...document.optionalHides.keys()].filter(option => choices.has(option))]) {
-            if (!host.hideAppearanceTarget) throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
-            cleanups.push(host.hideAppearanceTarget(target));
-        }
+        for (const target of document.hiddenTargets) cleanups.push(hideTarget(target));
+        for (const target of optionalHides.keys()) if (choices.has(target)) setAppearanceOption(target, true);
         for (const target of document.styledTargets) {
             if (!host.styleAppearanceTarget) throw new Error("This client cannot " + cxAppearanceTargets[target].label);
             cleanups.push(host.styleAppearanceTarget(target));
@@ -811,9 +842,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                 return outgoing;
             }, command.text, command.actions.some(sendsMessage), command.actions.some(action => action.kind === "reply or send"), command.inputs));
         }
-        return stop;
+        return { stop, setAppearanceOption, isAppearanceOptionEnabled: target => optionCleanups.has(target) };
     } catch (error) {
-        stop();
+        try { stop(); }
+        catch { /* Preserve the activation error after attempting every cleanup. */ }
         throw error;
     }
 }
@@ -830,25 +862,34 @@ export function runCxIncomingRules(rules: readonly IncomingRule[], payload: Inco
 
 
 export function createCxSession() {
-    const active = new Map<string, { name: string; stop: () => void }>();
+    const active = new Map<string, { name: string; options: CxAppearanceOption[]; binding: CxBinding; }>();
     return {
         list: () => [...active].map(([id, { name }]) => ({ id, name })),
+        appearanceOptions(id: string) {
+            const entry = active.get(id);
+            return entry?.options.map(option => ({ ...option, enabled: Boolean(entry.binding.isAppearanceOptionEnabled?.(option.target)) })) ?? [];
+        },
+        setAppearanceOption(id: string, target: CxHideTarget, enabled: boolean) {
+            const entry = active.get(id);
+            if (!entry?.binding.setAppearanceOption) throw new Error("Unknown active CX appearance option");
+            entry.binding.setAppearanceOption(target, enabled);
+        },
         enable(source: string, host: CxHost, approved: readonly CxPermission[], selected?: readonly string[]) {
             const review = reviewCx(source);
             const id = review.kind === "theme" ? "theme" : "plugin:" + review.name;
             if (active.has(id)) throw new Error(review.kind === "theme" ? "Disable the active CX theme first" : "This CX plugin is already active");
             if (active.size >= 16) throw new Error("Disable an extension before adding another");
-            active.set(id, { name: review.name, stop: activateCx(source, host, approved, selected) });
+            active.set(id, { name: review.name, options: review.appearanceOptions, binding: bindCx(source, host, approved, selected) });
         },
         disable(id: string) {
             const entry = active.get(id);
             active.delete(id);
-            entry?.stop();
+            entry?.binding.stop();
         },
         clear() {
             for (const [id, entry] of active) {
                 active.delete(id);
-                entry.stop();
+                entry.binding.stop();
             }
         },
     };

@@ -1,0 +1,3 @@
+plugin "NoRoleHeaders":
+  needs appearance.hide
+  use hide-role-headers

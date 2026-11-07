@@ -453,7 +453,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const useState = initial => {
             const index = cursor++;
             if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
-            return [states[index], value => { states[index] = value; }];
+            return [states[index], value => { states[index] = typeof value === "function" ? value(states[index]) : value; }];
         };
         const jsx = (type, props) => ({ type, props });
         const commandApi = {
@@ -475,6 +475,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             : "ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx";
         const serverListButtons = new Set();
         function GuildsBarFooterWrapper(props) { return props.children; }
+        function GuildChannelUserList(props) { return props.children; }
+        function UsersFastList(props) { return props; }
         const mocks = {
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
@@ -582,6 +584,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
                 : path.endsWith("/GuildsBarFooterWrapper.tsx") ? { default: GuildsBarFooterWrapper }
+                : path.endsWith("/GuildChannelUserList.tsx") ? { default: GuildChannelUserList }
+                : path.endsWith("/UsersFastList.tsx") ? { UsersFastList }
                 : path === "modules/channel/useChannelName.tsx" ? channelNameModule
                 : path.endsWith("/guild_channels/ChannelContent.tsx") ? channelRowModule
                 : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
@@ -1750,10 +1754,51 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
         {
-            const getGiftOption = () => find(render(), item => (desktop ? item.props["aria-label"] : item.props.label) === "Hide the chat gift button");
-            const checked = () => getGiftOption().props[desktop ? "checked" : "value"];
-            const toggleGift = value => desktop ? getGiftOption().props.onChange({ currentTarget: { checked: value } })
-                : getGiftOption().props.onValueChange(value);
+            selectCatalog("NoRoleHeaders");
+            if (desktop) assert.equal(desktopPlugin.hideRoleHeaders(), false);
+            click(render(), "Allow for this session");
+            if (desktop) {
+                const { match, replace } = desktopPlugin.patches.find(patch => patch.find === "this.updateMaxContentFeedRowSeen()").replacement;
+                const regex = new RegExp(match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"));
+                const fixture = 'return mode===Store.Group.UNKNOWN?"placeholder":"label";';
+                const script = fixture.replace(regex, () => replace.replace("$self", "plugin"));
+                assert.notEqual(script, fixture);
+                const renderHeader = new Function("plugin", "mode", "Store", script);
+                const constants = { Group: { UNKNOWN: 0 } };
+                assert.equal(renderHeader(desktopPlugin, 1, constants), null);
+                click(render(), "Disable NoRoleHeaders");
+                assert.equal(renderHeader(desktopPlugin, 1, constants), "label");
+            } else {
+                const hook = appearanceHooks.get(GuildChannelUserList);
+                const heading = Object.freeze({ type: "section", props: Object.freeze({ title: "Members — 3" }) });
+                const placeholder = { type: "placeholder" };
+                const actionable = { type: "section", props: { title: "See more", action() {} } };
+                const getSectionProps = index => [heading, placeholder, actionable][index];
+                const list = jsx(UsersFastList, { getSectionProps, sections: [3, 0, 1] });
+                const search = { ...list, key: "guild-channel-user-list-search-results" };
+                const wrapped = hook(null, jsx(GuildChannelUserList, { children: jsx("View", { children: [list, search] }) }));
+                const container = wrapped.type(wrapped.props);
+                const result = container.type(container.props);
+                const [patched, untouched] = result.props.children;
+                assert.equal(patched.props.getSectionProps(0), undefined);
+                assert.equal(patched.props.getSectionProps(1), placeholder);
+                assert.equal(patched.props.getSectionProps(2), actionable);
+                assert.equal(patched.props.sections, list.props.sections);
+                assert.equal(untouched, search);
+                assert.equal(list.props.getSectionProps(0), heading);
+                settings.safeMode = { enabled: true };
+                assert.equal(patched.props.getSectionProps(0), heading);
+                settings.safeMode = undefined;
+                click(render(), "Disable NoRoleHeaders");
+                assert.equal(patched.props.getSectionProps(0), heading);
+                assert.equal(appearanceHooks.size, 0);
+            }
+        }
+        {
+            const getGiftOption = (prefix = "") => find(render(), item => (desktop ? item.props["aria-label"] : item.props.label) === prefix + "Hide the chat gift button");
+            const checked = prefix => getGiftOption(prefix).props[desktop ? "checked" : "value"];
+            const toggleGift = (value, prefix) => desktop ? getGiftOption(prefix).props.onChange({ currentTarget: { checked: value } })
+                : getGiftOption(prefix).props.onValueChange(value);
             selectCatalog("Declutter");
             assert.equal(checked(), true);
             selectCatalog("ChatButtonsBegone");
@@ -1763,6 +1808,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(appearanceHooks.size, 0);
             assert.equal(stylesheet, undefined);
             click(render(), "Allow for this session");
+            if (desktop) assert.match(stylesheet.textContent, /Send a gift/);
+            else assert.deepEqual([...appearanceHooks.keys()], ["PremiumAnimatedGiftButton"]);
+            const active = "ChatButtonsBegone · ";
+            assert.equal(checked(active), true);
+            toggleGift(false, active);
+            assert.equal(checked(active), false);
+            assert.equal(appearanceHooks.size, 0);
+            assert.equal(stylesheet, undefined);
+            toggleGift(true, active);
+            assert.equal(checked(active), true);
             if (desktop) assert.match(stylesheet.textContent, /Send a gift/);
             else assert.deepEqual([...appearanceHooks.keys()], ["PremiumAnimatedGiftButton"]);
             click(render(), "Disable ChatButtonsBegone");

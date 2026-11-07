@@ -46,6 +46,7 @@ let imageFilenameUsers = 0;
 let imageFullUrlUsers = 0;
 let descriptiveGifAltUsers = 0;
 let imageLinkUsers = 0;
+let roleHeaderUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
@@ -242,6 +243,7 @@ export function CxSettings() {
     const [search, setSearch] = useState("");
     const [pages, setPages] = useState({ Plugins: 0, Themes: 0 });
     const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; selected: string[]; }>();
+    const [, refreshOptions] = useState(0);
     const [status, setStatus] = useState("");
     const selection = useRef(0);
     const searchText = search.trim().toLowerCase();
@@ -470,6 +472,9 @@ export function CxSettings() {
                             });
                         case "pending-friend-count":
                             return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 });
+                        case "hide-role-headers":
+                            roleHeaderUsers++;
+                            return () => { roleHeaderUsers--; };
                         case "animated-assets":
                             return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), true);
                         case "floor-relative-time":
@@ -702,10 +707,21 @@ export function CxSettings() {
             <button onClick={enable}>Allow for this session</button>
             {!source && <button onClick={() => setSource(candidate.source)}>Edit CX source</button>}
         </div>}
-        {session.list().map(({ id, name }) => <button key={id} onClick={() => {
-            session.disable(id);
-            setStatus(`${name} disabled.`);
-        }}>Disable {name}</button>)}
+        {session.list().map(({ id, name }) => <div key={id}>
+            {session.appearanceOptions(id).map(({ target, label, enabled }) => <div key={target}>
+                <label><input type="checkbox" aria-label={`${name} · ${label}`} checked={enabled} onChange={event => {
+                    try {
+                        session.setAppearanceOption(id, target, event.currentTarget.checked);
+                        setStatus("");
+                        refreshOptions(value => value + 1);
+                    } catch (error) { setStatus(String(error instanceof Error ? error.message : error)); }
+                }} /> {label}</label>
+            </div>)}
+            <button onClick={() => {
+                session.disable(id);
+                setStatus(`${name} disabled.`);
+            }}>Disable {name}</button>
+        </div>)}
         <p role="status">{status}</p>
     </section>;
 }
@@ -727,6 +743,13 @@ export default definePlugin({
         },
     },
     patches: [{
+        // NoRoleHeaders by Samwich (GPL-3.0-or-later).
+        find: "this.updateMaxContentFeedRowSeen()",
+        replacement: {
+            match: /return (?=\i===\i\.\i\.UNKNOWN)/,
+            replace: "return $self.hideRoleHeaders()?null:",
+        },
+    }, {
         find: "Missing channel in Channel.renderHeaderToolbar",
         replacement: {
             match: /(?<=renderHeaderToolbar"\);let (\i)=\[\];)/,
@@ -847,6 +870,7 @@ export default definePlugin({
             replace: "if(!$self.canSplitDraft($1)&&$1.length>$2)",
         },
     }],
+    hideRoleHeaders() { return roleHeaderUsers > 0; },
     renderJumpToFirst(channel: CxNavigationChannel | undefined) {
         if (!navigationControls.has("jump-to-first-message")) return null;
         const target = getCxFirstMessageTarget(channel);

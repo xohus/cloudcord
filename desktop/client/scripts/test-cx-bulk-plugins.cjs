@@ -18,7 +18,7 @@ const source = [
     '});',
 ].join("\n");
 const inspect = input => inspectPlugin("fixture.ts", input, "desktop");
-const { activateCx, parseCx, cxAppearanceTargets, cxNativeEffects } = loadCxRuntime();
+const { activateCx, createCxSession, parseCx, cxAppearanceTargets, cxNativeEffects } = loadCxRuntime();
 const candidate = inspect(source);
 assert.equal(candidate.capability, "outgoing-text");
 assert.deepEqual(candidate.hooks, ["outgoing-message"]);
@@ -66,6 +66,26 @@ assert.deepEqual([...hidden], ["chat-gift-button"]);
 restoreSelected();
 assert.equal(hidden.size, 0);
 verifyPorts(portFiles([declutter]));
+const liveOptions = createCxSession();
+const appearanceFixture = "plugin:Appearance fixture";
+liveOptions.enable(configured, {
+    hideAppearanceTarget(target) {
+        if (target === "chat-gift-button") throw new Error("Missing gift control");
+        return appearanceHost.hideAppearanceTarget(target);
+    },
+}, ["appearance.hide"]);
+assert.throws(() => liveOptions.setAppearanceOption(appearanceFixture, "bot-tags", true), /Unknown active/);
+assert.throws(() => liveOptions.setAppearanceOption(appearanceFixture, "chat-gift-button", true), /Missing gift control/);
+assert.deepEqual(Array.from(liveOptions.appearanceOptions(appearanceFixture), option => option.enabled), [true, false]);
+liveOptions.setAppearanceOption(appearanceFixture, "nameplates", false);
+assert.equal(hidden.size, 0);
+liveOptions.setAppearanceOption(appearanceFixture, "nameplates", true);
+liveOptions.disable(appearanceFixture);
+assert.equal(hidden.size, 0);
+assert.deepEqual(Array.from(liveOptions.appearanceOptions(appearanceFixture)), []);
+const roleHeaders = matches.find(record => record.name === "NoRoleHeaders");
+assert.deepEqual(Array.from(parseCx(roleHeaders.cx).nativeEffects), ["hide-role-headers"]);
+verifyPorts(portFiles([roleHeaders]));
 for (const [name, effect, permission] of [
     ["JumpToTop", "jump-to-first-message", "channels.jump"],
     ["ReadAllNotificationsButton", "read-all-servers-button", "servers.markread"],

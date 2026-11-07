@@ -4,6 +4,7 @@ export const cxNativeEffects = {
     "plus-reactions": { permission: "messages.reactshortcut", label: "React to the matching previous message when you send a plus shortcut" },
     "fix-file-extensions": { permission: "uploads.rename", label: "Use supported filename extensions for listed attachment formats" },
     "pending-friend-count": { permission: "appearance.hide", label: "Hide the pending friend request count" },
+    "hide-role-headers": { permission: "appearance.hide", label: "Hide role section headers in the server member list" },
     "animated-assets": { permission: "appearance.style", label: "Animate avatars, banners, and server icons" },
     "floor-relative-time": { permission: "appearance.style", label: "Round relative timestamps down" },
     "avatar-resolution": { permission: "appearance.avatarresolution", label: "Request higher-resolution Discord avatars" },
