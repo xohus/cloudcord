@@ -20,6 +20,7 @@ export const cxNativeEffects = {
     "image-filename": { permission: "media.labels", label: "Show image filenames and GIF links" },
     "image-full-url": { permission: "media.labels", label: "Show the full URL of images and GIFs" },
     "descriptive-gif-alt": { permission: "media.labels", label: "Use meaningful filenames for GIFs with generic alt text" },
+    "preserve-image-links": { permission: "media.labels", label: "Show image links alongside their chat previews" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },
 } as const;

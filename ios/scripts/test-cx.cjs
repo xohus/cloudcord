@@ -403,6 +403,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const expressionSheets = { MessageEmojiActionSheet: () => null, StickerDetailActionSheet: () => null,
             StickerOptionsActionSheet: () => null, BottomSheet: () => null, ActionSheet: () => null };
         const editHooks = new Set();
+        const markupCache = new WeakMap();
+        const markupParser = {
+            parseMessageMarkup(message, contentMessage, hideSimpleEmbedContent, inline = false) {
+                const cached = markupCache.get(message);
+                if (cached?.inline === inline) return cached;
+                const parsed = { message, text: hideSimpleEmbedContent ? "" : (contentMessage ?? message).content, inline };
+                markupCache.set(message, parsed);
+                return parsed;
+            },
+        };
         const selectedTheme = { name: "Previously selected" };
         let nativeTheme = selectedTheme, nativeMode, stylesheet;
         let cursor = 0;
@@ -519,6 +529,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/transformMessageAttachments.tsx") ? attachmentRows
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
                 : path.endsWith("/GIFPickerItemView.tsx") ? gifPicker
+                : path.endsWith("/MarkupParsers.tsx") ? markupParser
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -1911,6 +1922,32 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(desktopPlugin.getMediaGifAlt({ src: descriptiveGif, alt: "" }, () => "GIF"), "");
         } else {
             assert.equal(gifPicker.default({ item: { src: descriptiveGif } }).props.accessibilityLabel, "GIF 3");
+        }
+        const imageMessage = Object.freeze({ content: descriptiveGif });
+        const nativeMarkup = markupParser.parseMessageMarkup(imageMessage, undefined, true);
+        selectCatalog("ImageLink");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            const patch = desktopPlugin.patches.find(patch => patch.find === "unknownUserMentionPlaceholder:");
+            const condition = "simple.has(embed.type)&&(0,utils.isInline)(embed)";
+            const match = new RegExp(patch.replacement.match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"));
+            const patched = condition.replace(match, patch.replacement.replace.replace("$self", "plugin"));
+            assert.notEqual(patched, condition);
+            const hide = new Function("plugin", "simple", "embed", "utils", "return " + patched);
+            assert.equal(hide(desktopPlugin, new Set(["gif"]), { type: "gif" }, { isInline: () => true }), false);
+            click(render(), "Disable ImageLink");
+            assert.equal(hide(desktopPlugin, new Set(["gif"]), { type: "gif" }, { isInline: () => true }), true);
+        } else {
+            const visibleMarkup = markupParser.parseMessageMarkup(imageMessage, undefined, true);
+            assert.equal(visibleMarkup.text, descriptiveGif);
+            assert.notEqual(visibleMarkup.message, imageMessage);
+            assert.equal(markupParser.parseMessageMarkup(imageMessage, undefined, true), visibleMarkup);
+            const forwarded = Object.freeze({ content: "" });
+            assert.equal(markupParser.parseMessageMarkup(forwarded, imageMessage, true, true).text, descriptiveGif);
+            const textOnly = Object.freeze({ content: "ordinary message" });
+            assert.equal(markupParser.parseMessageMarkup(textOnly, undefined, true).message, textOnly);
+            click(render(), "Disable ImageLink");
+            assert.equal(markupParser.parseMessageMarkup(imageMessage, undefined, true), nativeMarkup);
         }
         const splitDraft = "a".repeat(1999) + "🙂" + "b".repeat(20);
         const plannedParts = moduleBox.exports.planCxMessageParts(splitDraft);

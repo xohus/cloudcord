@@ -726,6 +726,12 @@ const desktopEffectRecipes = {
         effect: "descriptive-gif-alt",
         sha256: "ce344d1adaf7b09e3dd44e96eed5d087c7ef0805cd6b3fd20b6adadb371dd60b",
     },
+    ImageLink: {
+        effect: "preserve-image-links",
+        find: "unknownUserMentionPlaceholder:",
+        match: String.raw`/\i\.has\(\i\.type\)&&\(0,\i\.\i\)\(\i\)/`,
+        replace: "false",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",

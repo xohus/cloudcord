@@ -23,6 +23,7 @@ let originalAttachmentUsers = 0;
 let imageFilenameUsers = 0;
 let imageFullUrlUsers = 0;
 let descriptiveGifAltUsers = 0;
+let imageLinkUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
@@ -299,6 +300,9 @@ export function CxSettings() {
                         case "descriptive-gif-alt":
                             descriptiveGifAltUsers++;
                             return () => { descriptiveGifAltUsers--; };
+                        case "preserve-image-links":
+                            imageLinkUsers++;
+                            return () => { imageLinkUsers--; };
                         case "scroll-to-latest":
                             return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
                                 selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,
@@ -624,6 +628,13 @@ export default definePlugin({
             replace: "alt_$$:$1=$self.getMediaGifAlt($3,()=>$2)",
         },
     }, {
+        // ImageLink by Kyuuhachi and Sqaaakoi (GPL-3.0-or-later).
+        find: "unknownUserMentionPlaceholder:",
+        replacement: {
+            match: /\i\.has\(\i\.type\)&&\(0,\i\.\i\)\(\i\)/,
+            replace: "(!$self.keepImageLinks()&&($&))",
+        },
+    }, {
         find: "#{intl::ATTACHMENT_UTILITIES_SPOILER}",
         replacement: {
             match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,
@@ -676,6 +687,9 @@ export default definePlugin({
         if (!imageFilenameUsers && !imageFullUrlUsers) return;
         const title = getCxImageTitle(source, imageFullUrlUsers > 0);
         if (title) return { title };
+    },
+    keepImageLinks() {
+        return imageLinkUsers > 0;
     },
     getMediaGifAlt(props: { original?: unknown; src?: unknown; alt?: string; } | undefined, fallback: () => string) {
         const alt = props?.alt === undefined ? fallback() : props.alt;

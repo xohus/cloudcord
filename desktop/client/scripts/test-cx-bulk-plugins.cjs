@@ -59,6 +59,10 @@ assert.deepEqual(Array.from(parseCx(stopAutoUnread.cx).permissions), ["notificat
 const stopAutoUnreadSource = fs.readFileSync(path.join(__dirname, "../../..", stopAutoUnread.file), "utf8");
 assert.equal(inspectPlugin(stopAutoUnread.file, stopAutoUnreadSource.replace("return !1;", "return !0;"), "desktop", {}, cxNativeEffects).cx, undefined);
 const staticTyping = matches.find(record => record.name === "NoTypingAnimation");
+const imageLink = matches.find(record => record.name === "ImageLink");
+assert.equal(parseCx(imageLink.cx).nativeEffects[0], "preserve-image-links");
+const imageLinkSource = fs.readFileSync(path.join(__dirname, "../../..", imageLink.file), "utf8");
+assert.equal(inspectPlugin(imageLink.file, imageLinkSource.replace('replace: "false"', 'replace: "true"'), "desktop", {}, cxNativeEffects).cx, undefined);
 assert.equal(staticTyping?.capability, "native-effect");
 assert.deepEqual(Array.from(parseCx(staticTyping.cx).nativeEffects), ["static-typing-dots"]);
 const staticTypingSource = fs.readFileSync(path.join(__dirname, "../../..", staticTyping.file), "utf8");

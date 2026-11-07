@@ -1155,6 +1155,25 @@ export default function CxExtensions() {
                             return registerImageFilename(effect === "image-full-url");
                         case "descriptive-gif-alt":
                             return registerGifAltText();
+                        case "preserve-image-links": {
+                            const parser = findByFilePath("modules/messages/native/renderer/MarkupParsers.tsx");
+                            const visibleMessages = new WeakMap<object, object>();
+                            return overrideCxMethods(parser, {
+                                parseMessageMarkup(args, invoke) {
+                                    const [message, contentMessage, hideSimpleEmbedContent, ...rest] = args;
+                                    if (hideSimpleEmbedContent !== true || !message || typeof message !== "object") return invoke(args);
+                                    const { content } = (contentMessage ?? message) as { content?: unknown; };
+                                    if (typeof content !== "string" || !/https?:\/\//i.test(content)) return invoke(args);
+                                    // Discord caches markup by message identity, without the hide flag.
+                                    let visible = visibleMessages.get(message);
+                                    if (!visible) {
+                                        visible = Object.create(Object.getPrototypeOf(message), Object.getOwnPropertyDescriptors(message)) as object;
+                                        visibleMessages.set(message, visible);
+                                    }
+                                    return invoke([visible, contentMessage, false, ...rest]);
+                                },
+                            }, enabled);
+                        }
                         case "attachment-image-quality":
                         case "original-attachment-images":
                             return registerAttachmentImageQuality(effect === "original-attachment-images");
