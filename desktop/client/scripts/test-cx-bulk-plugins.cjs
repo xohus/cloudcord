@@ -129,4 +129,16 @@ const plan = buildPlan([
 assert.equal(plan.sources, 3);
 assert.equal(plan.distinctPluginNames, 2);
 assert.equal(plan.groups.find(group => group.hooks === "appearance").plugins[0].sources.length, 2);
+const voiceSource = source.replace('name: "LiteralReplace",', 'name: "Voice Example", start() { findByProps("selectVoiceChannel"); },')
+    .replace('import definePlugin', 'import { findByProps } from "@webpack";\nimport definePlugin');
+const target = inspect(voiceSource);
+assert.ok(target.targets.includes("module:selectVoiceChannel"));
+const adapterPlan = buildPlan([
+    { ...target, status: "needs-adapter" },
+    { ...target, platform: "mobile", status: "needs-adapter" },
+    { ...target, name: "Another Voice Example", platform: "betterdiscord", status: "needs-adapter" },
+]);
+const voiceQueue = adapterPlan.adapterQueues.find(queue => queue.target === "module:selectVoiceChannel");
+assert.equal(voiceQueue.count, 2);
+assert.deepEqual(voiceQueue.plugins[0].platforms, ["desktop", "mobile"]);
 console.log("PASS CX bulk conversion, original command sources and unsupported hook rejection");

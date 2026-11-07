@@ -149,6 +149,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
     for (const platform of ["desktop", "mobile"]) {
         const desktop = platform === "desktop";
+        let resolveCatalogEntry;
+        const lazyEntry = { name: "Lazy Wallpaper", source: () => new Promise(resolve => { resolveCatalogEntry = resolve; }) };
         const states = [], registered = {}, delivered = [];
         const incomingHooks = [], notifications = [], pendingNotifications = [];
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
@@ -257,7 +259,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             : "ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx";
         const mocks = {
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
-            "@utils/cxCatalog": { cxCatalog },
+            "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/Commands": commandApi,
             "@api/ContextMenu": {
                 addContextMenuPatch: (menus, patch) => { assert.ok(menus.includes("user-context")); menuPatches.add(patch); },
@@ -280,7 +282,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
                     : key === "removeRelationship" ? relationshipActions : undefined },
-            "@webpack/common": { useState, ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
+            "@webpack/common": { useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 dispatch,
@@ -975,6 +977,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Next plugins page");
         searchFor(cxCatalog.plugins[0].name);
         assert.ok(button(render(), cxCatalog.plugins[0].name));
+        if (desktop) {
+            selectCatalog("Lazy Wallpaper");
+            assert.equal(button(render(), "Allow for this session"), undefined);
+            selectCatalog("Blue Hour");
+            resolveCatalogEntry('theme "Lazy Wallpaper":\n  background: #101018');
+            await new Promise(setImmediate);
+            assert.match(find(render(), item => item.props["aria-label"] === "CX source").props.value, /theme "Blue Hour"/);
+        }
         searchFor("Blue Hour");
         click(render(), "Blue Hour");
         click(render(), "Allow for this session");

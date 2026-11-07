@@ -23,16 +23,39 @@ const hookGroups = {
     "native-access": /^(VencordNative|DiscordNative|NativeModules|FileSystem|clipboard|Clipboard)$/,
 };
 
-function inventoryHooks(source) {
+function inventory(source) {
     const hooks = new Set();
+    const targets = new Set();
+    const event = /^(?:MESSAGE|VOICE|CHANNEL|GUILD|RELATIONSHIP|PRESENCE|TYPING|USER_PROFILE)_[A-Z][A-Z0-9_]*$/;
     const visit = node => {
-        if (ts.isIdentifier(node)) for (const [group, pattern] of Object.entries(hookGroups)) {
-            if (pattern.test(node.text)) hooks.add(group);
+        if (ts.isIdentifier(node)) {
+            for (const [group, pattern] of Object.entries(hookGroups)) if (pattern.test(node.text)) hooks.add(group);
+            if (event.test(node.text) && (ts.isMethodDeclaration(node.parent) || ts.isPropertyAssignment(node.parent)))
+                targets.add("event:" + node.text);
+            if (/^[A-Z][a-zA-Z0-9]+Store$/.test(node.text)) targets.add("store:" + node.text);
+        }
+        if (ts.isStringLiteralLike(node) && event.test(node.text)) targets.add("event:" + node.text);
+        if (ts.isCallExpression(node)) {
+            const callee = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : identifier(node.expression);
+            const first = literal(node.arguments[0]);
+            if (/^(?:findByProps(?:Lazy)?|getByKeys)$/.test(callee ?? "")) {
+                for (const argument of node.arguments) {
+                    const key = literal(argument);
+                    if (key && /^[a-zA-Z_$][\w$]{2,79}$/.test(key)) targets.add("module:" + key);
+                }
+            } else if (/^(?:find(?:By)?Store(?:Name)?(?:Lazy)?|getStore)$/.test(callee ?? "") && first && /^[A-Z]\w+Store$/.test(first)) {
+                targets.add("store:" + first);
+            } else if (callee === "onJsxCreate" && first && /^[A-Z][\w$]{2,79}$/.test(first)) {
+                targets.add("component:" + first);
+            } else if (callee === "defineTweak") {
+                const css = literal(node.arguments[2]) ?? "";
+                for (const match of css.matchAll(/(?:\{|;)\s*([a-z-]+)\s*:/g)) targets.add("css:" + match[1]);
+            }
         }
         ts.forEachChild(node, visit);
     };
     visit(source);
-    return [...hooks].sort();
+    return { hooks: [...hooks].sort(), targets: [...targets].sort() };
 }
 
 function property(object, key) {
@@ -86,12 +109,13 @@ function inspectBetterDiscord(file, code, appearance) {
     const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
     const name = header?.match(/^\s*\*\s*@name\s+([^\r\n*]+?)\s*$/m)?.[1];
     if (!name || !safeText(name) || name.length > 64) return;
-    const hooks = new Set(inventoryHooks(source));
+    const inventoryResult = inventory(source);
+    const hooks = new Set(inventoryResult.hooks);
     if (/\b(?:Webpack|BDFDB\.LibraryModules)\b/.test(code)) hooks.add("app-state");
     if (/\b(?:Patcher|BDFDB\.PatchUtils)\b/.test(code)) hooks.add("component-render");
     if (/\b(?:buildSettingsPanel|getSettingsPanel|BDFDB\.DataUtils)\b/.test(code)) hooks.add("settings");
     if (/\b(?:addStyle|removeStyle|BDFDB\.DOMUtils)\b/.test(code)) hooks.add("appearance");
-    const record = { name, file, platform: "betterdiscord", hooks: [...hooks].sort(), flags: {
+    const record = { name, file, platform: "betterdiscord", hooks: [...hooks].sort(), targets: inventoryResult.targets, flags: {
         commands: hooks.has("commands"), outgoing: hooks.has("outgoing-message"), settings: hooks.has("settings"),
         ui: hooks.has("component-render"), styles: hooks.has("appearance"),
     } };
@@ -544,7 +568,7 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
                 && statement.moduleSpecifier.text === "@utils/cloudcordTweak")
             && imported(source, "defineTweak", "@utils/cloudcordTweak");
         return {
-            name, file, platform, hooks: ["appearance"], flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
+            name, file, platform, ...inventory(source), flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
             ...(supported ? {
                 capability: "appearance",
                 cx: ["plugin " + JSON.stringify(name) + ":", ...appearanceLines(targets), ""].join("\n"),
@@ -593,7 +617,7 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
             || compileMobileSocialEvents(file, plugin, source)
         : supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
-        name, file, platform, flags, hooks: inventoryHooks(source),
+        name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
     };
 }
@@ -662,8 +686,9 @@ function scan(sourceDir) {
 
 function buildPlan(records) {
     const groups = new Map();
+    const adapters = new Map();
     const plugins = new Set();
-    for (const { name, file, platform, hooks, status, capability } of records) {
+    for (const { name, file, platform, hooks, targets, status, capability } of records) {
         const normalized = name.toLowerCase();
         plugins.add(normalized);
         if (status === "in-catalog") continue;
@@ -673,10 +698,22 @@ function buildPlan(records) {
         plugin.sources.push({ file, platform, status, ...(capability ? { capability } : {}) });
         group.set(normalized, plugin);
         groups.set(key, group);
+        for (const target of targets ?? []) {
+            const queue = adapters.get(target) ?? new Map();
+            const candidate = queue.get(normalized) ?? { name, platforms: new Set() };
+            candidate.platforms.add(platform);
+            queue.set(normalized, candidate);
+            adapters.set(target, queue);
+        }
     }
     return {
         sources: records.length,
         distinctPluginNames: plugins.size,
+        adapterQueues: [...adapters].filter(([, plugins]) => plugins.size > 1)
+            .map(([target, plugins]) => ({
+                target, count: plugins.size,
+                plugins: [...plugins.values()].map(({ name, platforms }) => ({ name, platforms: [...platforms].sort() })),
+            })).sort((a, b) => b.count - a.count || a.target.localeCompare(b.target)),
         groups: [...groups].map(([hooks, plugins]) => ({
             hooks, count: plugins.size, plugins: [...plugins.values()],
         })).sort((a, b) => b.count - a.count || a.hooks.localeCompare(b.hooks)),

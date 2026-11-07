@@ -64,6 +64,33 @@ const MonacoWorkerEntryPoints = [
     "vs/editor/editor.worker.js"
 ];
 
+const cxAssets = new Map();
+/** @type {import("esbuild").Plugin} */
+const lazyCxCatalog = {
+    name: "lazy-cx-catalog",
+    setup(build) {
+        build.onLoad({ filter: /\.cx$/ }, async ({ path: filename }) => {
+            const name = path.relative(path.resolve("../../examples/cx"), filename).replaceAll("\\", "/");
+            if (!/^(?:(?:catalog\/(?:plugins|themes)|pilot)\/)?[a-z0-9][a-z0-9-]*\.cx$/i.test(name))
+                throw new Error("Invalid browser CX asset " + name);
+            const resource = "dist/cx/" + name;
+            cxAssets.set(resource, await readFile(filename));
+            return {
+                resolveDir: process.cwd(),
+                contents: `
+                    import { EXTENSION_BASE_URL, metaReady } from "@utils/web-metadata";
+                    export default async () => {
+                        await metaReady;
+                        const response = await fetch(new URL(${JSON.stringify(resource)}, EXTENSION_BASE_URL));
+                        if (!response.ok) throw new Error("Could not load the CX catalog entry.");
+                        return response.text();
+                    };
+                `,
+            };
+        });
+    },
+};
+
 /** @type {import("esbuild").BuildOptions[]} */
 const buildConfigs = [
     {
@@ -92,11 +119,13 @@ const buildConfigs = [
     {
         ...commonOptions,
         outfile: "dist/browser/extension.js",
+        plugins: [lazyCxCatalog, ...commonOptions.plugins],
+        banner: { js: "(() => { if (window.top !== window || window.Vencord || window.VencordNative) return;" },
         define: {
             ...commonOptions.define,
             IS_EXTENSION: "true"
         },
-        footer: { js: "//# sourceURL=file:///VencordWeb" }
+        footer: { js: "window.Vencord = Vencord; })();\n//# sourceURL=file:///VencordWeb" }
     },
     {
         ...commonOptions,
@@ -159,6 +188,7 @@ async function buildExtension(target, files) {
     const entries = {
         "dist/CloudCord.js": await readFile("dist/browser/extension.js"),
         "dist/CloudCord.css": await readFile("dist/browser/extension.css"),
+        ...Object.fromEntries(cxAssets),
         ...await loadDir("dist/browser/vendor/monaco", "dist/browser/"),
         ...Object.fromEntries(await Promise.all(files.map(async f => {
             let content = await readFile(join("browser", f));

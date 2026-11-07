@@ -159,6 +159,10 @@ jobs:
           pnpm buildWeb
           unzip -l dist/extension-chrome.zip | grep -q 'dist/CloudCord.js'
           unzip -l dist/extension-firefox.zip | grep -q 'dist/CloudCord.js'
+          for archive in dist/extension-chrome.zip dist/extension-firefox.zip; do
+            unzip -p "$archive" dist/cx/midnight.cx > /dev/null
+            unzip -p "$archive" dist/cx/pilot/character-counter.cx > /dev/null
+          done
           if unzip -l dist/extension-chrome.zip | grep -q 'dist/Discord.js'; then
             echo "stale Discord.js found in Chrome package"
             exit 1

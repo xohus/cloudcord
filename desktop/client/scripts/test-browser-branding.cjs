@@ -10,6 +10,7 @@ for (const file of ['manifest.json', 'manifestv2.json']) {
         assert.equal(png.readUInt32BE(20), Number(size));
     }
     assert.ok(manifest.permissions.includes('alarms'));
+    assert.ok(manifest.content_scripts.every(script => script.run_at === 'document_start' && !script.all_frames));
 }
 let badge, stored, alarm;
 const event = () => ({ addListener() {} });

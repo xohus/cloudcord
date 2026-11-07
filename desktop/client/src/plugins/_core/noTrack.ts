@@ -82,6 +82,16 @@ export default definePlugin({
 
     startAt: StartAt.Init,
     start() {
+        if (IS_WEB) {
+            const sentry = Object.getOwnPropertyDescriptor(window, "DiscordSentry");
+            if (!sentry) {
+                Object.defineProperty(window, "DiscordSentry", {
+                    configurable: true,
+                    set() { /* Keep the optional reporting integration unset without interrupting Discord startup. */ },
+                });
+            }
+            return;
+        }
         // Sentry is initialized in its own WebpackInstance.
         // It has everything it needs preloaded, so, it doesn't include any chunk loading functionality.
         // Because of that, its WebpackInstance doesnt export wreq.m or wreq.c

@@ -7,7 +7,7 @@ import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -24,9 +24,11 @@ export function CxSettings() {
     const [pages, setPages] = useState({ Plugins: 0, Themes: 0 });
     const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
     const [status, setStatus] = useState("");
+    const selection = useRef(0);
     const searchText = search.trim().toLowerCase();
 
     function review(next: string) {
+        selection.current++;
         setCandidate(undefined);
         try {
             setCandidate({ source: next, review: reviewCx(next) });
@@ -34,6 +36,24 @@ export function CxSettings() {
         } catch (error) {
             setStatus(String(error instanceof Error ? error.message : error));
         }
+    }
+
+    function chooseSource(source: string | (() => Promise<string>)) {
+        const id = ++selection.current;
+        const show = (next: string) => {
+            if (id !== selection.current) return;
+            setSource(next.length <= CX_INLINE_EDITOR_LIMIT ? next : "");
+            review(next);
+        };
+        if (typeof source === "string") {
+            show(source);
+            return;
+        }
+        setCandidate(undefined);
+        setStatus("Loading CX source…");
+        void source().then(show, () => {
+            if (id === selection.current) setStatus("Could not load the CX catalog entry.");
+        });
     }
 
     function enable() {
@@ -291,10 +311,7 @@ export function CxSettings() {
                 const start = page * 12;
                 return <div key={kind}>
                     <h3>{kind}</h3>
-                    {matches.slice(start, start + 12).map(entry => <button key={entry.name} onClick={() => {
-                        setSource(entry.source.length <= CX_INLINE_EDITOR_LIMIT ? entry.source : "");
-                        review(entry.source);
-                    }}>{entry.name}</button>)}
+                    {matches.slice(start, start + 12).map(entry => <button key={entry.name} onClick={() => chooseSource(entry.source)}>{entry.name}</button>)}
                     {page > 0 && <button onClick={() => setPages({ ...pages, [kind]: page - 1 })}>{`Previous ${kind.toLowerCase()} page`}</button>}
                     {start + 12 < matches.length && <button onClick={() => setPages({ ...pages, [kind]: page + 1 })}>{`Next ${kind.toLowerCase()} page`}</button>}
                     {!matches.length && <p>No matches</p>}
@@ -307,6 +324,7 @@ export function CxSettings() {
                 const file = event.currentTarget.files?.[0];
                 event.currentTarget.value = "";
                 if (!file) return;
+                const id = ++selection.current;
                 setCandidate(undefined);
                 if (!/\.cx$/i.test(file.name) || file.size > MAX_CX_SOURCE) {
                     setStatus("Choose a .cx file under 512 KB.");
@@ -314,16 +332,18 @@ export function CxSettings() {
                 }
                 try {
                     const next = await file.text();
+                    if (id !== selection.current) return;
                     setSource(next.length <= CX_INLINE_EDITOR_LIMIT ? next : "");
                     review(next);
                 } catch {
-                    setStatus("Could not read the CX file.");
+                    if (id === selection.current) setStatus("Could not read the CX file.");
                 }
             }} />
         </label>
         <textarea aria-label="CX source" value={source} maxLength={MAX_CX_SOURCE} rows={8} style={{
             background: "var(--background-secondary, #2b2d31)", color: "var(--text-normal, #f2f3f5)", padding: 12, fontFamily: "monospace",
         }} onChange={event => {
+            selection.current++;
             setCandidate(undefined);
             setSource(event.currentTarget.value);
         }} />
