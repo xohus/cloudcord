@@ -36993,6 +36993,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           style: {
             reducedMotion: true
           }
+        },
+        "blur-chat-media": {
+          plugin: "BlurImagesUntilHover",
+          label: "conceal chat images and videos until you reveal them",
+          css: '[class*="imageWrapper"] img, [class*="imageWrapper"] video { filter: blur(18px); transition: filter .2s; } [class*="imageWrapper"]:hover img, [class*="imageWrapper"]:hover video { filter: none; }',
+          style: {
+            blurredMedia: "all"
+          }
+        },
+        "blur-nsfw-attachments": {
+          plugin: "BlurNSFW",
+          label: "conceal attachments in age-restricted channels until you reveal them",
+          css: '.cc-cx-nsfw-media [class*="imageContainer"], .cc-cx-nsfw-media [class*="wrapperPaused"] { filter: blur(10px); transition: filter .2s; } .cc-cx-nsfw-media [class*="imageContainer"]:hover, .cc-cx-nsfw-media [class*="wrapperPaused"]:hover { filter: blur(0); }',
+          style: {
+            blurredMedia: "nsfw"
+          }
         }
       };
     }
@@ -40620,6 +40636,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/blur-images-until-hover.cx
+  var blur_images_until_hover_default;
+  var init_blur_images_until_hover = __esm({
+    "../examples/cx/catalog/plugins/blur-images-until-hover.cx"() {
+      blur_images_until_hover_default = 'plugin "BlurImagesUntilHover":\n  needs appearance.style\n  style blur-chat-media\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/blur-nsfw.cx
+  var blur_nsfw_default;
+  var init_blur_nsfw = __esm({
+    "../examples/cx/catalog/plugins/blur-nsfw.cx"() {
+      blur_nsfw_default = 'plugin "BlurNSFW":\n  needs appearance.style\n  style blur-nsfw-attachments\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/bold-text.cx
   var bold_text_default;
   var init_bold_text = __esm({
@@ -42995,6 +43027,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_bigger_code_blocks();
       init_bigger_server_icons();
       init_block_keywords();
+      init_blur_images_until_hover();
+      init_blur_nsfw();
       init_bold_text();
       init_calculator();
       init_clap_text();
@@ -43289,6 +43323,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "BlockKeywords",
             source: block_keywords_default
+          },
+          {
+            name: "BlurImagesUntilHover",
+            source: blur_images_until_hover_default
+          },
+          {
+            name: "BlurNSFW",
+            source: blur_nsfw_default
           },
           {
             name: "BoldText",
@@ -44628,8 +44670,74 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   }
   function mapMediaEntries(items, transform) {
-    var next = items.map(transform);
-    return next.some((item, index) => item !== items[index]) ? next : items;
+    var next;
+    items.forEach((item, index) => {
+      var changed = transform(item);
+      if (changed !== item)
+        (next ??= items.slice())[index] = changed;
+    });
+    return next ?? items;
+  }
+  function registerBlurredMedia(mode) {
+    if (!blurredMedia) {
+      var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+      var types = findByProps("AttachmentType")?.AttachmentType;
+      if (types?.IMAGE == null || types?.VIDEO == null)
+        throw new Error("Discord's attachment types are unavailable");
+      var translations = findByProps("intl", "t");
+      var text = translations?.t?.["F+x38C"];
+      var label2 = text ? translations.intl?.string?.(text) : void 0;
+      var spoiler = typeof label2 === "string" && label2 ? label2.toUpperCase() : "SPOILER";
+      var binding = {
+        all: 0,
+        nsfw: 0
+      };
+      var untouched = (media) => !media || typeof media !== "object" || media.isSpoiler || media.spoiler || media.obscure || media.verifyAge || media.obscureAwaitingScan || media.obscureHideControls || media.obscureIsOpaque || media.isSuspiciousDownload;
+      var stop = overrideCxMethods(renderer, {
+        default(args, invoke) {
+          var row = invoke(args);
+          if (!row || !row.attachments?.length && !row.embeds?.length)
+            return row;
+          var concealAll = binding.all > 0;
+          if (!concealAll && (!binding.nsfw || !row.channelId || ChannelStore?.getChannel?.(row.channelId)?.nsfw !== true))
+            return row;
+          var attachments = Array.isArray(row.attachments) ? mapMediaEntries(row.attachments, (item) => {
+            if (untouched(item) || typeof item.url !== "string" || item.attachmentType !== types.IMAGE && item.attachmentType !== types.VIDEO)
+              return item;
+            return {
+              ...item,
+              isSpoiler: true,
+              spoiler
+            };
+          }) : row.attachments;
+          var embeds = concealAll && Array.isArray(row.embeds) ? mapMediaEntries(row.embeds, (item) => {
+            if (untouched(item) || !(item.image || item.video || item.thumbnail || Array.isArray(item.images) && item.images.length))
+              return item;
+            return {
+              ...item,
+              spoiler
+            };
+          }) : row.embeds;
+          return attachments === row.attachments && embeds === row.embeds ? row : {
+            ...row,
+            attachments,
+            embeds
+          };
+        }
+      }, () => !settings.safeMode?.enabled);
+      blurredMedia = Object.assign(binding, {
+        stop
+      });
+    }
+    var binding1 = blurredMedia;
+    binding1[mode]++;
+    return () => {
+      binding1[mode]--;
+      if (binding1.all || binding1.nsfw)
+        return;
+      blurredMedia = void 0;
+      binding1.stop();
+    };
   }
   function registerGifAltText() {
     var enabled = () => !settings.safeMode?.enabled;
@@ -45700,6 +45808,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
+            if ("blurredMedia" in style)
+              return registerBlurredMedia(style.blurredMedia);
             if ("reducedMotion" in style)
               return registerReducedMotion();
             if ("mentionHighlight" in style) {
@@ -46377,7 +46487,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -51064,7 +51174,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a63e070311f9ae58663a30f946478942912b2eb2";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "00e0c2351243cc686955b82c41093a48fa6fcfd0";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
