@@ -38546,6 +38546,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "media.labels",
           label: "Use meaningful filenames for GIFs with generic alt text"
         },
+        "preserve-image-links": {
+          permission: "media.labels",
+          label: "Show image links alongside their chat previews"
+        },
         "scroll-to-latest": {
           permission: "channels.markonopen",
           label: "Open channels at the latest message and mark them read"
@@ -41453,6 +41457,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/image-link.cx
+  var image_link_default;
+  var init_image_link = __esm({
+    "../examples/cx/catalog/plugins/image-link.cx"() {
+      image_link_default = 'plugin "ImageLink":\n  needs media.labels\n  use preserve-image-links\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/in-role.cx
   var in_role_default;
   var init_in_role = __esm({
@@ -43015,6 +43027,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hop_on();
       init_ignore_calls();
       init_image_filename();
+      init_image_link();
       init_in_role();
       init_ingtoninator();
       init_keyword_notify();
@@ -43564,6 +43577,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ImageFilename",
             source: image_filename_default
+          },
+          {
+            name: "ImageLink",
+            source: image_link_default
           },
           {
             name: "InRole",
@@ -45707,6 +45724,31 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return registerImageFilename(effect === "image-full-url");
               case "descriptive-gif-alt":
                 return registerGifAltText();
+              case "preserve-image-links": {
+                var parser = findByFilePath("modules/messages/native/renderer/MarkupParsers.tsx");
+                var visibleMessages = /* @__PURE__ */ new WeakMap();
+                return overrideCxMethods(parser, {
+                  parseMessageMarkup(args, invoke) {
+                    var [message, contentMessage, hideSimpleEmbedContent, ...rest] = args;
+                    if (hideSimpleEmbedContent !== true || !message || typeof message !== "object")
+                      return invoke(args);
+                    var { content } = contentMessage ?? message;
+                    if (typeof content !== "string" || !/https?:\/\//i.test(content))
+                      return invoke(args);
+                    var visible = visibleMessages.get(message);
+                    if (!visible) {
+                      visible = Object.create(Object.getPrototypeOf(message), Object.getOwnPropertyDescriptors(message));
+                      visibleMessages.set(message, visible);
+                    }
+                    return invoke([
+                      visible,
+                      contentMessage,
+                      false,
+                      ...rest
+                    ]);
+                  }
+                }, enabled);
+              }
               case "attachment-image-quality":
               case "original-attachment-images":
                 return registerAttachmentImageQuality(effect === "original-attachment-images");
@@ -50886,7 +50928,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "d6f2234546ae37ccf0394cf74c89e061fe78c812";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a35730a718c86a3086a4caf903d5838e8f180a1e";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
