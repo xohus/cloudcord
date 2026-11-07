@@ -36469,6 +36469,33 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "ChatInputSendButton"
           ]
         },
+        "dm-call-buttons": {
+          plugin: "HideCallButtons",
+          label: "the buttons to start calls in DMs",
+          css: '[aria-label="Start Voice Call"], [aria-label="Start Video Call"] { display: none !important; }',
+          mobile: {
+            header: "modules/main_tabs_v2/native/channel/header/PrivateChannelButtons.tsx",
+            hideIcons: [
+              "PhoneCallIcon",
+              "VideoIcon"
+            ],
+            keepWhilePresent: [
+              "PhoneHangUpIcon",
+              "VoiceNormalIcon"
+            ]
+          }
+        },
+        "dm-list-search": {
+          plugin: "HideDmSearch",
+          label: "the search button in the DM list",
+          css: '[class*="privateChannels"] [class*="searchBar"] { display: none !important; }',
+          mobile: {
+            header: "modules/main_tabs_v2/native/tabs/messages/MessagesHeader.tsx",
+            hideLabels: [
+              "5h0QOP"
+            ]
+          }
+        },
         "message-embeds": {
           plugin: "HideEmbeds",
           label: "link embeds in chat",
@@ -39034,6 +39061,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-call-buttons.cx
+  var hide_call_buttons_default;
+  var init_hide_call_buttons = __esm({
+    "../examples/cx/catalog/plugins/hide-call-buttons.cx"() {
+      hide_call_buttons_default = 'plugin "HideCallButtons":\n  needs appearance.hide\n  hide dm-call-buttons\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-channel-topic.cx
   var hide_channel_topic_default;
   var init_hide_channel_topic = __esm({
@@ -39055,6 +39090,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_clan_tags = __esm({
     "../examples/cx/catalog/plugins/hide-clan-tags.cx"() {
       hide_clan_tags_default = 'plugin "HideClanTags":\n  needs appearance.hide\n  hide server-tags\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-dm-search.cx
+  var hide_dm_search_default;
+  var init_hide_dm_search = __esm({
+    "../examples/cx/catalog/plugins/hide-dm-search.cx"() {
+      hide_dm_search_default = 'plugin "HideDmSearch":\n  needs appearance.hide\n  hide dm-list-search\n';
     }
   });
 
@@ -40382,9 +40425,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_avatar_decorations();
       init_hide_badges();
       init_hide_bot_tags();
+      init_hide_call_buttons();
       init_hide_channel_topic();
       init_hide_character_count();
       init_hide_clan_tags();
+      init_hide_dm_search();
       init_hide_edited_label();
       init_hide_embeds();
       init_hide_gift_button();
@@ -40665,6 +40710,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_bot_tags_default
           },
           {
+            name: "HideCallButtons",
+            source: hide_call_buttons_default
+          },
+          {
             name: "HideChannelTopic",
             source: hide_channel_topic_default
           },
@@ -40675,6 +40724,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideClanTags",
             source: hide_clan_tags_default
+          },
+          {
+            name: "HideDmSearch",
+            source: hide_dm_search_default
           },
           {
             name: "HideEditedLabel",
@@ -41394,6 +41447,63 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         cleanup();
     };
   }
+  function containsHeaderIcon(tree, icons) {
+    if (Array.isArray(tree))
+      return tree.some((child) => containsHeaderIcon(child, icons));
+    return React2.isValidElement(tree) && (icons.has(tree.type) || containsHeaderIcon(tree.props.children, icons));
+  }
+  function hideHeaderButtons(tree, shouldHide) {
+    if (Array.isArray(tree)) {
+      var next = tree.map((child) => hideHeaderButtons(child, shouldHide));
+      return next.every((child, index) => child === tree[index]) ? tree : next;
+    }
+    if (!React2.isValidElement(tree))
+      return tree;
+    if (typeof tree.props.onPress === "function" && shouldHide(tree.props))
+      return null;
+    var { children } = tree.props;
+    var next1 = hideHeaderButtons(children, shouldHide);
+    return next1 === children ? tree : React2.cloneElement(tree, {
+      children: next1
+    });
+  }
+  function registerHeaderAppearance(rule) {
+    var header = findByFilePath(rule.header)?.default;
+    if (header?.$$typeof !== Symbol.for("react.memo") || typeof header.type !== "function") {
+      throw new Error("Discord's header is unavailable");
+    }
+    var getIcons = (names) => new Set(names.map((name) => findByProps(name)?.[name]).filter(Boolean));
+    var hide = getIcons(rule.hideIcons ?? []);
+    var translations = rule.hideLabels && findByProps("intl", "t");
+    var labels = new Set(rule.hideLabels?.flatMap((key) => {
+      var message = translations?.t?.[key];
+      var label2 = message && translations?.intl?.string?.(message);
+      return typeof label2 === "string" && label2 ? [
+        label2
+      ] : [];
+    }));
+    if (!hide.size && !labels.size)
+      throw new Error("Discord's header controls are unavailable");
+    var keep = getIcons(rule.keepWhilePresent ?? []);
+    if (rule.keepWhilePresent && keep.size !== rule.keepWhilePresent.length) {
+      throw new Error("Discord's active call controls are unavailable");
+    }
+    var shouldHide = ({ children, accessibilityRole, accessibilityLabel }) => Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && hide.size > 0 && containsHeaderIcon(children, hide);
+    var render = header.type;
+    var component = header.displayName || render.displayName || render.name;
+    if (!component)
+      throw new Error("Discord's header has no component name");
+    var FilteredHeader = React2.memo(function FilteredHeader2(props) {
+      var tree = render(props);
+      return settings.safeMode?.enabled || keep.size && containsHeaderIcon(tree, keep) ? tree : hideHeaderButtons(tree, shouldHide);
+    }, header.compare);
+    return registerJsxAppearance([
+      component
+    ], (element) => element.type === header ? React2.createElement(FilteredHeader, {
+      ...element.props,
+      key: element.key
+    }) : element);
+  }
   function patchProfileMenus() {
     var ProfileUser = React2.createContext(void 0);
     function ProfileMenu({ element }) {
@@ -41589,6 +41699,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           registerProfileMenuAction,
           hideAppearanceTarget(target) {
             var mobile = cxAppearanceTargets[target].mobile;
+            if ("header" in mobile)
+              return registerHeaderAppearance(mobile);
             if (!("messagePresentation" in mobile))
               return registerJsxAppearance(mobile, () => null);
             var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
@@ -46743,7 +46855,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "77e1b6f21eccee067044594a4f3658d2238eefd9";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "aedb350f186e035c4d745f0279e36a2923c65e13";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
