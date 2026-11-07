@@ -9,13 +9,17 @@ export const incomingPermissions = {
     "hide-users": "messages.filterlocal",
     "hide-keywords": "messages.filterlocal",
     "hide-blocked": "messages.filterlocal",
+    "hide-system": "messages.filterlocal",
+    "hide-profile-themes": "appearance.style",
     "friends-voice": "voice.notifyfriends",
     "follow-voice": "voice.followfriend",
     "friend-removals": "friends.notifyremoval",
 } as const;
 
 type IncomingKind = keyof typeof incomingPermissions;
-export type IncomingRule = { kind: IncomingKind; values: string[]; always?: boolean; matcher?: RegExp };
+export type IncomingRule = { kind: IncomingKind; values: string[]; always?: boolean; matcher?: RegExp; messageTypes?: ReadonlySet<number> };
+
+const systemMessageTypes = { pins: [6], joins: [7], boosts: [8, 9, 10, 11] } as const;
 
 export function parseIncomingRule(name: string, input: string): IncomingRule {
     if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name)) throw new Error("Unknown incoming rule");
@@ -32,6 +36,12 @@ export function parseIncomingRule(name: string, input: string): IncomingRule {
     if (values.length > 24) throw new Error("Too many incoming rule values");
     if (kind === "follow-voice" && values.length > 1) throw new Error("Choose one friend ID to follow");
     if (kind === "friend-removals" && values.length) throw new Error("Friend removal notices take no options");
+    if (kind === "hide-profile-themes" && values.length) throw new Error("Profile theme hiding takes no options");
+    if (kind === "hide-system") {
+        if (!values.length || values.some(value => !Object.prototype.hasOwnProperty.call(systemMessageTypes, value)))
+            throw new Error("Choose pins, joins, or boosts");
+        return { kind, values, messageTypes: new Set(values.flatMap<number>(value => systemMessageTypes[value as keyof typeof systemMessageTypes])) };
+    }
     if (kind === "hide-blocked") {
         if (!values.length || values.some(value => value !== "blocked" && value !== "ignored"))
             throw new Error("Choose blocked, ignored, or both");
@@ -63,16 +73,44 @@ function stripStickers(message: IncomingPayload["message"], rule: IncomingRule) 
     return { ...message, sticker_items: kept, stickerItems: kept, stickers: kept };
 }
 
+function stripProfileTheme(profile: Record<string, unknown> | undefined) {
+    if (!profile || typeof profile !== "object" || !(Array.isArray(profile.theme_colors) || Array.isArray(profile.themeColors))) return profile;
+    const next = { ...profile };
+    delete next.theme_colors;
+    delete next.themeColors;
+    return next;
+}
+
 export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, context: IncomingContext) {
     const { type, message } = payload;
     if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals") return;
-    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked") {
+    if (rule.kind === "hide-profile-themes") {
+        if (type !== "USER_PROFILE_FETCH_SUCCESS") return;
+        const envelope = payload.userProfile ?? payload;
+        const id = envelope.user?.id ?? payload.userId;
+        const me = context.currentUser();
+        if (!me || typeof id !== "string" || id === me) return;
+        const userProfile = envelope.user_profile;
+        const guildProfile = envelope.guild_member_profile;
+        const user = stripProfileTheme(userProfile);
+        const guild = stripProfileTheme(guildProfile);
+        const profile = !userProfile ? stripProfileTheme(envelope) : envelope;
+        if (user === userProfile && guild === guildProfile && profile === envelope) return;
+        const patch = {
+            ...(user !== userProfile ? { user_profile: user } : {}),
+            ...(guild !== guildProfile ? { guild_member_profile: guild } : {}),
+        };
+        if (envelope !== payload) return { userProfile: { ...profile, ...patch } };
+        return profile === envelope ? patch : { ...patch, theme_colors: undefined, themeColors: undefined };
+    }
+    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked" || rule.kind === "hide-system") {
         if (!rule.values.length || payload.optimistic) return;
         if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS") return;
-        const me = context.currentUser();
-        if (!me) return;
+        const me = rule.kind === "hide-system" ? undefined : context.currentUser();
+        if (!me && rule.kind !== "hide-system") return;
         const hide = (item: IncomingPayload["message"]) => {
             if (!item) return false;
+            if (rule.kind === "hide-system") return rule.messageTypes?.has(item.type) === true;
             const channel = item.channel_id ?? item.channelId ?? payload.channelId ?? payload.channel_id;
             const user = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel === "string" && typeof item.id === "string"
                 ? context.replyAuthor(channel, item.id)?.id : undefined);

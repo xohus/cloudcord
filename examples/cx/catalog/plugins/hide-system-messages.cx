@@ -1,0 +1,3 @@
+plugin "HideSystemMessages":
+  needs messages.filterlocal
+  on incoming hide-system "pins,joins,boosts"

@@ -1,0 +1,3 @@
+plugin "NoProfileThemes":
+  needs appearance.style
+  on incoming hide-profile-themes ""

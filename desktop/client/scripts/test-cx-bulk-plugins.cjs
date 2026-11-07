@@ -44,6 +44,11 @@ const compose = records.find(record => record.name === "CompactCompose");
 assert.equal(compose.status, "needs-adapter");
 assert.ok(compose.targets.includes("css:min-height"));
 const matches = records.filter(record => record.cx);
+for (const [name, platform, rule] of [["HideSystemMessages", "desktop", "hide-system"], ["NoProfileThemes", "mobile", "hide-profile-themes"]]) {
+    const port = matches.find(record => record.name === name && record.platform === platform);
+    assert.equal(port?.capability, "incoming-filter");
+    assert.equal(parseCx(port.cx).incoming[0].kind, rule);
+}
 for (const [name, kind] of [["VoiceJoinMessages", "friends-voice"], ["FollowVoiceUser", "follow-voice"], ["RelationshipNotifier", "friend-removals"]]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "social-event");

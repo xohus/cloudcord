@@ -405,20 +405,27 @@ const mobileFilterRecipes = {
             + 'return texts.some(text => text && tests.some(test => test(text))); }); }); }',
         rule: "hide-keywords", value: "",
     },
+    NoProfileThemes: {
+        start: '{ stop = onProfileLoad((profile, userId) => { '
+            + 'if (userId === findByStoreName("UserStore")?.getCurrentUser?.()?.id) return; '
+            + 'delete profile.theme_colors; delete profile.themeColors; }); }',
+        rule: "hide-profile-themes", value: "", permission: "appearance.style",
+        helper: ["onProfileLoad", "../shared/profiles"],
+    },
 };
 
 function compileMobileFilter(name, file, plugin, source) {
-    if (!/^ios\/runtime\/src\/core\/plugins\/(?:noblockedmessages|clientsideblock|blockkeywords)\/index\.tsx?$/.test(file)
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:noblockedmessages|clientsideblock|blockkeywords|noprofilethemes)\/index\.tsx?$/.test(file)
         || !Object.prototype.hasOwnProperty.call(mobileFilterRecipes, name)
-        || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])
-        || !imported(source, "filterMessages", "../shared/messageFilter")) return;
+        || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])) return;
     const start = handler(plugin, "start");
     const stop = handler(plugin, "stop");
     const recipe = mobileFilterRecipes[name];
-    if (!start || !stop || printed(start.body, source).replace(/\s+/g, " ") !== recipe.start) return;
+    if (!start || !stop || !imported(source, ...(recipe.helper ?? ["filterMessages", "../shared/messageFilter"]))
+        || printed(start.body, source).replace(/\s+/g, " ") !== recipe.start) return;
     return {
         capability: "incoming-filter",
-        lines: ["  needs messages.filterlocal", "  on incoming " + recipe.rule + " " + JSON.stringify(recipe.value)],
+        lines: ["  needs " + (recipe.permission ?? "messages.filterlocal"), "  on incoming " + recipe.rule + " " + JSON.stringify(recipe.value)],
     };
 }
 
@@ -571,8 +578,10 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
     if (factory === "defineTweak") {
         const name = literal(call.arguments[0]);
         if (!name) return;
-        const targets = matchAppearanceStyles(literal(call.arguments[2]), appearance);
-        const supported = targets && platform === "desktop" && !entry.isExportEquals && !source.parseDiagnostics.length
+        const css = literal(call.arguments[2]);
+        const targets = matchAppearanceStyles(css, appearance);
+        const hideSystem = name === "HideSystemMessages" && css === '[class*="systemMessage"] { display: none !important; }';
+        const supported = (targets || hideSystem) && platform === "desktop" && !entry.isExportEquals && !source.parseDiagnostics.length
             && safeText(name) && name.length <= 64
             && call.arguments.length >= 3 && call.arguments.length <= 4
             && literal(call.arguments[1]) !== undefined
@@ -584,8 +593,10 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         return {
             name, file, platform, ...inventory(source), flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
             ...(supported ? {
-                capability: "appearance",
-                cx: ["plugin " + JSON.stringify(name) + ":", ...appearanceLines(targets), ""].join("\n"),
+                capability: hideSystem ? "incoming-filter" : "appearance",
+                cx: ["plugin " + JSON.stringify(name) + ":", ...(hideSystem
+                    ? ["  needs messages.filterlocal", '  on incoming hide-system "pins,joins,boosts"']
+                    : appearanceLines(targets)), ""].join("\n"),
             } : {}),
         };
     }

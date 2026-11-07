@@ -426,10 +426,14 @@ export function reviewCx(source: string) {
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement] : []))
-            .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
-                ? ["Hide all stickers"] : rule.kind === "follow-voice" && rule.values[0]
-                    ? ["Follow friend ID " + rule.values[0]] : !rule.values.length && !["reply-pings", "friends-voice", "friend-removals"].includes(rule.kind)
-                    ? ["Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")] : [])),
+            .concat(document.incoming.flatMap(rule => {
+                if (rule.kind === "hide-profile-themes") return ["Hide other users’ theme colors when their profiles load"];
+                if (rule.kind === "hide-system") return ["Hide system messages for " + rule.values.join(", ")];
+                if (rule.kind === "stickers" && rule.values[0] === "*") return ["Hide all stickers"];
+                if (rule.kind === "follow-voice" && rule.values[0]) return ["Follow friend ID " + rule.values[0]];
+                if (rule.values.length || ["reply-pings", "friends-voice", "friend-removals"].includes(rule.kind)) return [];
+                return ["Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")];
+            })),
         commands: document.commands.map(command => "/" + command.name),
     };
 }

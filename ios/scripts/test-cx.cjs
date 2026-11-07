@@ -686,6 +686,58 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(incomingHooks.length, 0);
         }
 
+        const systemPort = cxCatalog.plugins.find(entry => entry.name === "HideSystemMessages").source;
+        assert.throws(() => parseCx(systemPort.replace("pins,joins,boosts", "pins,moderation")), /Choose pins, joins, or boosts/);
+        selectCatalog("HideSystemMessages");
+        click(render(), "Allow for this session");
+        const [filterSystem] = incomingHooks;
+        const ordinary = { id: "regular", type: 0 };
+        const safetyNotice = { id: "moderation", type: 24 };
+        const systemMessages = [6, 7, 8, 9, 10, 11].map(type => ({ id: String(type), type }));
+        for (const message of systemMessages) {
+            assert.equal(filterSystem({ type: "MESSAGE_CREATE", message }), desktop ? true : false);
+        }
+        const history = { type: "LOAD_MESSAGES_SUCCESS", messages: [...systemMessages, ordinary, safetyNotice] };
+        assert.deepEqual(Array.from((filterSystem(history) ?? history).messages), [ordinary, safetyNotice]);
+        assert.equal(filterSystem({ type: "MESSAGE_CREATE", message: safetyNotice }), undefined);
+        click(render(), "Disable HideSystemMessages");
+        assert.equal(filterSystem({ type: "MESSAGE_CREATE", message: systemMessages[0] }), undefined);
+
+        const profilePort = cxCatalog.plugins.find(entry => entry.name === "NoProfileThemes").source;
+        assert.throws(() => parseCx(profilePort.replace('hide-profile-themes ""', 'hide-profile-themes "anything"')), /takes no options/);
+        assert.ok(reviewCx(profilePort).effects.includes("Hide other users’ theme colors when their profiles load"));
+        selectCatalog("NoProfileThemes");
+        click(render(), "Allow for this session");
+        const [filterProfile] = incomingHooks;
+        const colors = Object.freeze([123, 456]);
+        const userProfile = Object.freeze({ theme_colors: colors, bio: "hello", accent_color: 123 });
+        const guildProfile = Object.freeze({ themeColors: colors, pronouns: "they/them" });
+        const badges = Object.freeze([{ id: "early-supporter" }]);
+        const profileEvent = id => ({
+            type: "USER_PROFILE_FETCH_SUCCESS",
+            userProfile: Object.freeze({ user: { id }, user_profile: userProfile, guild_member_profile: guildProfile, badges }),
+        });
+        const foreign = profileEvent(other);
+        const filtered = (filterProfile(foreign) ?? foreign).userProfile;
+        assert.equal(filtered.user_profile.theme_colors, undefined);
+        assert.equal(filtered.user_profile.bio, "hello");
+        assert.equal(filtered.user_profile.accent_color, 123);
+        assert.equal(filtered.guild_member_profile.themeColors, undefined);
+        assert.equal(filtered.guild_member_profile.pronouns, "they/them");
+        assert.equal(filtered.badges, badges);
+        assert.equal(userProfile.theme_colors, colors);
+        assert.equal(guildProfile.themeColors, colors);
+        const ownProfile = profileEvent(me);
+        assert.equal((filterProfile(ownProfile) ?? ownProfile).userProfile.user_profile, userProfile);
+        const flat = { type: "USER_PROFILE_FETCH_SUCCESS", userId: other, theme_colors: colors, badges };
+        const flatResult = { ...flat, ...(filterProfile(flat) ?? flat) };
+        assert.equal(flatResult.theme_colors, undefined);
+        assert.equal(flatResult.badges, badges);
+        click(render(), "Disable NoProfileThemes");
+        assert.equal(incomingHooks.length, 0);
+        const afterDisable = profileEvent(other);
+        assert.equal((filterProfile(afterDisable) ?? afterDisable).userProfile.user_profile, userProfile);
+
         const avatarPort = cxCatalog.plugins.find(entry => entry.name === "AvatarGrabber").source;
         assert.throws(() => parseCx(avatarPort.replace(/^  needs profile\.avatar\r?\n/m, "")), /permissions/);
         assert.throws(() => parseCx(avatarPort.replace('"user" user optional', '"user" text optional')), /named text functions/);
