@@ -1,6 +1,6 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
-import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
@@ -25,6 +25,7 @@ const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
 const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
+const EmojiStore = findByStoreNameLazy("EmojiStore");
 const RelationshipStore = findByStoreNameLazy("RelationshipStore");
 const UserProfileStore = findByStoreNameLazy("UserProfileStore");
 const GuildMemberStore = findByStoreNameLazy("GuildMemberStore");
@@ -545,6 +546,25 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "plus-reactions": {
+                            const reactions = findByProps("addReaction", "removeReaction") ?? findByProps("addReaction");
+                            if (typeof reactions?.addReaction !== "function") throw new Error("Discord reactions are unavailable");
+                            const handle = createCxPlusReactionHandler({
+                                messages: channel => MessageStore?.getMessages?.(channel),
+                                guild: channel => ChannelStore?.getChannel?.(channel)?.guild_id,
+                                emojis: () => EmojiStore,
+                                unicode: name => findByProps("convertNameToSurrogate")?.convertNameToSurrogate(name),
+                                react: (channel, message, emoji) => reactions.addReaction(channel, message, emoji),
+                                error: () => { showToast("Couldn’t react to the previous message."); },
+                            });
+                            return instead("sendMessage", messageUtil, function (this: unknown, args, original) {
+                                if (enabled()) {
+                                    const result = handle(args[0], args[1], args[3]);
+                                    if (result) return result;
+                                }
+                                return original.apply(this, args);
+                            });
+                        }
                         case "silent-typing":
                             return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
                                 startTyping: () => undefined,

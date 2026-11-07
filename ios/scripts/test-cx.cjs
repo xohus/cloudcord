@@ -195,6 +195,17 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const previousEdits = [];
         const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]) };
+        const reactionChannel = "123456789123456789";
+        const reactionCache = { _array: [{ id: sender, channel_id: reactionChannel }, { id: other, channel_id: reactionChannel }] };
+        const reactionCalls = [];
+        let rejectReaction = false;
+        const addReaction = (channel, message, emoji) => {
+            if (rejectReaction) return Promise.reject(new Error("Reaction denied"));
+            reactionCalls.push([channel, message, emoji.id ? emoji.name + ":" + emoji.id : emoji.name]);
+        };
+        const reactionActions = { addReaction };
+        const emojiConverters = { convertNameToSurrogate: name => name === "thumbsup" ? "👍" : undefined };
+        const customEmoji = { id: me, name: "custom", animated: true };
         let latestMessage = { id: "previous", author: { id: me }, content: "Fix a.b twice: a.b", timestamp: Date.now(), channel_id: "test-channel" };
         const dispatch = event => acknowledged.push(event);
         let typingStarts = 0, typingStops = 0;
@@ -230,8 +241,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 id: trackId, album: { id: trackId }, artists: [{ id: trackId, external_urls: { spotify: "https://untrusted.example" } }],
             }) },
             MessageStore: {
+                getMessages: id => id === reactionChannel ? reactionCache : undefined,
                 getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }),
                 getLastMessage: () => latestMessage, getLastEditableMessage: () => latestMessage,
+            },
+            EmojiStore: {
+                getUsableGuildEmoji: () => [customEmoji],
+                getUsableCustomEmojiById: id => id === me ? customEmoji : undefined,
+                getGuilds: () => ({ [guildId]: { usableEmojis: [customEmoji] } }),
             },
             RelationshipStore: {
                 isBlocked: id => id === sender, isIgnored: id => id === other,
@@ -341,7 +358,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/types": { __esModule: true, default: value => value },
             "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name], findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
-                    : key === "removeRelationship" ? relationshipActions : undefined },
+                    : key === "removeRelationship" ? relationshipActions : key === "sendMessage" ? commandApi
+                        : key === "convertNameToSurrogate" ? emojiConverters : undefined },
             "@webpack/common": { React: { useSyncExternalStore: (subscribe, read) => {
                 subscribe(() => typingSubscribers.add(read()));
                 return read();
@@ -349,7 +367,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 dispatch,
-            } },
+            }, Constants: { Endpoints: { REACTION: (channel, message, emoji) => [channel, message, emoji] } },
+                RestAPI: { put: ({ url: [channel, message, emoji] }) => addReaction(channel, message, { name: emoji }) },
+            },
             "@lib/api/cx": moduleBox.exports,
             "@lib/api/ccpInspect": reportModule.exports,
             "@lib/api/ccpReport": { copyCcpReport: async () => {
@@ -394,7 +414,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
-                            : name === "intl" ? headerMessages : name in headerIcons ? headerIcons : undefined },
+                            : name === "intl" ? headerMessages : name === "addReaction" ? reactionActions
+                                : name === "convertNameToSurrogate" ? emojiConverters : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : "ProfileUserProvider" }),
@@ -1232,6 +1253,42 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(desktopPlugin.useTypingFocus(focus), focus);
             assert.deepEqual([...typingSubscribers], [true, false]);
         } else assert.equal(appearanceHooks.size, 0);
+
+        const plusReacts = cxCatalog.plugins.find(entry => entry.name === "BetterPlusReacts").source;
+        assert.throws(() => activateCx(plusReacts, host, ["messages.transform"]), /approval/);
+        selectCatalog("BetterPlusReacts");
+        const sendBeforeReactions = commandApi.sendMessage;
+        click(render(), "Allow for this session");
+        const send = (content, options) => commandApi.sendMessage(reactionChannel, { content }, undefined, options);
+        await send("++:thumbsup:");
+        await send("+👍🏽");
+        await send("++:custom:");
+        await send(`+<a:custom:${me}>`);
+        assert.deepEqual(reactionCalls, [
+            [reactionChannel, sender, "👍"], [reactionChannel, other, "👍🏽"],
+            [reactionChannel, sender, "custom:" + me], [reactionChannel, other, "custom:" + me],
+        ]);
+        assert.equal(send("+++👍"), "sent normally");
+        assert.equal(send("+not an emoji"), "sent normally");
+        assert.equal(send("+:unknown:"), "sent normally");
+        assert.equal(send("+👍", { attachmentsToUpload: ["file"] }), "sent normally");
+        assert.equal(send("+👍", { replyOptions: { messageReference: sender } }), "sent normally");
+        assert.equal(send("+👍", { scheduledTimestamp: Date.now() }), "sent normally");
+        reactionCache.hasMoreAfter = true;
+        assert.equal(send("+👍"), "sent normally");
+        reactionCache.hasMoreAfter = false;
+        rejectReaction = true;
+        assert.equal(await send("+👍"), undefined);
+        assert.match(notifications.pop(), /Couldn.t react/);
+        if (!desktop) {
+            settings.safeMode = { enabled: true };
+            assert.equal(send("+👍"), "sent normally");
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable BetterPlusReacts");
+        assert.equal(commandApi.sendMessage, sendBeforeReactions);
+        assert.equal(send("+👍"), "sent normally");
+        assert.equal(reactionCalls.length, 4);
 
         const silent = cxCatalog.plugins.find(entry => entry.name === "SilentTyping").source;
         assert.throws(() => activateCx(silent, host, []), /approval/);

@@ -14,6 +14,7 @@ export { formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServe
 export { animateCxAssets, cxNativeEffects, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
+export { createCxPlusReactionHandler } from "./cxPlusReactions";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -28,6 +29,7 @@ const permissionLabels = {
     "messages.edit.transform": "Change text when you submit a message edit",
     "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
     "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
+    "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
     "replies.suppressping": "Send replies without pinging the person you reply to",
     "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
     "guild.members": "Read loaded members with the role you select in the current server",

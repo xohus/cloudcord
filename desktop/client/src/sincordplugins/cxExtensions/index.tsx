@@ -2,13 +2,13 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps, findStore, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, React, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 
 const session = createCxSession();
 const typingDotListeners = new Set<() => void>();
@@ -149,6 +149,23 @@ export function CxSettings() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "plus-reactions": {
+                            const actions = findByProps("sendMessage", "getSendMessageOptions");
+                            const handle = createCxPlusReactionHandler({
+                                messages: channel => MessageStore?.getMessages(channel),
+                                guild: channel => ChannelStore?.getChannel(channel)?.guild_id,
+                                emojis: () => EmojiStore,
+                                unicode: name => findByProps("convertNameToSurrogate")?.convertNameToSurrogate(name),
+                                react: (channel, message, emoji) => RestAPI.put({
+                                    url: Constants.Endpoints.REACTION(channel, message, emoji.id ? `${emoji.name}:${emoji.id}` : emoji.name, "@me"),
+                                }),
+                                error: () => { showToast("Couldn’t react to the previous message."); },
+                            });
+                            return overrideCxMethods(actions, {
+                                sendMessage: (args, original) => handle(args[0], args[1] as Parameters<typeof handle>[1], args[3] as Parameters<typeof handle>[2])
+                                    ?? original(args),
+                            });
+                        }
                         case "silent-typing":
                             return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
                                 startTyping: () => Promise.resolve(),

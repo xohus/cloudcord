@@ -63,6 +63,10 @@ assert.equal(staticTyping?.capability, "native-effect");
 assert.deepEqual(Array.from(parseCx(staticTyping.cx).nativeEffects), ["static-typing-dots"]);
 const staticTypingSource = fs.readFileSync(path.join(__dirname, "../../..", staticTyping.file), "utf8");
 assert.equal(inspectPlugin(staticTyping.file, staticTypingSource.replace("dotCycle", "otherCycle"), "desktop", {}, cxNativeEffects).cx, undefined);
+const reactionPorts = matches.filter(record => record.name === "BetterPlusReacts");
+assert.deepEqual(reactionPorts.map(record => record.platform).sort(), ["desktop", "mobile"]);
+assert.equal(reactionPorts[0].cx, reactionPorts[1].cx);
+assert.deepEqual(Array.from(parseCx(reactionPorts[0].cx).permissions), ["messages.reactshortcut"]);
 for (const [name, platform, rule] of [["HideSystemMessages", "desktop", "hide-system"], ["NoProfileThemes", "mobile", "hide-profile-themes"]]) {
     const port = matches.find(record => record.name === name && record.platform === platform);
     assert.equal(port?.capability, "incoming-filter");

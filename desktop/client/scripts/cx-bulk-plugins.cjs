@@ -492,6 +492,11 @@ function compileMobileClientCommands(file, plugin, source) {
 
 function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
     if (!file.startsWith("ios/runtime/src/core/plugins/") || !fieldsAre(plugin, ["manifest", "start", "stop"])) return;
+    if (file === "ios/runtime/src/core/plugins/betterplusreacts/index.ts") {
+        const sha256 = createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+        if (sha256 !== "186ed4cdbf4ffd0b3bfa71efb68a7d9bf058a1e2b4e1a2263fc9b7091ec1532e" || !nativeEffects["plus-reactions"]) return;
+        return { capability: "native-effect", lines: ["  needs " + nativeEffects["plus-reactions"].permission, "  use plus-reactions"] };
+    }
     const start = handler(plugin, "start");
     const stop = handler(plugin, "stop");
     if (!start || !stop || !ts.isBlock(start.body)) return;
@@ -523,6 +528,10 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
 const desktopEffectRecipes = {
+    BetterPlusReacts: {
+        effect: "plus-reactions",
+        sha256: "00d8cac138cbb241679d85eba94441e58031ce12ed2ba456c908793ba4ab6fe5",
+    },
     NoTypingAnimation: {
         effect: "static-typing-dots",
         sha256: "845c1713b901057cb0fedbbb30db70238b3480da8170f79fccf6b64def7b055a",
@@ -536,10 +545,7 @@ const desktopEffectRecipes = {
 };
 
 function compileDesktopEffect(name, plugin, source, entry, nativeEffects) {
-    if (!Object.hasOwn(desktopEffectRecipes, name)
-        || !fieldsAre(plugin, ["name", "description", "authors", "tags", "patches"])
-        || !source.statements.every(node => node === entry || ts.isImportDeclaration(node)
-            && ["@utils/constants", "@utils/types"].includes(node.moduleSpecifier.text))) return;
+    if (!Object.hasOwn(desktopEffectRecipes, name)) return;
     const recipe = desktopEffectRecipes[name];
     const effect = nativeEffects[recipe.effect];
     if (!effect) return;
@@ -548,6 +554,9 @@ function compileDesktopEffect(name, plugin, source, entry, nativeEffects) {
         const sha256 = createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex");
         return sha256 === recipe.sha256 ? compiled : undefined;
     }
+    if (!fieldsAre(plugin, ["name", "description", "authors", "tags", "patches"])
+        || !source.statements.every(node => node === entry || ts.isImportDeclaration(node)
+            && ["@utils/constants", "@utils/types"].includes(node.moduleSpecifier.text))) return;
     const patches = value(plugin, "patches");
     if (!patches || !ts.isArrayLiteralExpression(patches) || patches.elements.length !== 1) return;
     const [patch] = patches.elements;

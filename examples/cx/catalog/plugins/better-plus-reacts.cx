@@ -1,0 +1,3 @@
+plugin "BetterPlusReacts":
+  needs messages.reactshortcut
+  use plus-reactions
