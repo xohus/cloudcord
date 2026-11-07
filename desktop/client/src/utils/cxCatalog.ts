@@ -105,13 +105,14 @@ import plugin103 from "../../../../examples/cx/catalog/plugins/sticker-blocker.c
 import plugin104 from "../../../../examples/cx/catalog/plugins/stop-auto-unread.cx";
 import plugin105 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
 import plugin106 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
-import plugin107 from "../../../../examples/cx/catalog/plugins/unindent.cx";
-import plugin108 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin109 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
-import plugin110 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
-import plugin111 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
-import plugin112 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin113 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin107 from "../../../../examples/cx/catalog/plugins/transparent-chat-bar.cx";
+import plugin108 from "../../../../examples/cx/catalog/plugins/unindent.cx";
+import plugin109 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
+import plugin110 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin111 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
+import plugin112 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
+import plugin113 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin114 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -321,13 +322,14 @@ export const cxCatalog = {
         { name: "StopAutoUnread", source: plugin104 },
         { name: "TalkInReverse", source: plugin105 },
         { name: "TextReplace", source: plugin106 },
-        { name: "Unindent", source: plugin107 },
-        { name: "UnitConverter", source: plugin108 },
-        { name: "VibeCheck", source: plugin109 },
-        { name: "VoiceJoinMessages", source: plugin110 },
-        { name: "WikiLookup", source: plugin111 },
-        { name: "WriteUpperCase", source: plugin112 },
-        { name: "ZeroWidthSanitizer", source: plugin113 },
+        { name: "TransparentChatBar", source: plugin107 },
+        { name: "Unindent", source: plugin108 },
+        { name: "UnitConverter", source: plugin109 },
+        { name: "VibeCheck", source: plugin110 },
+        { name: "VoiceJoinMessages", source: plugin111 },
+        { name: "WikiLookup", source: plugin112 },
+        { name: "WriteUpperCase", source: plugin113 },
+        { name: "ZeroWidthSanitizer", source: plugin114 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },

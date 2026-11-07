@@ -1,0 +1,3 @@
+plugin "TransparentChatBar":
+  needs appearance.style
+  style transparent-chat-bar

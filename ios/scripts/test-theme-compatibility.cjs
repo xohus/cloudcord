@@ -86,6 +86,14 @@ const removeAccent = updater.registerColorOverlay({semantic: {TEST: '#7c5cff'}, 
 assert.equal(token.default.meta.resolveSemanticColor('darker', {[symbol]: 'TEST'}), '#7c5cff');
 assert.equal(updater.getColorOverlay().raw.BRAND_500, '#7c5cff');
 assert.equal(updater.getThemeColors().background.url, 'example');
+const composerTokens = ['MOBILE_CHATINPUT_BACKGROUND_DEFAULT', 'MOBILE_CHATINPUT_BACKGROUND_ACTIVE'];
+const removeTranslucency = updater.registerColorOverlay({semantic: Object.fromEntries(composerTokens.map(key => [key, '#00000040']))});
+for (const theme of ['light', 'darker']) {
+  for (const key of composerTokens) assert.equal(token.default.meta.resolveSemanticColor(theme, {[symbol]: key}), '#00000040');
+}
+assert.equal(updater.getThemeColors().background.url, 'example');
+removeTranslucency();
+for (const key of composerTokens) assert.equal(token.default.meta.resolveSemanticColor('darker', {[symbol]: key}), '#original');
 removeDark();
 removeAccent();
 assert.equal(updater.getColorOverlay(), undefined);

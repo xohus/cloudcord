@@ -260,6 +260,16 @@ export const cxAppearanceTargets = {
         css: '[class*="channelTextArea"] [class*="scrollableContainer"], form [class*="channelTextArea"] { border-radius: 24px !important; }',
         style: { component: "FloatingChatInputContainer", values: { borderRadius: 24 } },
     },
+    "transparent-chat-bar": {
+        plugin: "TransparentChatBar", label: "make the chat input background translucent",
+        css: 'form [class*="channelTextArea"] [class*="scrollableContainer"] { background: rgb(0 0 0 / 25%) !important; backdrop-filter: blur(6px); }',
+        style: {
+            semantic: {
+                MOBILE_CHATINPUT_BACKGROUND_DEFAULT: "#00000040",
+                MOBILE_CHATINPUT_BACKGROUND_ACTIVE: "#00000040",
+            },
+        },
+    },
     "round-server-icons": {
         plugin: "RoundServerIcons", label: "round server icons",
         css: 'nav[aria-label="Servers sidebar"] [class*="wrapper"] foreignObject { mask: none !important; border-radius: 50%; }',
