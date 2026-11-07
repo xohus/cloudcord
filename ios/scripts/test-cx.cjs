@@ -250,7 +250,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu"]
             .map(name => [name, () => name]));
         const renderHeader = tree => tree;
-        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay"].map(name => [
+        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
+            "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem"].map(name => [
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
         const forwardedRefs = [];
@@ -579,6 +580,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(appearanceHooks.size, 0);
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
+                continue;
+            } else if (rule.mobile.hideComponentPaths) {
+                const bindings = rule.mobile.hideComponentPaths.map(path => {
+                    const type = nativeHeaders.get(path.split("/").at(-1).replace(".tsx", ""));
+                    const native = jsx(type, { progress: 0.5 });
+                    const wrapped = appearanceHooks.get(type)(type, native);
+                    assert.equal(wrapped.type(wrapped.props), null);
+                    settings.safeMode = { enabled: true };
+                    assert.equal(wrapped.type(wrapped.props), native);
+                    settings.safeMode = undefined;
+                    return { native, wrapped };
+                });
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(appearanceHooks.size, 0);
+                for (const { native, wrapped } of bindings) assert.equal(wrapped.type(wrapped.props), native);
                 continue;
             } else if (rule.mobile.scrollIndicators) {
                 for (const type of [nativeScrollView, nativeFlatList, nativeSectionList, animatedScrollView]) {

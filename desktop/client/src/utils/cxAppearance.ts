@@ -69,6 +69,16 @@ export const cxAppearanceTargets = {
         css: '[class*="animatedContainer"][class*="bannerImage"], [class*="bannerImage"] { display: none !important; }',
         mobile: ["ReanimatedGuildBanner"],
     },
+    "server-boost-progress": {
+        plugin: "HideBoostGoal", label: "the server boost progress bar",
+        css: '[class*="boostProgressBar"], [class*="progressBar"][class*="guild"] { display: none !important; }',
+        mobile: { hideComponentPaths: ["modules/guild_boosting/native/marketing_redesign/GuildBoostingMarketingProgressBar.tsx"] },
+    },
+    "server-boost-gem": {
+        plugin: "HideGuildBoostTag", label: "the server boost gem",
+        css: '[class*="premiumGuildIcon"], [aria-label*="Server Boost"] svg { display: none !important; }',
+        mobile: { hideComponentPaths: ["modules/premium/powerups/native/GuildPowerupsBoostGem.tsx"] },
+    },
     "chat-gift-button": {
         plugin: "HideGiftButton", label: "the chat gift button",
         css: 'button[aria-label="Send a gift"] { display: none !important; }',

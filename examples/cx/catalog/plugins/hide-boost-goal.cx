@@ -1,0 +1,3 @@
+plugin "HideBoostGoal":
+  needs appearance.hide
+  hide server-boost-progress

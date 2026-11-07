@@ -342,6 +342,11 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile) return registerTreeAppearance(mobile);
+                    if ("hideComponentPaths" in mobile) {
+                        const components = mobile.hideComponentPaths.map(path => findByFilePath(path)?.default);
+                        if (components.some(component => !component)) throw new Error("Discord's appearance components are unavailable");
+                        return registerJsxAppearance(components, () => null);
+                    }
                     if ("scrollIndicators" in mobile) {
                         const scrollViews = new Set([ScrollView, FlatList, SectionList, Animated?.ScrollView, Animated?.FlatList, Animated?.SectionList]);
                         const components = [...scrollViews].filter((component): component is NonNullable<typeof component> => component != null);

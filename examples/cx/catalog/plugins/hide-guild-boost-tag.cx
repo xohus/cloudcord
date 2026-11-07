@@ -1,0 +1,3 @@
+plugin "HideGuildBoostTag":
+  needs appearance.hide
+  hide server-boost-gem
