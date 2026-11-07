@@ -36746,6 +36746,43 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           mobile: [
             "GuildsBarUnreadBars"
           ]
+        },
+        "mention-badges": {
+          plugin: "HideMentionBadges",
+          label: "mention count badges",
+          css: '[class*="numberBadge"] { display: none !important; }',
+          mobile: {
+            mentionBadges: true
+          }
+        },
+        "muted-channel-opacity": {
+          plugin: "MutedChannelsFaded",
+          label: "fade muted channels",
+          css: '[class*="modeMuted"] { opacity: .45 !important; }',
+          style: {
+            renderedComponents: [
+              "ChannelContent",
+              "ChannelContentComponent"
+            ],
+            condition: "muted",
+            values: {
+              opacity: 0.45
+            }
+          }
+        },
+        "inactive-channel-opacity": {
+          plugin: "DimInactiveChannels",
+          label: "dim channel names without unread messages",
+          css: '[class*="containerDefault"] [class*="modeMuted"], [class*="containerDefault"]:not(:has([class*="unread"])) [class*="name_"] { opacity: .6; }',
+          style: {
+            renderedComponents: [
+              "ChannelTitle"
+            ],
+            condition: "inactive",
+            values: {
+              opacity: 0.6
+            }
+          }
         }
       };
     }
@@ -39108,6 +39145,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/dim-inactive-channels.cx
+  var dim_inactive_channels_default;
+  var init_dim_inactive_channels = __esm({
+    "../examples/cx/catalog/plugins/dim-inactive-channels.cx"() {
+      dim_inactive_channels_default = 'plugin "DimInactiveChannels":\n  needs appearance.style\n  style inactive-channel-opacity\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/dont-round-my-timestamps.cx
   var dont_round_my_timestamps_default;
   var init_dont_round_my_timestamps = __esm({
@@ -39289,6 +39334,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_jump_to_present = __esm({
     "../examples/cx/catalog/plugins/hide-jump-to-present.cx"() {
       hide_jump_to_present_default = 'plugin "HideJumpToPresent":\n  needs appearance.hide\n  hide jump-to-present\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-mention-badges.cx
+  var hide_mention_badges_default;
+  var init_hide_mention_badges = __esm({
+    "../examples/cx/catalog/plugins/hide-mention-badges.cx"() {
+      hide_mention_badges_default = 'plugin "HideMentionBadges":\n  needs appearance.hide\n  hide mention-badges\n';
     }
   });
 
@@ -39513,6 +39566,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_more_commands = __esm({
     "../examples/cx/catalog/plugins/more-commands.cx"() {
       more_commands_default = 'plugin "MoreCommands":\n  needs commands.register\n  needs messages.send\n  needs reply.local\n  on command "choose":\n    input "choices" text\n    send "${choose(choices)}" else "Give me some choices, separated by commas."\n  on command "flipcoin":\n    send one of ["Heads", "Tails"]\n  on command "rolldice":\n    input "sides" integer optional\n    send "${roll(sides)}" else "Enter a positive number of sides."\n  on command "randomnumber":\n    input "min" integer\n    input "max" integer\n    send "${randomNumber(min, max)}" else "Enter a smaller range."\n  on command "wordcount" with text:\n    reply "${wordCount(text)}"\n  on command "transform" with text:\n    input "style" choice "upper,lower,reverse,locale-upper,locale-lower,same"\n    input "repeat" integer optional\n    input "reverse" boolean optional\n    input "normalize" choice "NFC,NFD,NFKC,NFKD" optional\n    send "${transform(text, style, repeat, reverse, normalize)}" else "Use a positive repeat count and keep the result under 4,001 characters."\n  on command "ask" with text:\n    send "${ask(text)}"\n  on command "gettime":\n    send "${currentTime()}"\n  on command "echo":\n    input "message" text optional\n    reply "${message}"\n  on command "lenny":\n    input "message" text optional\n    send "${message} ( \u0361\xB0 \u035C\u0296 \u0361\xB0)"\n  on command "mock" with text:\n    send "${mock(text)}"\n  on command "morse" with text:\n    send "${morse(text)}"\n  on command "dissatisfaction":\n    input "message" text optional\n    send "${message}  \uFF1E\uFE4F\uFF1C"\n  on command "smug":\n    input "message" text optional\n    send "${message} \u0CA0_\u0CA0"\n  on command "happy":\n    input "message" text optional\n    send "${message} \u30FD(\xB4\u25BD`)/"\n  on command "crying":\n    input "message" text optional\n    send "${message} \u0CA5_\u0CA5"\n  on command "angry":\n    input "message" text optional\n    send "${message} \u30FD(\uFF40\u0414\xB4)\uFF89"\n  on command "anger":\n    input "message" text optional\n    send "${message} \u30FD(\uFF4F`\u76BF\u2032\uFF4F)\uFF89"\n  on command "joy":\n    input "message" text optional\n    send "${message} <(\uFFE3\uFE36\uFFE3)>"\n  on command "blush":\n    input "message" text optional\n    send "${message} \u0AEE \u02F6\u1D54 \u1D55 \u1D54\u02F6 \u10D0"\n  on command "confused":\n    input "message" text optional\n    send "${message} (\u2022\u0E34_\u2022\u0E34)?"\n  on command "sleeping":\n    input "message" text optional\n    send "${message} (\u1D17_\u1D17)"\n  on command "laughing":\n    input "message" text optional\n    send "${message} o(\u2267\u25BD\u2266)o"\n  on command "giving":\n    input "message" text optional\n    send "${message} (\uFF89\u25D5\u30EE\u25D5)\uFF89*:\uFF65\uFF9F\u2727"\n  on command "peace":\n    input "message" text optional\n    send "${message} \u270C(\u25D5\u203F-)\u270C"\n  on command "ending1":\n    input "message" text optional\n    send "${message} \u13EA \u08EA\u05B8 \u06F0 \u0359\u22B9"\n  on command "uwu":\n    input "message" text optional\n    send "${message} (>\u2A4A<)"\n  on command "comfy":\n    input "message" text optional\n    send "${message} (\u2500\u203F\u203F\u2500)\u2661"\n  on command "lovehappy":\n    input "message" text optional\n    send "${message} (*\u2267\u03C9\u2266*)"\n  on command "loveee":\n    input "message" text optional\n    send "${message} (\u2044 \u2044>\u2044 \u25BD \u2044<\u2044 \u2044)"\n  on command "give":\n    input "message" text optional\n    send "${message} (\u30CE= \u2A4A = )\u30CE"\n  on command "lovegive":\n    input "message" text optional\n    send "${message} \u10E6\u309D\u25E1\u2579)\u30CE\u2661"\n  on command "music":\n    input "message" text optional\n    send "${message} (\uFFE3\u25BD\uFFE3)/\u266B\u2022\xA8\u2022.\xB8\xB8\u266A"\n  on command "stars":\n    input "message" text optional\n    send "${message} .\u{16954} \u0741 \u02D6\u0E4B \u08ED \u2B51"\n  on command "lovegiving":\n    input "message" text optional\n    send "${message} \u2E1C(\uFF61\u02C3 \u1D55 \u02C2 )\u2E1D\u2661"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/muted-channels-faded.cx
+  var muted_channels_faded_default;
+  var init_muted_channels_faded = __esm({
+    "../examples/cx/catalog/plugins/muted-channels-faded.cx"() {
+      muted_channels_faded_default = 'plugin "MutedChannelsFaded":\n  needs appearance.style\n  style muted-channel-opacity\n';
     }
   });
 
@@ -40596,6 +40657,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
+      init_dim_inactive_channels();
       init_dont_round_my_timestamps();
       init_embedded_urls();
       init_floating_chat_bar();
@@ -40619,6 +40681,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_image_alt_text();
       init_hide_inbox_button();
       init_hide_jump_to_present();
+      init_hide_mention_badges();
       init_hide_nameplates();
       init_hide_new_messages_bar();
       init_hide_notification_bell();
@@ -40647,6 +40710,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_message_burst();
       init_message_notifier();
       init_more_commands();
+      init_muted_channels_faded();
       init_no_blocked_messages();
       init_no_pending_count();
       init_no_profile_themes();
@@ -40850,6 +40914,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: copy_user_urls_default
           },
           {
+            name: "DimInactiveChannels",
+            source: dim_inactive_channels_default
+          },
+          {
             name: "DontRoundMyTimestamps",
             source: dont_round_my_timestamps_default
           },
@@ -40940,6 +41008,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideJumpToPresent",
             source: hide_jump_to_present_default
+          },
+          {
+            name: "HideMentionBadges",
+            source: hide_mention_badges_default
           },
           {
             name: "HideNameplates",
@@ -41052,6 +41124,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "MoreCommands",
             source: more_commands_default
+          },
+          {
+            name: "MutedChannelsFaded",
+            source: muted_channels_faded_default
           },
           {
             name: "NoBlockedMessages",
@@ -41722,6 +41798,39 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       key: element.key
     }) : element);
   }
+  function registerRenderedChannelStyle(rule) {
+    var wrappers = /* @__PURE__ */ new WeakMap();
+    return registerJsxAppearance(rule.renderedComponents, (element) => {
+      var { muted, unread } = element.props;
+      if (typeof muted !== "boolean" || typeof unread !== "boolean" || !(muted || rule.condition === "inactive" && !unread))
+        return element;
+      var component = element.type;
+      var render = component?.$$typeof === Symbol.for("react.memo") ? component.type : component;
+      if (typeof render !== "function" || render.prototype?.isReactComponent)
+        return element;
+      var wrapper = wrappers.get(component);
+      if (!wrapper) {
+        wrapper = function StyledChannel({ originalProps }) {
+          var output = render(originalProps);
+          if (settings.safeMode?.enabled || !React2.isValidElement(output))
+            return output;
+          if (!("style" in output.props))
+            return output;
+          return React2.cloneElement(output, {
+            style: [
+              output.props.style,
+              rule.values
+            ]
+          });
+        };
+        wrappers.set(component, wrapper);
+      }
+      return React2.createElement(wrapper, {
+        originalProps: element.props,
+        key: element.key
+      });
+    });
+  }
   function patchProfileMenus() {
     var ProfileUser = React2.createContext(void 0);
     function ProfileMenu({ element }) {
@@ -41919,6 +42028,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile)
               return registerTreeAppearance(mobile);
+            if ("mentionBadges" in mobile) {
+              var stopLegacy = registerJsxAppearance([
+                "MentionsBadge"
+              ], () => null);
+              var stopCount = registerJsxAppearance([
+                "Badge"
+              ], (element) => typeof element.props.value === "number" && element.props.value > 0 && "isMentionLowImportance" in element.props ? null : element);
+              return () => {
+                stopCount();
+                stopLegacy();
+              };
+            }
             if (!("messagePresentation" in mobile))
               return registerJsxAppearance(mobile, () => null);
             var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
@@ -41945,6 +42066,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
+            if ("renderedComponents" in style)
+              return registerRenderedChannelStyle(style);
             if ("spoilerOutline" in style) {
               var spoiler = findByFilePath("modules/markup/native/Spoiler.tsx")?.default?.prototype;
               if (typeof spoiler?.render !== "function")
@@ -47107,7 +47230,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ecd2a231e7fc02415de2b301a31e438491f74126";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "4fc170c7772ca5afb39295cd1f70a5486210ba61";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
