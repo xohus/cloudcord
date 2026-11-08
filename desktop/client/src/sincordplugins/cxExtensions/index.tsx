@@ -10,6 +10,9 @@ import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
+import { getCxProfileMedia } from "@utils/cx";
+import { openImageModal } from "@utils/discord";
+import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
@@ -24,6 +27,39 @@ import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispat
 import type { ReactNode } from "react";
 
 const session = createCxSession();
+
+function registerProfileMedia() {
+    let active = true;
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        const id = props?.user?.id ?? props?.userId;
+        if (!active || !isCxProfileUserId(id)) return;
+        const user = props.user ?? UserStore.getUser(id);
+        if (!user) return;
+        const media = getCxProfileMedia(id, user, UserProfileStore.getUserProfile(id)?.banner);
+        for (const asset of media) {
+            const { kind, url, filename } = asset;
+            children.push(
+                <Menu.MenuItem key={"cx-view-" + kind} id={"cx-view-" + kind} label={"View " + kind} action={() => {
+                    if (active) openImageModal({ url, width: kind === "Avatar" ? 512 : 1024 });
+                }} />,
+                <Menu.MenuItem key={"cx-download-" + kind} id={"cx-download-" + kind} label={"Download " + kind} action={async () => {
+                    if (!active) return;
+                    try {
+                        const response = await fetch(url, { credentials: "omit", redirect: "error" });
+                        if (!response.ok) throw new Error("Image unavailable");
+                        const blob = await response.blob();
+                        if (active) saveFile(new File([blob], filename));
+                    } catch {
+                        if (active) showToast("Couldn’t download the profile image.");
+                    }
+                }} />,
+            );
+        }
+    };
+    const menus = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
+    addContextMenuPatch(menus, patch);
+    return () => { active = false; removeContextMenuPatch(menus, patch); };
+}
 
 function MentionIcon({ width = 24, height = 24, className }: { width?: number | string; height?: number | string; className?: string; }) {
     return <svg viewBox="0 0 24 24" width={width} height={height} className={className} aria-hidden="true">
@@ -529,6 +565,8 @@ export function CxSettings() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "profile-media":
+                            return registerProfileMedia();
                         case "copy-text-attachment":
                             fileCopyUsers++;
                             return () => { fileCopyUsers--; };
@@ -869,7 +907,7 @@ export default definePlugin({
     description: "Review and run permission-scoped CX plugins and themes.",
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
-    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI", "MessagePopoverAPI"],
+    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI", "MessagePopoverAPI", "DynamicImageModalAPI"],
     flux: {
         CHANNEL_SETTINGS_INIT({ channelId }: { channelId: string; }) {
             editingChannelId = channelId;

@@ -894,6 +894,10 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
 const desktopEffectRecipes = {
+    ProfileMedia: {
+        effect: "profile-media",
+        sha256: "e7d4f049a5df80e8ad9020ebbc2c818b356b457b6884da7714fb0c827fedef2c",
+    },
     UnsuppressEmbeds: {
         effect: "toggle-message-embeds",
         sha256: "a2816f32c9a24dba6f7956d9fc0811498c537135d1bc3b232e9e0488b00e40cf",

@@ -300,7 +300,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             UnreadSettingNoticeStore2: { maybeAutoUpgradeChannel: upgradeChannel },
             UserStore: { getCurrentUser: () => ({ id: me }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
             UserProfileStore: {
-                getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
+                getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]), banner: "a_" + "a".repeat(32) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
             ChannelStore: { getChannel: id => ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" || id === repeatChannel ? guildId : undefined,
@@ -501,6 +501,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const adapter = desktop ? "desktop/client/src/sincordplugins/cxExtensions/index.tsx"
             : "ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx";
         const serverListButtons = new Set();
+        const viewedProfiles = [];
+        const savedProfileMedia = [];
+        const nativeMediaType = { IMAGE: "native-image", GIF: "native-gif" };
         function GuildsBarFooterWrapper(props) { return props.children; }
         function GuildChannelUserList(props) { return props.children; }
         function UsersFastList(props) { return props; }
@@ -514,6 +517,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
             "@utils/clipboard": { copyToClipboard: value => { clipboardWrites.push(value); return Promise.resolve(); } },
+            "@utils/discord": { openImageModal: item => viewedProfiles.push(item) },
+            "@utils/web": { saveFile: file => savedProfileMedia.push(file) },
             "@utils/ccpInspect": reportModule.exports,
             "@api/MessageEvents": {
                 addMessagePreSendListener(listener) { transformHooks.add(listener); return listener; },
@@ -614,6 +619,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
                 : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
                 : path.endsWith("/MediaShareActions.tsx") ? mediaShare
+                : path.endsWith("/openMediaModal.tsx") ? { openMediaModal: options => viewedProfiles.push(options.initialSources[0]) }
+                : path.endsWith("/MediaSourceUtil.tsx") ? { downloadMediaAssetWithContentType: (...args) => savedProfileMedia.push(args) }
+                : path.endsWith("/MediaTypes.tsx") ? { MediaType: nativeMediaType }
                 : path.endsWith("/transformMessageAttachments.tsx") ? attachmentRows
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
                 : path.endsWith("/GIFPickerItemView.tsx") ? gifPicker
@@ -669,6 +677,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 PixelRatio: { getFontScale: () => 1.25 },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
+                Image: { getSize: (_, success) => success(1200, 480) },
                 processColor: value => value === "#7c5cff2e" ? 0x2e7c5cff : undefined,
                 Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput", View: "View", Pressable: "Pressable",
             },
@@ -681,6 +690,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             setTimeout: (callback, delay) => delay === 10000 ? setTimeout(callback, delay) : pendingNotifications.push(callback),
             clearTimeout,
             AbortController,
+            File,
             fetch: (...args) => fetchAttachment(...args),
             document: {
                 createElement: () => ({ remove() { stylesheet = undefined; } }),
@@ -1537,6 +1547,40 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         actionList(other, guildId)[0].action();
         assert.equal(notifications.pop(), "No profile colors found.");
         click(render(), "Disable CopyProfileColors");
+        const profileMedia = cxCatalog.plugins.find(entry => entry.name === "ProfileMedia").source;
+        assert.throws(() => activateCx(profileMedia, host, []), /approval/);
+        assert.throws(() => parseCx(profileMedia.replace(/^  needs profilemenu\.media\r?\n/m, "")), /permissions/);
+        assert.equal(moduleBox.exports.getCxProfileMedia(sender, { avatar: "https://example.com/avatar.png" }, "invalid").length, 0);
+        selectCatalog("ProfileMedia");
+        click(render(), "Allow for this session");
+        const mediaActions = actionList(sender);
+        assert.deepEqual(Array.from(mediaActions, item => item.label), ["View Avatar", "Download Avatar", "View Banner", "Download Banner"]);
+        assert.deepEqual(Array.from(actionList(other), item => item.label), ["View Avatar", "Download Avatar"]);
+        const bannerUrl = "https://cdn.discordapp.com/banners/" + sender + "/a_" + "a".repeat(32) + ".gif?size=4096";
+        fetchAttachment = async (url, options) => {
+            assert.equal(url, bannerUrl);
+            assert.equal(options.credentials, "omit");
+            assert.equal(options.redirect, "error");
+            return { ok: true, blob: () => new Blob(["image"], { type: "image/gif" }) };
+        };
+        mediaActions[0].action();
+        mediaActions[2].action();
+        await mediaActions[3].action();
+        await new Promise(setImmediate);
+        const mediaUrl = entry => desktop ? entry.url : entry.uri;
+        assert.match(mediaUrl(viewedProfiles[0]), /^https:\/\/cdn\.discordapp\.com\/embed\/avatars\/[0-5]\.png$/);
+        assert.equal(mediaUrl(viewedProfiles[1]), bannerUrl);
+        if (desktop) assert.equal(savedProfileMedia[0].name, "banner_" + sender + ".gif");
+        else {
+            assert.equal(viewedProfiles[1].height, 480);
+            assert.deepEqual(savedProfileMedia[0], [bannerUrl, nativeMediaType.GIF, "image/gif"]);
+        }
+        click(render(), "Disable ProfileMedia");
+        mediaActions[0].action();
+        await mediaActions[3].action();
+        assert.equal(viewedProfiles.length, 2);
+        assert.equal(savedProfileMedia.length, 1);
+        assert.equal(menuPatches.size + appearanceHooks.size, 0);
         const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
         if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
         else editor.props.onChangeText(counter);

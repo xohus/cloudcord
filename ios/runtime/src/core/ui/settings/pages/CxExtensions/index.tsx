@@ -22,10 +22,11 @@ import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { getCxMessageGesture } from "@lib/api/cx";
+import { getCxProfileMedia } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Alert, Animated, FlatList, Linking, PixelRatio, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Alert, Animated, FlatList, Image, Linking, PixelRatio, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const navigationControls = createCxNavigationControls();
@@ -1325,7 +1326,12 @@ function registerReducedMotion() {
     };
 }
 
-const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
+type ProfileMenuItem = { label: string; action: () => void; };
+type ProfileMenuEntry = {
+    key: CxProfileMenuAction | "profile-media";
+    getItems: (id: string, guildId?: string) => ProfileMenuItem[];
+};
+const profileMenuActions = new Set<ProfileMenuEntry>();
 let stopProfileMenuHooks: (() => void) | undefined;
 
 function patchProfileMenus() {
@@ -1334,20 +1340,13 @@ function patchProfileMenus() {
         const user = React.useContext(ProfileUser);
         if (!user || settings.safeMode?.enabled) return element;
         const { id, guildId } = user;
-        const entries = new Map([...profileMenuActions].map(entry => [entry.action, entry]));
-        if (!entries.size) return element;
-        const actions = [...entries.values()].flatMap(entry => {
-            const { label, scope } = cxProfileMenuActions[entry.action];
-            if (scope === "server" && !getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId)) return [];
-            return [{ label, action: () => {
-                if (!profileMenuActions.has(entry) || settings.safeMode?.enabled) return;
-                const text = getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId);
-                if (text) {
-                    clipboard.setString(text);
-                    showToast.showCopyToClipboard?.();
-                } else showToast("No profile colors found.");
-            } }];
-        });
+        const entries = new Map([...profileMenuActions].map(entry => [entry.key, entry]));
+        const actions = [...entries.values()].flatMap(entry => entry.getItems(id, guildId).map(item => ({
+            label: item.label,
+            action: () => {
+                if (profileMenuActions.has(entry) && !settings.safeMode?.enabled) item.action();
+            },
+        })));
         return actions.length ? React.cloneElement(element, { items: [...element.props.items, actions] }) : element;
     }
     const provideUser = (_: unknown, element: JSX.Element) => {
@@ -1371,9 +1370,8 @@ function patchProfileMenus() {
     };
 }
 
-function registerProfileMenuAction(action: CxProfileMenuAction) {
+function registerProfileMenuEntry(entry: ProfileMenuEntry) {
     stopProfileMenuHooks ??= patchProfileMenus();
-    const entry = { action };
     profileMenuActions.add(entry);
     return () => {
         profileMenuActions.delete(entry);
@@ -1382,6 +1380,66 @@ function registerProfileMenuAction(action: CxProfileMenuAction) {
             stopProfileMenuHooks = undefined;
         }
     };
+}
+
+function registerProfileMenuAction(action: CxProfileMenuAction) {
+    const { label, scope } = cxProfileMenuActions[action];
+    return registerProfileMenuEntry({
+        key: action,
+        getItems(id, guildId) {
+            if (scope === "server" && !getCxProfileMenuCopy(action, id, UserProfileStore, guildId)) return [];
+            return [{ label, action: () => {
+                const text = getCxProfileMenuCopy(action, id, UserProfileStore, guildId);
+                if (text) {
+                    clipboard.setString(text);
+                    showToast.showCopyToClipboard?.();
+                } else showToast("No profile colors found.");
+            } }];
+        },
+    });
+}
+
+function registerProfileMedia() {
+    const viewer = findByFilePath("modules/media_viewer/native/components/openMediaModal.tsx");
+    const download = findByFilePath("modules/media_viewer/native/MediaSourceUtil.tsx");
+    const mediaType = findByFilePath("modules/media/MediaTypes.tsx")?.MediaType;
+    if (!viewer?.openMediaModal || !download?.downloadMediaAssetWithContentType
+        || mediaType?.IMAGE == null || mediaType.GIF == null)
+        throw new Error("Discord's profile media viewer or downloader is unavailable");
+
+    let active = true;
+    const stop = registerProfileMenuEntry({
+        key: "profile-media",
+        getItems(id) {
+            const user = UserStore?.getUser?.(id);
+            if (!user) return [];
+            return getCxProfileMedia(id, user, UserProfileStore?.getUserProfile?.(id)?.banner).flatMap(asset => [
+                { label: "View " + asset.kind, action: () => {
+                    const open = (width: number, height: number) => {
+                        if (!active || settings.safeMode?.enabled) return;
+                        try {
+                            viewer.openMediaModal({
+                                initialSources: [{ uri: asset.url, mediaIndex: 0, width, height, accessoryType: "embed" }],
+                                analyticsSource: "user_profile_avatar", openAs: "action-sheet", shareable: false,
+                                disableDownload: true, disableMediaOverlayButton: true, disableMediaOverlayFooter: true,
+                            });
+                        } catch { showToast("Couldn’t open the profile image."); }
+                    };
+                    if (asset.kind === "Avatar") open(512, 512);
+                    else Image.getSize(asset.url, open, () => open(1024, 384));
+                } },
+                { label: "Download " + asset.kind, action: async () => {
+                    try {
+                        await download.downloadMediaAssetWithContentType(asset.url,
+                            asset.animated ? mediaType.GIF : mediaType.IMAGE, asset.animated ? "image/gif" : "image/png");
+                    } catch {
+                        if (active) showToast("Couldn’t download the profile image.");
+                    }
+                } },
+            ]);
+        },
+    });
+    return () => { active = false; stop(); };
 }
 
 export default function CxExtensions() {
@@ -1693,6 +1751,8 @@ export default function CxExtensions() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "profile-media":
+                            return registerProfileMedia();
                         case "copy-text-attachment":
                             return registerTextAttachmentCopy(enabled);
                         case "image-filename":

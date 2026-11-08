@@ -14,7 +14,7 @@ import { validateCxWallpaper } from "./cxWallpaper";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
-export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
+export { cxProfileMenuActions, getCxProfileMedia, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { formatCxChannelName, type CxChannelLabel } from "./cxChannelNames";
 export { isCxNotificationMuted, type CxMessageAlert } from "./cxIncoming";
 export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, markCxServersReadAndWait, runCxFriendInvites } from "./cxClientCommands";
@@ -72,6 +72,7 @@ const permissionLabels = {
     "channels.markonopen": "Mark the channel you open as read through its newest known message",
     "channels.jump": "Jump within the current channel when you choose the navigation control",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
+    "profilemenu.media": "Open or download the selected user's Discord avatar or banner when you choose a profile menu action.",
     "appearance.hide": "Hide the listed interface elements on this device",
     "appearance.style": "Apply the listed visual changes on this device",
     "appearance.avatarresolution": "Change image size requests for avatars hosted on Discord’s CDN",

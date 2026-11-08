@@ -1,0 +1,3 @@
+plugin "ProfileMedia":
+  needs profilemenu.media
+  use profile-media
