@@ -183,6 +183,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let canSend = true;
         let dismissedMentionSheets = 0;
         const mentionActions = [];
+        let fetchAttachment;
         const repeated = [];
         const repeatChannel = "100000000000000011";
         const messagePopover = new Map();
@@ -598,6 +599,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/useComputeEmojiPickerFunctions.tsx") ? mobileEmojiPicker
                 : path.endsWith("/MessageEmojiActionSheet.tsx") ? { default: expressionSheets.MessageEmojiActionSheet }
                 : path.endsWith("/LongPressMessageActionSheet.tsx") ? { default: LongPressMessageActionSheet }
+                : path.endsWith("/PlaintextFilePreviewHelpers.tsx") ? { isPlaintextPreviewableFile: name => name.endsWith(".txt") }
                 : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
                 : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
                 : path.endsWith("/MediaShareActions.tsx") ? mediaShare
@@ -661,7 +663,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             IS_WEB: false,
             Element: GestureElement,
             VencordNative: { native: { openExternal } },
-            setTimeout: callback => pendingNotifications.push(callback),
+            setTimeout: (callback, delay) => delay === 10000 ? setTimeout(callback, delay) : pendingNotifications.push(callback),
+            clearTimeout,
+            AbortController,
+            fetch: (...args) => fetchAttachment(...args),
             document: {
                 createElement: () => ({ remove() { stylesheet = undefined; } }),
                 head: { append: value => { stylesheet = value; } },
@@ -3171,6 +3176,75 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         else assert.equal(nativeMode, "light");
         click(render(), "Disable Midnight - Light");
 
+        {
+            const clipboardBefore = clipboardWrites.length;
+            selectCatalog("CopyFileContents");
+            click(render(), "Allow for this session");
+            if (desktop) {
+                const action = module.exports.default.renderTextAttachmentCopy;
+                assert.equal(action({ fileContents: "loading" }), null);
+                const partial = action({ fileContents: "first part", bytesLeft: 20 });
+                assert.equal(partial.props.disabled, true);
+                partial.props.onClick();
+                assert.equal(clipboardWrites.length, clipboardBefore);
+                const complete = action({ fileContents: "complete é", bytesLeft: 0 });
+                complete.props.onClick();
+                assert.equal(clipboardWrites.at(-1), "complete é");
+                click(render(), "Disable CopyFileContents");
+                complete.props.onClick();
+                assert.equal(clipboardWrites.length, clipboardBefore + 1);
+            } else {
+                const prior = selectedChannel;
+                selectedChannel = repeatChannel;
+                const url = "https://cdn.discordapp.com/attachments/" + repeatChannel + "/" + sender + "/test.txt?ex=123&hm=abc";
+                const file = Uint8Array.from(Buffer.from("complete é", "utf8"));
+                const props = { channel: stores.ChannelStore.getChannel(repeatChannel), message: {
+                    channel_id: repeatChannel, attachments: [
+                        { filename: "test.TXT", url, size: file.byteLength },
+                        { filename: "bad.txt", url: "https://example.org/test.txt", size: 1 },
+                        { filename: "image.png", url, size: 1 },
+                    ],
+                } };
+                const hook = appearanceHooks.get(LongPressMessageActionSheet);
+                const wrapper = hook(null, jsx(LongPressMessageActionSheet, props));
+                const sheet = wrapper.type(wrapper.props);
+                const menu = sheet.type(sheet.props);
+                const copyFile = button(menu, "Copy File Contents (test.TXT)").props.onPress;
+                assert.equal(button(menu, "Copy File Contents (bad.txt)"), undefined);
+                assert.equal(button(menu, "Copy File Contents (image.png)"), undefined);
+                let truncated = true;
+                fetchAttachment = async (request, options) => {
+                    assert.equal(request, url);
+                    assert.equal(options.redirect, "error");
+                    assert.equal(options.credentials, "omit");
+                    return { url, status: 200, headers: { get: key => key === "content-length" ? String(file.byteLength) : null },
+                        arrayBuffer: async () => truncated ? file.slice(0, -1).buffer : file.buffer };
+                };
+                copyFile();
+                await new Promise(setImmediate);
+                assert.equal(clipboardWrites.length, clipboardBefore);
+                truncated = false;
+                canSend = false;
+                copyFile();
+                await new Promise(setImmediate);
+                canSend = true;
+                assert.equal(clipboardWrites.at(-1), "complete é");
+                let completeFetch;
+                let signal;
+                fetchAttachment = (_, options) => {
+                    signal = options.signal;
+                    return new Promise(resolve => { completeFetch = resolve; });
+                };
+                copyFile();
+                click(render(), "Disable CopyFileContents");
+                assert.equal(signal.aborted, true);
+                completeFetch({ url, status: 200, headers: { get: key => key === "content-length" ? String(file.byteLength) : null },
+                    arrayBuffer: async () => file.buffer });
+                await new Promise(setImmediate);
+                assert.equal(clipboardWrites.length, clipboardBefore + 1);
+                selectedChannel = prior;
+            }
+        }
         const activationFailures = [];
         const installedHooks = () => ({
             commands: Object.keys(registered).sort(),

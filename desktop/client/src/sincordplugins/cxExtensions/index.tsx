@@ -119,6 +119,7 @@ let imageFullUrlUsers = 0;
 let descriptiveGifAltUsers = 0;
 let imageLinkUsers = 0;
 let roleHeaderUsers = 0;
+let fileCopyUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
@@ -474,6 +475,9 @@ export function CxSettings() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "copy-text-attachment":
+                            fileCopyUsers++;
+                            return () => { fileCopyUsers--; };
                         case "attachment-image-quality":
                             attachmentQualityUsers++;
                             return () => { attachmentQualityUsers--; };
@@ -819,6 +823,18 @@ export default definePlugin({
         },
     },
     patches: [{
+        find: "#{intl::PREVIEW_BYTES_LEFT}",
+        replacement: [
+            {
+                match: /fileContents:(\i),bytesLeft:(\i)\}\):null,/,
+                replace: "$&$self.renderTextAttachmentCopy({fileContents:$1,bytesLeft:$2}),",
+            },
+            {
+                match: /align:"\i"\}\),(?=\(0,\i\.jsx\)\(\i,\{wordWrap:\i,setWordWrap:\i)/,
+                replace: "$&$self.renderTextAttachmentCopy(arguments[0]),",
+            },
+        ],
+    }, {
         // NoRoleHeaders by Samwich (GPL-3.0-or-later).
         find: "this.updateMaxContentFeedRowSeen()",
         replacement: {
@@ -947,6 +963,14 @@ export default definePlugin({
         },
     }],
     hideRoleHeaders() { return roleHeaderUsers > 0; },
+    renderTextAttachmentCopy({ fileContents, bytesLeft }: { fileContents?: string; bytesLeft?: number; } = {}) {
+        if (!fileCopyUsers || typeof fileContents !== "string" || typeof bytesLeft !== "number" || !Number.isFinite(bytesLeft)) return null;
+        const complete = bytesLeft <= 0;
+        return <TextButton disabled={!complete} onClick={() => {
+            if (fileCopyUsers && complete) void copyToClipboard(fileContents)
+                .then(() => showToast("File contents copied."), () => showToast("Couldn’t copy the file."));
+        }}>{complete ? "Copy File Contents" : "File too large to copy"}</TextButton>;
+    },
     renderJumpToFirst(channel: CxNavigationChannel | undefined) {
         if (!navigationControls.has("jump-to-first-message")) return null;
         const target = getCxFirstMessageTarget(channel);

@@ -842,7 +842,8 @@ type CxMobileMessageMenu = {
 
 function registerMessageMenuActions(
     enabled: () => boolean,
-    createActions: (props: CxMobileMessageMenu, close: () => void) => readonly { label: string; run: () => void; }[],
+    createActions: (props: CxMobileMessageMenu, close: () => void, stillActive: () => boolean) => readonly { label: string; run: () => void; }[],
+    requiresSendPermission = true,
 ) {
     const menu = findByFilePath("modules/messages/native/long_press/LongPressMessageActionSheet.tsx")?.default;
     const sheet = findByProps("ActionSheet")?.ActionSheet;
@@ -862,17 +863,17 @@ function registerMessageMenuActions(
         function canUseAction() {
             const permission = channel?.isThread?.() ? permissions?.SEND_MESSAGES_IN_THREADS : permissions?.SEND_MESSAGES;
             return active && enabled() && SelectedChannelStore?.getChannelId?.() === channelId
-                && (!guildId || permission != null && permissionStore?.can?.(permission, channel) === true);
+                && (!requiresSendPermission || !guildId || permission != null && permissionStore?.can?.(permission, channel) === true);
         }
         if (!canUseAction()) return tree;
-        const actions = createActions(props, () => sheetActions.hideActionSheet());
+        const actions = createActions(props, () => sheetActions.hideActionSheet(), canUseAction);
         if (!actions.length) return tree;
         return mapAppearanceElements(tree, element => {
             if (element.type !== sheet) return element;
             return React.cloneElement(element, { children: [
                 ...React.Children.toArray(element.props.children),
                 <ActionSheetRowGroup key={actions[0].label}>
-                    {actions.map(({ label, run }) => <ActionSheetRow key={label} label={label}
+                    {actions.map(({ label, run }, index) => <ActionSheetRow key={label + index} label={label}
                         onPress={() => { if (canUseAction()) run(); }} />)}
                 </ActionSheetRowGroup>,
             ] });
@@ -913,6 +914,66 @@ function registerRepeatMessages(enabled: () => boolean) {
             },
         }));
     });
+}
+
+const textAttachmentUrl = /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/\d{17,20}\/\d{17,20}\/[a-z0-9._~%+-]+(?:\?[a-z0-9._~%&=+-]+)?$/i;
+const maxTextAttachmentBytes = 256 * 1024;
+
+function registerTextAttachmentCopy(enabled: () => boolean) {
+    const helpers = findByFilePath("modules/messages/PlaintextFilePreviewHelpers.tsx");
+    if (typeof helpers?.isPlaintextPreviewableFile !== "function" || typeof clipboard?.setString !== "function") {
+        throw new Error("Discord text attachment previews are unavailable");
+    }
+    const downloads = new Map<string, AbortController>();
+    const stop = registerMessageMenuActions(enabled, ({ message }, close, stillActive) => {
+        if (!Array.isArray(message?.attachments)) return [];
+        return message.attachments.flatMap(attachment => {
+            const { filename, url, size } = attachment ?? {};
+            if (typeof filename !== "string" || !helpers.isPlaintextPreviewableFile(filename.toLowerCase())
+                || typeof url !== "string" || !textAttachmentUrl.test(url)
+                || typeof size !== "number" || !Number.isSafeInteger(size) || size < 0) return [];
+            const label = "Copy File Contents (" + filename + ")";
+            return [{ label, async run() {
+                if (size > maxTextAttachmentBytes) {
+                    showToast("File too large to copy.");
+                    return;
+                }
+                if (downloads.has(url)) return;
+                const controller = new AbortController();
+                downloads.set(url, controller);
+                const timer = setTimeout(() => controller.abort(), 10000);
+                try {
+                    close();
+                    const response = await fetch(url, {
+                        signal: controller.signal, credentials: "omit", redirect: "error",
+                        headers: { "Accept-Encoding": "identity" },
+                    });
+                    const length = response.headers.get("content-length");
+                    const encoding = response.headers.get("content-encoding");
+                    if (response.status !== 200 || response.url !== url
+                        || length !== String(size) || encoding && encoding !== "identity") {
+                        throw new Error("Incomplete text attachment");
+                    }
+                    const body = await response.arrayBuffer();
+                    if (body.byteLength !== size) throw new Error("Incomplete text attachment");
+                    const text = decodeURIComponent(Array.from(new Uint8Array(body), byte => "%" + byte.toString(16).padStart(2, "0")).join(""));
+                    if (text.includes("\0")) throw new Error("Attachment is not text");
+                    if (!stillActive() || controller.signal.aborted) return;
+                    clipboard.setString(text);
+                    showToast("File contents copied.");
+                } catch {
+                    if (stillActive()) showToast("Couldn’t copy the complete text file.");
+                } finally {
+                    clearTimeout(timer);
+                    downloads.delete(url);
+                }
+            } }];
+        });
+    }, false);
+    return () => {
+        stop();
+        for (const download of downloads.values()) download.abort();
+    };
 }
 
 let messageGestures: { edit: number; reply: number; stop: () => void; } | undefined;
@@ -1551,6 +1612,8 @@ export default function CxExtensions() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "copy-text-attachment":
+                            return registerTextAttachmentCopy(enabled);
                         case "image-filename":
                         case "image-full-url":
                             return registerImageFilename(effect === "image-full-url");

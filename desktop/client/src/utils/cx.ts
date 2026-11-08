@@ -43,6 +43,7 @@ const permissionLabels = {
     "messages.split": "Send your long drafts as separate messages in the same channel",
     "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
     "media.clipboard": "Copy a selected media or web link when you choose its menu action",
+    "attachments.clipboard": "Copy a selected text attachment. On mobile, downloads the complete file from Discord before copying.",
     "media.imagequality": "Request higher-resolution image attachments from Discord’s CDN",
     "media.labels": "Show filenames, links, or descriptive alt text for visible media on this device",
     "stickers.links": "Copy or open the selected Discord sticker’s CDN link when you choose its menu action",

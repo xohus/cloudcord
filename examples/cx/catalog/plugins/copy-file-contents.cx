@@ -1,0 +1,3 @@
+plugin "CopyFileContents":
+  needs attachments.clipboard
+  use copy-text-attachment
