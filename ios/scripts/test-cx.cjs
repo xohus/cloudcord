@@ -362,7 +362,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 ? bit === embedPermissions.MOVE_MEMBERS ? canBypassQueue : canJoinQueue
                 : canSend },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
-            GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
+            GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }),
+                getGuild: id => id === guildId ? { id, ownerId: me } : undefined },
             GuildChannelStore: { getChannels: () => ({
                 SELECTABLE: [{ channel: { id: "first" } }, { channel: { id: "missing" } }],
                 VOCAL: [{ channel: { id: "first" } }],
@@ -527,6 +528,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const settings = {};
         Object.assign(headerMessages.t, { "CvQ18w": "Épingler le message", "Bse+F/": "Désépingler le message",
             p89ACt: "Confirmer", xFjByk: "Retirer des épingles", "ETE/oC": "Retirer" });
+        const ownerRow = () => null;
+        const nativeActivityText = () => ({ text: "Artist", tooltip: "Original tooltip" });
+        const activityText = { default: nativeActivityText };
         const pinPrompts = [];
         const showPinAlert = alert => pinPrompts.push(alert);
         const nativePinAlerts = { show: showPinAlert };
@@ -728,6 +732,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "modules/main_tabs_v2/native/shared_components/user_list/UserRow.tsx" ? { default: ownerRow }
+                : path === "modules/activity_status/getActivityStatusText.tsx" ? activityText
                 : path === "actions/native/AlertActionCreators.tsx" ? { default: nativePinAlerts }
                 : path === "modules/messages/native/renderer/transformReactions.tsx" ? reactionRenderer
                 : path === "modules/messages/validateJumpWithAlert.tsx" ? jumpValidator
@@ -2702,6 +2708,50 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(appearanceHooks.size, 0);
             assert.equal(stylesheet, undefined);
         }
+        {
+            const crown = (props, stock = false) => {
+                if (desktop) return desktopPlugin.showOwnerCrown(props, stock);
+                const element = jsx(ownerRow, { ...props, isOwner: stock });
+                const wrapper = appearanceHooks.get(ownerRow)?.(null, element);
+                return wrapper ? wrapper.type(wrapper.props).props.isOwner : stock;
+            };
+            const owner = { guildId, user: { id: me } };
+            const member = { guildId, user: { id: sender } };
+            const dm = { user: owner.user, channel: { type: 3 } };
+            const status = { type: 2, name: "Spotify", details: "Track", state: "Artist" };
+            const text = activity => desktop ? desktopPlugin.spotifySongName(activity, "Artist") : activityText.default(activity, true).text;
+            assert.equal(crown(owner), false);
+            assert.equal(text(status), "Artist");
+            selectCatalog("ForceOwnerCrown");
+            click(render(), "Allow for this session");
+            assert.equal(crown(owner), true);
+            assert.equal(crown(member), false);
+            assert.equal(crown(member, true), true);
+            assert.equal(crown(dm), false);
+            assert.equal(crown(dm, true), true);
+            if (desktop) assert.equal(crown({ user: owner.user, channel: { guild_id: guildId } }), true);
+            selectCatalog("ShowSongName");
+            click(render(), "Allow for this session");
+            assert.equal(text(status), "Track");
+            assert.equal(text({ ...status, details: "" }), "Artist");
+            assert.equal(text({ ...status, type: 0 }), "Artist");
+            assert.equal(text({ ...status, name: "Another service" }), "Artist");
+            if (!desktop) {
+                assert.equal(activityText.default(status, true).tooltip, "Original tooltip");
+                assert.equal(activityText.default(status, false).text, "Artist");
+                assert.equal(text({ ...status, state: "Different artist" }), "Artist");
+                settings.safeMode = { enabled: true };
+                assert.equal(crown(owner), false);
+                assert.equal(text(status), "Artist");
+                settings.safeMode = undefined;
+            }
+            click(render(), "Disable ForceOwnerCrown");
+            click(render(), "Disable ShowSongName");
+            assert.equal(crown(owner), false);
+            assert.equal(text(status), "Artist");
+            assert.equal(activityText.default, nativeActivityText);
+        }
+
         {
             const port = cxCatalog.plugins.find(entry => entry.name === "NoDraftLengthLimit").source;
             assert.throws(() => activateCx(port, host, ["appearance.style"]), /approval/);

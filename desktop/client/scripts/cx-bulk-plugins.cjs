@@ -959,6 +959,16 @@ const desktopEffectRecipes = {
         effect: "jump-to-message-menu",
         sha256: "50002ef6e62591654d9fca64bf4c61c7a99a8fb76e7b82a3b202dfce8c625d5a",
     },
+    ForceOwnerCrown: {
+        effect: "force-owner-crown",
+        sha256: "460a5ae05da871e29d865fb23ebcfb0bef94991647c24e1b02382a51644ee8e6",
+    },
+    ShowSongName: {
+        effect: "spotify-song-name",
+        find: '.join(", ");return{text:',
+        match: String.raw`/(?<=.join\(", "\);return\{text:)\i/`,
+        replace: "arguments[0]?.details??$&",
+    },
     NoDraftLengthLimit: {
         effect: "keep-long-drafts",
         find: "ApplicationLauncherCommand=3",

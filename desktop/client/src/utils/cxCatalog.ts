@@ -52,6 +52,7 @@ import plugin_catalog_fix_file_extensions from "../../../../examples/cx/catalog/
 import plugin_catalog_fix_images_quality from "../../../../examples/cx/catalog/plugins/fix-images-quality.cx";
 import plugin_catalog_floating_chat_bar from "../../../../examples/cx/catalog/plugins/floating-chat-bar.cx";
 import plugin_catalog_follow_voice_user from "../../../../examples/cx/catalog/plugins/follow-voice-user.cx";
+import plugin_catalog_force_owner_crown from "../../../../examples/cx/catalog/plugins/force-owner-crown.cx";
 import plugin_catalog_foreign_copy_handler from "../../../../examples/cx/catalog/plugins/foreign-copy-handler.cx";
 import plugin_catalog_friend_invites from "../../../../examples/cx/catalog/plugins/friend-invites.cx";
 import plugin_catalog_gamzee_s_typing_quirk from "../../../../examples/cx/catalog/plugins/gamzee-s-typing-quirk.cx";
@@ -168,6 +169,7 @@ import plugin_catalog_scroll_to_latest from "../../../../examples/cx/catalog/plu
 import plugin_catalog_sed_enhanced from "../../../../examples/cx/catalog/plugins/sed-enhanced.cx";
 import plugin_catalog_send_timestamps from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
 import plugin_catalog_ship_calc from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
+import plugin_catalog_show_song_name from "../../../../examples/cx/catalog/plugins/show-song-name.cx";
 import plugin_catalog_signature from "../../../../examples/cx/catalog/plugins/signature.cx";
 import plugin_catalog_silence_users from "../../../../examples/cx/catalog/plugins/silence-users.cx";
 import plugin_catalog_silent_message_toggle from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
@@ -353,6 +355,7 @@ export const cxCatalog = {
         { name: "FixImagesQuality", source: plugin_catalog_fix_images_quality },
         { name: "FloatingChatBar", source: plugin_catalog_floating_chat_bar },
         { name: "FollowVoiceUser", source: plugin_catalog_follow_voice_user },
+        { name: "ForceOwnerCrown", source: plugin_catalog_force_owner_crown },
         { name: "foreignCopyHandler", source: plugin_catalog_foreign_copy_handler },
         { name: "FriendInvites", source: plugin_catalog_friend_invites },
         { name: "Gamzee'sTypingQuirk", source: plugin_catalog_gamzee_s_typing_quirk },
@@ -469,6 +472,7 @@ export const cxCatalog = {
         { name: "SedEnhanced", source: plugin_catalog_sed_enhanced },
         { name: "SendTimestamps", source: plugin_catalog_send_timestamps },
         { name: "ShipCalc", source: plugin_catalog_ship_calc },
+        { name: "ShowSongName", source: plugin_catalog_show_song_name },
         { name: "Signature", source: plugin_catalog_signature },
         { name: "SilenceUsers", source: plugin_catalog_silence_users },
         { name: "SilentMessageToggle", source: plugin_catalog_silent_message_toggle },

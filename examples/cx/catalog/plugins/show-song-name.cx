@@ -1,0 +1,3 @@
+plugin "ShowSongName":
+  needs appearance.style
+  use spotify-song-name

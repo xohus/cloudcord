@@ -4,6 +4,8 @@ export const cxNativeEffects = {
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "static-typing-dots": { permission: "appearance.style", label: "Keep Discord's typing dots still" },
     "code-block-gap": { permission: "appearance.style", label: "Remove the extra blank line after fenced code blocks" },
+    "force-owner-crown": { permission: "appearance.style", label: "Show the server owner’s native crown in the member list" },
+    "spotify-song-name": { permission: "appearance.style", label: "Show the song title in Spotify activity status" },
     "sort-reactions-by-count": { permission: "appearance.style", label: "Show the most-used reactions first under each message" },
     "plus-reactions": { permission: "messages.reactshortcut", label: "React to the matching previous message when you send a plus shortcut" },
     "fix-file-extensions": { permission: "uploads.rename", label: "Use supported filename extensions for listed attachment formats" },
@@ -58,6 +60,14 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+export type CxSpotifyActivity = { type?: unknown; name?: unknown; details?: unknown; state?: unknown; };
+
+export function getCxSpotifySongName(activity?: CxSpotifyActivity | null) {
+    if (activity?.type === 2 && activity.name === "Spotify" && typeof activity.details === "string" && activity.details.trim()) {
+        return activity.details;
+    }
+}
 
 // SortReactions by rootpoi, kraethis, and ewlle (GPL-3.0-or-later).
 export function sortCxReactions<T extends { count: number; }>(reactions: readonly T[]) {

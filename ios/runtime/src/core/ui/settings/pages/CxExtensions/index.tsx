@@ -5,7 +5,7 @@ import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxV
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, sortCxReactions, type CxRepeatMessage } from "@lib/api/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, getCxSpotifySongName, sortCxReactions, type CxRepeatMessage, type CxSpotifyActivity } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxCallClock, createCxJumpActions, createCxVoiceMemberClock, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel, type CxVoiceMemberOptions } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
@@ -2273,6 +2273,27 @@ export default function CxExtensions() {
                         }
                         case "quick-mention":
                             return registerQuickMention(enabled);
+                        case "force-owner-crown": {
+                            const row = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/UserRow.tsx")?.default;
+                            if (!row) throw new Error("Discord’s member row is unavailable");
+                            return registerJsxAppearance([row], element => {
+                                const { guildId, user, isOwner } = element.props;
+                                if (isOwner || !isCxProfileUserId(guildId) || !isCxProfileUserId(user?.id)
+                                    || GuildStore?.getGuild?.(guildId)?.ownerId !== user.id) return element;
+                                return React.cloneElement(element, { isOwner: true });
+                            });
+                        }
+                        case "spotify-song-name":
+                            return overrideCxMethods(findByFilePath("modules/activity_status/getActivityStatusText.tsx"), {
+                                default(args, invoke) {
+                                    const result = invoke(args);
+                                    const activity = args[0] as CxSpotifyActivity | undefined;
+                                    const title = args[1] === true && getCxSpotifySongName(activity);
+                                    const artist = typeof activity?.state === "string" && activity.state.split("; ").join(", ");
+                                    return title && artist && result && typeof result === "object" && "text" in result && result.text === artist
+                                        ? { ...result, text: title } : result;
+                                },
+                            }, enabled);
                         case "sort-reactions-by-count":
                             return overrideCxMethods(findByFilePath("modules/messages/native/renderer/transformReactions.tsx"), {
                                 default(args, invoke) {

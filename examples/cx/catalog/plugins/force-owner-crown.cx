@@ -1,0 +1,3 @@
+plugin "ForceOwnerCrown":
+  needs appearance.style
+  use force-owner-crown

@@ -9,7 +9,7 @@ import { addServerListElement, removeServerListElement, ServerListRenderPosition
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
-import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, sortCxReactions } from "@utils/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, getCxSpotifySongName, sortCxReactions, type CxSpotifyActivity } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel } from "@utils/cx";
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "@utils/cx";
@@ -331,6 +331,8 @@ let roleHeaderUsers = 0;
 let reactionSortUsers = 0;
 let bypassPinPromptUsers = 0;
 let longDraftUsers = 0;
+let ownerCrownUsers = 0;
+let spotifySongNameUsers = 0;
 let fileCopyUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
@@ -897,6 +899,12 @@ export function CxSettings() {
                             });
                         case "pending-friend-count":
                             return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 });
+                        case "force-owner-crown":
+                            ownerCrownUsers++;
+                            return () => { ownerCrownUsers--; };
+                        case "spotify-song-name":
+                            spotifySongNameUsers++;
+                            return () => { spotifySongNameUsers--; };
                         case "sort-reactions-by-count":
                             reactionSortUsers++;
                             return () => { reactionSortUsers--; };
@@ -1268,6 +1276,20 @@ export default definePlugin({
             replace: "$1:$self.shouldSkipPinPrompt()?$1:$2",
         },
     })), {
+        find: "#{intl::GUILD_OWNER}),children:",
+        predicate: () => !Settings.plugins.ForceOwnerCrown?.enabled,
+        replacement: {
+            match: /(?<=decorators:.{0,200}?isOwner:)\i/,
+            replace: "$self.showOwnerCrown(arguments[0],$&)",
+        },
+    }, {
+        find: '.join(", ");return{text:',
+        predicate: () => !Settings.plugins.ShowSongName?.enabled,
+        replacement: {
+            match: /(?<=.join\(", "\);return\{text:)\i/,
+            replace: "$self.spotifySongName(arguments[0],$&)",
+        },
+    }, {
         find: "visibleReactionsCount:",
         predicate: () => !Settings.plugins.SortReactions?.enabled,
         replacement: {
@@ -1429,6 +1451,15 @@ export default definePlugin({
     },
     renderCallTime(channelId?: string) {
         return <CallTime channelId={channelId} />;
+    },
+    showOwnerCrown(props: { user?: { id?: string; }; guildId?: string; channel?: { guild_id?: string; type?: number; }; } | undefined, original: boolean) {
+        if (original || ownerCrownUsers === 0 || props?.channel?.type === 3) return original;
+        const guildId = props?.guildId ?? props?.channel?.guild_id;
+        const userId = props?.user?.id;
+        return isCxProfileUserId(guildId) && isCxProfileUserId(userId) && GuildStore?.getGuild(guildId)?.ownerId === userId;
+    },
+    spotifySongName(activity: CxSpotifyActivity | undefined, original: string) {
+        return spotifySongNameUsers > 0 ? getCxSpotifySongName(activity) ?? original : original;
     },
     keepLongDrafts() { return longDraftUsers > 0; },
     shouldSkipPinPrompt() { return bypassPinPromptUsers > 0; },
