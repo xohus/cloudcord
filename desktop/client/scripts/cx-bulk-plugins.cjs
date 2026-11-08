@@ -1744,7 +1744,9 @@ function portFiles(ports) {
 }
 
 function selectReadyPorts(ports, baseline, runtime) {
+    const { pluginBody } = require("./sync-cx-catalog.cjs");
     const files = new Map();
+    const bodies = new Map(baseline.pluginBodies);
     const names = new Set(baseline.names);
     const commands = new Set(baseline.commands);
     const skipped = [];
@@ -1760,8 +1762,12 @@ function selectReadyPorts(ports, baseline, runtime) {
             if (names.has(name)) throw new Error("duplicate CX name " + plugin.name);
             const conflict = plugin.commands?.find(command => commands.has(command.name));
             if (conflict) throw new Error("duplicate CX command /" + conflict.name);
+            const body = pluginBody(source);
+            const equivalent = bodies.get(body);
+            if (equivalent) throw new Error("duplicate CX plugin behavior already provided by " + equivalent);
             verifyPorts(candidate, runtime);
             files.set(filename, source);
+            bodies.set(body, plugin.name);
             names.add(name);
             for (const command of plugin.commands) commands.add(command.name);
         } catch (error) {

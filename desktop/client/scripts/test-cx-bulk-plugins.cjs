@@ -78,6 +78,22 @@ assert.deepEqual(batchPorts.skipped.map(({ file }) => file), ["existing", "inval
 assert.match(batchPorts.skipped[2].reason, /duplicate CX command/);
 assert.deepEqual([...selectReadyPorts([candidate], { ...catalog, plugins: 600 }, runtime).files], []);
 
+const silentMessageAlias = {
+    name: "AutoSilentMessage", file: "upstream-alias",
+    cx: 'plugin "AutoSilentMessage":\r\n\r\n  needs messages.transform\r\n  before send silentMessage\r\n',
+};
+const duplicateBehavior = selectReadyPorts([silentMessageAlias, candidate, {
+    ...candidate, name: "RenamedLiteralReplace", file: "batch-alias",
+    cx: candidate.cx.replace("LiteralReplace", "RenamedLiteralReplace"),
+}], catalog, runtime);
+assert.deepEqual([...duplicateBehavior.files.keys()], ["literal-replace.cx"]);
+assert.deepEqual(duplicateBehavior.skipped.map(({ file, reason }) => [file, reason]), [
+    ["upstream-alias", "duplicate CX plugin behavior already provided by SilentMessageToggle"],
+    ["batch-alias", "duplicate CX plugin behavior already provided by LiteralReplace"],
+]);
+assert.throws(() => buildCatalog(new Map([["auto-silent-message.cx", silentMessageAlias.cx]])),
+    /Duplicate CX plugin behavior.*(?:AutoSilentMessage|SilentMessageToggle)/);
+
 const records = scan(undefined, { includeCompanions: true });
 assert.equal(records.find(record => record.name === "CCPCharacterCounter")?.status, "in-catalog");
 const folders = records.find(record => record.name === "BetterFolders");

@@ -20,12 +20,17 @@ function loadCxParser() {
     return loadCxRuntime().parseCx;
 }
 
+function pluginBody(source) {
+    return source.split(/\r?\n/).slice(1).filter(line => line.trim()).join("\n");
+}
+
 function buildCatalog(additions = new Map()) {
     const parseCx = loadCxParser();
     const names = new Set();
     const commands = new Set();
     const groups = {};
     const pluginFiles = new Set();
+    const pluginBodies = new Map();
     const imports = [];
     for (const [kind, target, original] of [
         ["plugin", 600, "examples/cx/pilot/character-counter.cx"],
@@ -43,7 +48,8 @@ function buildCatalog(additions = new Map()) {
         if (files.length > target) throw new Error(`CX ${kind} catalog exceeds ${target} entries`);
         groups[kind + "s"] = files.map(file => {
             const extra = kind === "plugin" && file !== original ? additions.get(path.basename(file)) : undefined;
-            const { kind: actualKind, name, commands: declaredCommands } = parseCx(extra ?? fs.readFileSync(path.join(root, file), "utf8"));
+            const document = extra ?? fs.readFileSync(path.join(root, file), "utf8");
+            const { kind: actualKind, name, commands: declaredCommands } = parseCx(document);
             if (actualKind !== kind) throw new Error(`Unexpected CX kind in ${file}`);
             const normalized = name.trim().toLowerCase();
             if (names.has(normalized)) throw new Error(`Duplicate CX name in ${file}: ${name}`);
@@ -51,6 +57,12 @@ function buildCatalog(additions = new Map()) {
             for (const { name: command } of declaredCommands ?? []) {
                 if (commands.has(command)) throw new Error(`Duplicate CX command in ${file}: /${command}`);
                 commands.add(command);
+            }
+            if (kind === "plugin") {
+                const body = pluginBody(document);
+                const equivalent = pluginBodies.get(body);
+                if (equivalent) throw new Error(`Duplicate CX plugin behavior in ${file}: ${name} matches ${equivalent}`);
+                pluginBodies.set(body, name);
             }
             // Stable imports keep unrelated entries out of each migration diff.
             const stem = path.basename(file, ".cx");
@@ -73,7 +85,7 @@ function buildCatalog(additions = new Map()) {
         "};",
         "",
     ].join("\n");
-    return { source, plugins: groups.plugins.length, themes: groups.themes.length, names, commands, pluginFiles };
+    return { source, plugins: groups.plugins.length, themes: groups.themes.length, names, commands, pluginFiles, pluginBodies };
 }
 
 if (require.main === module) {
@@ -94,4 +106,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { buildCatalog, catalogPath, loadCxParser, loadCxRuntime };
+module.exports = { buildCatalog, catalogPath, loadCxParser, loadCxRuntime, pluginBody };
