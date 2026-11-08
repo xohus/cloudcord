@@ -12,6 +12,7 @@ import { cxCalendarPeriods, cxTimestampSurfaces, type CxTimestampFormats, type C
 import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
 import type { CxVoiceCountOptions } from "./cxVoiceCount";
 import type { CxCameraToneOptions } from "./cxCameraTone";
+import type { CxMutedVoiceOptions } from "./cxMutedVoice";
 import type { CxVoiceQueueOptions } from "./cxVoiceQueue";
 import type { CxVoiceMemberOptions } from "./cxVoiceMemberClock";
 import { validateCxWallpaper } from "./cxWallpaper";
@@ -34,6 +35,7 @@ export { getCxImageSearchOptions, type CxSearchMediaSource } from "./cxMediaSear
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
 export { createCxVoicePing } from "./cxVoicePing";
+export { bindCxMutedVoice } from "./cxMutedVoice";
 export { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "./cxVoiceCount";
 export { bindCxCameraTone, type CxCameraToneOptions } from "./cxCameraTone";
 export { createCxVoiceQueue, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "./cxVoiceQueue";
@@ -102,6 +104,7 @@ const permissionLabels = {
     "voice.latency": "Read your current voice connection latency",
     "voice.channelcount": "Show the number of connected users next to visible voice and stage channels",
     "voice.cameratone": "Play local sounds when camera state changes in your current voice call",
+    "voice.mutedtone": "Read Discord's local speaking-while-muted flag and play a local alert",
     "voice.waitslot": "Watch a voice channel you queue for and join when you confirm or enable auto-join",
     "voice.membertime": "Use voice updates already loaded by Discord to show member call times on this device",
     "voice.calltime": "Read the current voice channel and show its elapsed call time on this device",
@@ -190,7 +193,7 @@ export type CxTheme = {
     semanticColors?: Record<string, string>;
     rawColors?: Record<string, string>;
 };
-type CxNativeOptions = CxVoiceMemberOptions | CxVoiceQueueOptions | CxCameraToneOptions | CxVoiceCountOptions;
+type CxNativeOptions = CxVoiceMemberOptions | CxVoiceQueueOptions | CxCameraToneOptions | CxVoiceCountOptions | CxMutedVoiceOptions;
 
 type CxPlugin = {
     kind: "plugin";
@@ -209,6 +212,7 @@ type CxPlugin = {
     voiceMemberOptions?: CxVoiceMemberOptions;
     voiceQueueOptions?: CxVoiceQueueOptions;
     cameraToneOptions?: CxCameraToneOptions;
+    mutedVoiceOptions?: CxMutedVoiceOptions;
     voiceCountOptions?: CxVoiceCountOptions;
     uploadNaming?: CxUploadNaming;
     previousRule?: CxPreviousRule;
@@ -298,6 +302,7 @@ export function parseCx(source: string): CxDocument {
     let avatarResolution: CxAvatarResolution | undefined;
     let voiceMemberOptions: CxVoiceMemberOptions | undefined;
     let voiceQueueOptions: CxVoiceQueueOptions | undefined;
+    let mutedVoiceOptions: CxMutedVoiceOptions | undefined;
     let cameraToneOptions: CxCameraToneOptions | undefined;
     let voiceCountOptions: CxVoiceCountOptions | undefined;
     let uploadNaming: CxUploadNaming | undefined;
@@ -412,6 +417,16 @@ export function parseCx(source: string): CxDocument {
                 if (scope !== "all" && scope !== "dm-only" && scope !== "server-only")
                     throw new Error("Choose all, dm-only, or server-only camera notifications");
                 cameraToneOptions = { scope };
+            } else if (name === "notify-when-muted") {
+                const flags = effect[2]?.split(" ") ?? [];
+                const delays = flags.filter(flag => /^cooldown-(?:[1-9]|[1-5]\d|60)$/.test(flag));
+                if (delays.length > 1 || new Set(flags).size !== flags.length
+                    || flags.some(flag => flag !== "server-mute" && flag !== "ignore-deafened" && !delays.includes(flag)))
+                    throw new Error("Mute alert options are server-mute, ignore-deafened, and cooldown-1 through cooldown-60");
+                mutedVoiceOptions = {
+                    serverMute: flags.includes("server-mute"), ignoreDeafened: flags.includes("ignore-deafened"),
+                    cooldownSeconds: delays.length ? Number(delays[0].slice(9)) : 5,
+                };
             } else if (name === "voice-channel-count") {
                 const flags = effect[2]?.split(" ") ?? [];
                 if (flags.some(flag => !["show-empty", "hide-limit"].includes(flag)) || new Set(flags).size !== flags.length)
@@ -653,7 +668,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, sendConfirmation, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, voiceMemberOptions, voiceQueueOptions, cameraToneOptions, voiceCountOptions, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, voiceMemberOptions, voiceQueueOptions, cameraToneOptions, mutedVoiceOptions, voiceCountOptions, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -838,6 +853,7 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
             "all-call-time-counter": document.voiceMemberOptions,
             "wait-for-slot": document.voiceQueueOptions,
             "webcam-start-notifier": document.cameraToneOptions,
+            "notify-when-muted": document.mutedVoiceOptions,
             "voice-channel-count": document.voiceCountOptions,
         };
         for (const effect of document.nativeEffects) {

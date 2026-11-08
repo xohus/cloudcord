@@ -2,7 +2,7 @@ import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { createCxVoicePing, createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "@lib/api/cx";
-import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
+import { bindCxCameraTone, bindCxMutedVoice, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, getCxSpotifySongName, sortCxReactions, type CxRepeatMessage, type CxSpotifyActivity } from "@lib/api/cx";
@@ -2153,6 +2153,13 @@ export default function CxExtensions() {
                             return registerNoRoleHeaders();
                         case "show-voice-ping":
                             return registerVoicePing(enabled);
+                        case "notify-when-muted": {
+                            const sound = findByFilePath("modules/sound_playback/native/SoundUtils.tsx");
+                            if (typeof sound?.playSound !== "function" || !effectOptions || !("serverMute" in effectOptions))
+                                throw new Error("Discord's mute alert controls are unavailable");
+                            return bindCxMutedVoice(findByStoreName("MediaEngineStore"), () => Boolean(SelectedChannelStore.getVoiceChannelId()),
+                                () => { void Promise.resolve(sound.playSound("user_leave")).catch(() => {}); }, effectOptions, enabled);
+                        }
                         case "voice-channel-count":
                             if (!effectOptions || !("showEmpty" in effectOptions)) throw new Error("Missing voice count options");
                             return registerVoiceChannelCount(effectOptions, enabled);

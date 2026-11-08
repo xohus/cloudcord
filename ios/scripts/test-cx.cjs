@@ -357,7 +357,17 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             emitChange() { motionUpdates++; }
         }
         let voicePingMs, voicePingChannel, voicePingConnected;
+        let speakingWhileMuted = false, selfMuted = false, serverMuted = false, selfDeafened = false;
+        const mediaListeners = new Set();
         const stores = {
+            MediaEngineStore: {
+                getSpeakingWhileMuted: () => speakingWhileMuted,
+                isMute: () => selfMuted || serverMuted,
+                isSelfMute: () => selfMuted,
+                isSelfDeaf: () => selfDeafened,
+                addChangeListener: callback => mediaListeners.add(callback),
+                removeChangeListener: callback => mediaListeners.delete(callback),
+            },
             RTCConnectionStore: {
                 getLastPing: () => voicePingMs,
                 getChannelId: () => voicePingChannel,
@@ -2547,6 +2557,69 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(stylesheet, undefined);
             assert.equal(pingListeners.size + rtcListeners.size, 0);
             if (!desktop) assert.equal(appearanceHooks.has(VoicePanelHeader), false);
+        }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "NotifyWhenMuted").source;
+            assert.throws(() => activateCx(port, host, ["voice.cameratone"]), /approval/);
+            const configured = parseCx(port.replace("use notify-when-muted", "use notify-when-muted server-mute ignore-deafened cooldown-20"));
+            assert.equal(configured.mutedVoiceOptions.cooldownSeconds, 20);
+            assert.equal(configured.mutedVoiceOptions.serverMute, true);
+            assert.equal(configured.mutedVoiceOptions.ignoreDeafened, true);
+            assert.throws(() => parseCx(port.replace("use notify-when-muted", "use notify-when-muted cooldown-61")), /Mute alert options/);
+            selectCatalog("NotifyWhenMuted");
+            click(render(), "Allow for this session");
+            assert.equal(mediaListeners.size, 1);
+            const previousVoice = currentVoice;
+            currentVoice = voiceTarget;
+            clockTime = 1_000_000;
+            const soundsBefore = queueSounds.length;
+            const change = () => mediaListeners.forEach(listener => listener());
+            speakingWhileMuted = true;
+            serverMuted = true;
+            change();
+            assert.equal(queueSounds.length, soundsBefore);
+            selfMuted = true;
+            selfDeafened = true;
+            change();
+            assert.deepEqual(queueSounds.slice(soundsBefore), ["user_leave"]);
+            clockTime += 4999;
+            change();
+            assert.equal(queueSounds.length, soundsBefore + 1);
+            clockTime++;
+            change();
+            assert.equal(queueSounds.length, soundsBefore + 2);
+            clockTime += 5000;
+            if (!desktop) {
+                settings.safeMode = { enabled: true };
+                change();
+                assert.equal(queueSounds.length, soundsBefore + 2);
+                settings.safeMode = undefined;
+            }
+            currentVoice = null;
+            change();
+            assert.equal(queueSounds.length, soundsBefore + 2);
+            click(render(), "Disable NotifyWhenMuted");
+            assert.equal(mediaListeners.size, 0);
+            let configuredAlerts = 0;
+            const stopConfigured = moduleBox.exports.bindCxMutedVoice(stores.MediaEngineStore,
+                () => true, () => { configuredAlerts++; }, configured.mutedVoiceOptions);
+            selfMuted = false;
+            change();
+            assert.equal(configuredAlerts, 0);
+            selfDeafened = false;
+            change();
+            assert.equal(configuredAlerts, 1);
+            clockTime += 19_999;
+            change();
+            assert.equal(configuredAlerts, 1);
+            clockTime++;
+            change();
+            assert.equal(configuredAlerts, 2);
+            stopConfigured();
+            assert.equal(mediaListeners.size, 0);
+            currentVoice = previousVoice;
+            clockTime = undefined;
+            speakingWhileMuted = selfMuted = serverMuted = selfDeafened = false;
         }
         {
             const port = cxCatalog.plugins.find(entry => entry.name === "AllCallTimeCounter").source;

@@ -162,5 +162,14 @@
         "effect": "show-voice-ping",
         "defaultHide": "voice-krisp-button",
         "basis": "independent behavior implementation"
+    },
+    "64ca857fca4adc1b2e760dac75ef06706336d620f7486ef7a907600e34eecdb4": {
+        "name": "NotifyWhenMuted",
+        "author": "nicola02nb",
+        "source": "https://github.com/nicola02nb/BetterDiscord-Stuff/tree/main/Plugins/NotifyWhenMuted",
+        "cachedOnly": true,
+        "recipe": "native-effect",
+        "effect": "notify-when-muted",
+        "basis": "independent behavior implementation"
     }
 }

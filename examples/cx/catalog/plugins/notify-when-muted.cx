@@ -1,0 +1,3 @@
+plugin "NotifyWhenMuted":
+  needs voice.mutedtone
+  use notify-when-muted

@@ -46,6 +46,7 @@ export const cxNativeEffects = {
     "show-voice-ping": { permission: "voice.latency", label: "Show your live call latency in milliseconds" },
     "voice-channel-count": { permission: "voice.channelcount", label: "Show occupancy and capacity in the channel list" },
     "webcam-start-notifier": { permission: "voice.cameratone", label: "Play different tones when someone turns their camera on or off" },
+    "notify-when-muted": { permission: "voice.mutedtone", label: "Play a sound when you try to speak while muted" },
     "wait-for-slot": { permission: "voice.waitslot", label: "Queue for a full voice channel and respond when a slot opens" },
     "all-call-time-counter": { permission: "voice.membertime", label: "Show elapsed call time next to members in server voice channels" },
     "call-time-counter": { permission: "voice.calltime", label: "Show the elapsed time in your current call" },

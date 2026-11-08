@@ -148,6 +148,7 @@ import plugin_catalog_no_server_emojis from "../../../../examples/cx/catalog/plu
 import plugin_catalog_no_typing_animation from "../../../../examples/cx/catalog/plugins/no-typing-animation.cx";
 import plugin_catalog_no_unblock_to_jump from "../../../../examples/cx/catalog/plugins/no-unblock-to-jump.cx";
 import plugin_catalog_normalize_message_links from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
+import plugin_catalog_notify_when_muted from "../../../../examples/cx/catalog/plugins/notify-when-muted.cx";
 import plugin_catalog_open_steam_links_in_app from "../../../../examples/cx/catalog/plugins/open-steam-links-in-app.cx";
 import plugin_catalog_ping_notifications from "../../../../examples/cx/catalog/plugins/ping-notifications.cx";
 import plugin_catalog_polish_wording from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
@@ -454,6 +455,7 @@ export const cxCatalog = {
         { name: "NoTypingAnimation", source: plugin_catalog_no_typing_animation },
         { name: "NoUnblockToJump", source: plugin_catalog_no_unblock_to_jump },
         { name: "NormalizeMessageLinks", source: plugin_catalog_normalize_message_links },
+        { name: "NotifyWhenMuted", source: plugin_catalog_notify_when_muted },
         { name: "OpenSteamLinksInApp", source: plugin_catalog_open_steam_links_in_app },
         { name: "PingNotifications", source: plugin_catalog_ping_notifications },
         { name: "PolishWording", source: plugin_catalog_polish_wording },
