@@ -325,26 +325,59 @@ function normalizeAppearanceStyles(stylesheet) {
     if (!result.warnings.length) return result.code.trim();
 }
 
+function hideSelectors(stylesheet) {
+    const selectors = new Set();
+    for (const [, list] of stylesheet.matchAll(/([^{}]+)\{display:none!important\}/g)) {
+        // Limit this form to simple selector lists. Commas in quoted attribute
+        // values are part of the selector, and nested CSS uses the exact matcher.
+        const items = list.match(/(?:"[^"\\]*"|'[^'\\]*'|[^"'\\,()])+|,/g) ?? [];
+        if (items.join("") !== list) return;
+        for (const selector of items.filter(item => item !== ",")) {
+            if (selector.startsWith("@")) return;
+            selectors.add(selector);
+        }
+    }
+    if (!selectors.size || stylesheet.replace(/[^{}]+\{display:none!important\}/g, "")) return;
+    return selectors;
+}
+
 const appearanceMatchers = new WeakMap();
 function matchAppearanceStyles(stylesheet, appearance) {
     if (!stylesheet) return;
     let rules = appearanceMatchers.get(appearance);
     if (!rules) {
-        rules = Object.entries(appearance).map(target => ({ target, css: normalizeAppearanceStyles(target[1].css) }))
-            .filter(rule => rule.css).sort((a, b) => b.css.length - a.css.length);
+        rules = Object.entries(appearance).map(target => {
+            const css = normalizeAppearanceStyles(target[1].css);
+            return { target, css, hides: css && "mobile" in target[1] && hideSelectors(css) };
+        }).filter(rule => rule.css).sort((a, b) => b.css.length - a.css.length);
         appearanceMatchers.set(appearance, rules);
     }
     const targets = [];
     let css;
     try { css = normalizeAppearanceStyles(stylesheet); }
     catch { return; }
+    const original = css;
     while (css) {
         const rule = rules.find(rule => css.startsWith(rule.css));
-        if (!rule || targets.includes(rule.target)) return;
+        if (!rule || targets.includes(rule.target)) break;
         targets.push(rule.target);
         css = css.slice(rule.css.length);
     }
-    if (targets.length) return targets;
+    if (!css && targets.length) return targets;
+
+    const remaining = original && hideSelectors(original);
+    if (!remaining) return;
+    // Require every selector in the original stylesheet to be covered by a
+    // complete portable target. Incomplete mappings could hide extra controls.
+    const portable = rules.filter(rule => rule.hides && [...rule.hides].every(selector => remaining.has(selector)))
+        .sort((a, b) => b.hides.size - a.hides.size);
+    const matched = [];
+    for (const rule of portable) {
+        if (![...rule.hides].some(selector => remaining.has(selector))) continue;
+        matched.push(rule.target);
+        for (const selector of rule.hides) remaining.delete(selector);
+    }
+    if (!remaining.size) return matched;
 }
 
 function compileBetterDiscordTypingRules(source) {

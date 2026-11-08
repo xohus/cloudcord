@@ -323,6 +323,18 @@ const bd = [
     "};",
 ].join("\n");
 const inspectBd = code => inspectPlugin("example.plugin.js", code, "betterdiscord", cxAppearanceTargets);
+const bundledHides = '[class*="chipletContainer"]{display:none!important}'
+    + '[class*="botTag"],[class*="clanTag"]{display:none!important}';
+const expectedHides = ["bot-tags", "server-tags"];
+assert.deepEqual([...parseCx(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(bundledHides))).cx).hiddenTargets].sort(), expectedHides);
+assert.deepEqual([...parseCx(inspectManaged(managedStyle, bundledHides).cx).hiddenTargets].sort(), expectedHides);
+assert.deepEqual([...parseCx(inspectBd(bd.replace(JSON.stringify(styles), JSON.stringify(bundledHides))).cx).hiddenTargets].sort(), expectedHides);
+for (const stylesheet of [
+    bundledHides.replace('[class*="chipletContainer"]{display:none!important}', ""),
+    bundledHides + 'body{display:none!important}',
+    bundledHides + '[class*="botTag"]{display:block!important}',
+    "@media print{" + bundledHides + "}",
+]) assert.equal(inspectManaged(managedStyle, stylesheet).cx, undefined);
 const external = '/**\n * @name Reviewed avatar test\n */\nconst VALID_SIZES = [256, 512];';
 const reviewed = require("./cx-betterdiscord-sources.json");
 const digest = require("node:crypto").createHash("sha256").update(external, "utf8").digest("hex");
