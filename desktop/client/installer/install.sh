@@ -18,7 +18,7 @@ echo "Downloading Installer..."
 
 set -- "XDG_CONFIG_HOME=$XDG_CONFIG_HOME"
 
-curl -sS https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetupCli-Linux \
+curl -sS https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetupCli-Linux \
   --output "$outfile" \
   --location \
   --fail

@@ -91,7 +91,7 @@ ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, botId: string, path: str
                 headers: {
                     Authorization: `Bot ${cleanToken}`,
                     Accept: "application/json",
-                    "User-Agent": "DiscordBot (https://github.com/cloudcord-mod/cloudcord, 1.0)",
+                    "User-Agent": "DiscordBot (https://github.com/cloudcord-mod/release-hub, 1.0)",
                     ...(!options.files?.length && method === "POST" ? { "Content-Type": "application/json" } : {})
                 },
                 body: method === "POST"

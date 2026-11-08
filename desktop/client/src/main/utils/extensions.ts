@@ -71,7 +71,7 @@ export async function installExt(id: string) {
 
         const buf = await fetchBuffer(url, {
             headers: {
-                "User-Agent": `Electron ${process.versions.electron} ~ CloudCord (https://github.com/cloudcord-mod/cloudcord)`
+                "User-Agent": `Electron ${process.versions.electron} ~ CloudCord (https://github.com/cloudcord-mod/release-hub)`
             }
         });
 

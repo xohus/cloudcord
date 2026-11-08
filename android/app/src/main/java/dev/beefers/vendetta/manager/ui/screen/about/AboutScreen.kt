@@ -142,7 +142,7 @@ class AboutScreen : Screen {
                         LinkItem(
                             icon = R.drawable.ic_github,
                             label = R.string.label_github,
-                            link = "https://github.com/cloudcord-mod/cloudcord"
+                            link = "https://github.com/cloudcord-mod/release-hub"
                         )
 
                         LinkItem(

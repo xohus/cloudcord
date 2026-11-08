@@ -1,6 +1,6 @@
 # CloudCord Setup
 
-The CloudCord Setup allows you to install [CloudCord, the cutest Discord Desktop client mod](https://github.com/cloudcord-mod/cloudcord)
+The CloudCord Setup allows you to install [CloudCord, the cutest Discord Desktop client mod](https://github.com/cloudcord-mod/release-hub)
 
 ![image](https://i.imgur.com/oHN41ss.png)
 
@@ -8,18 +8,18 @@ The CloudCord Setup allows you to install [CloudCord, the cutest Discord Desktop
 
 Windows
 
-- [GUI](https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetup.exe)
-- [CLI](https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetupCli.exe)
+- [GUI](https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetup.exe)
+- [CLI](https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetupCli.exe)
 
 MacOS
 
-- [X64 GUI](https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetup-darwin-x64.zip)
-- [ARM64 GUI](https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetup-darwin-arm64.zip)
+- [X64 GUI](https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetup-darwin-x64.zip)
+- [ARM64 GUI](https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetup-darwin-arm64.zip)
 
 Linux
 
-- [GUI](https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetup-x11)
-- [CLI](https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetupCli-Linux)
+- [GUI](https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetup-x11)
+- [CLI](https://github.com/cloudcord-mod/release-hub/releases/latest/download/CloudCordSetupCli-Linux)
 
 ## Building from source
 
@@ -82,4 +82,4 @@ go build --tags cli
 ```
 
 You might want to pass some flags to this command to get a better build.
-See [the GitHub workflow](https://github.com/cloudcord-mod/cloudcord/blob/main/.github/workflows/release.yml) for what flags I pass or if you want more precise instructions
+See [the GitHub workflow](https://github.com/cloudcord-mod/release-hub/blob/main/.github/workflows/release.yml) for what flags I pass or if you want more precise instructions

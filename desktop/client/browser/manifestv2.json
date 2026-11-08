@@ -4,7 +4,7 @@
     "name": "CloudCord Web",
     "description": "Your Discord, your way.",
     "author": "CloudCord",
-    "homepage_url": "https://github.com/cloudcord-mod/cloudcord",
+    "homepage_url": "https://github.com/cloudcord-mod/release-hub",
     "icons": {
         "16": "icon-16.png", "32": "icon-32.png", "48": "icon-48.png", "128": "icon.png"
     },

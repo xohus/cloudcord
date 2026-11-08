@@ -1,4 +1,4 @@
-# [<img src="./browser/icon.png" width="40" align="left" alt="CloudCord">](https://github.com/cloudcord-mod/cloudcord) CloudCord
+# [<img src="./browser/icon.png" width="40" align="left" alt="CloudCord">](https://github.com/cloudcord-mod/release-hub) CloudCord
 
 CloudCord is a fork of [Vencord](https://github.com/Vendicated/Vencord), with over 300+ plugins.
 
@@ -11,19 +11,19 @@ Our included plugins can be found [here](https://sincord.org/plugins).
 
 Windows
 
-- [-](https://github.com/cloudcord-mod/cloudcord/releases/download/v1.14.13.1/CloudCord Setup-windows-amd64.exe)
+- [-](https://github.com/cloudcord-mod/release-hub/releases/download/v1.14.13.1/CloudCord Setup-windows-amd64.exe)
 
 MacOS
 
-- [-](https://github.com/cloudcord-mod/cloudcord/releases/download/v1.14.13.1/CloudCordSetup-darwin-arm64)
+- [-](https://github.com/cloudcord-mod/release-hub/releases/download/v1.14.13.1/CloudCordSetup-darwin-arm64)
 
 Linux
 
-- [-](https://github.com/cloudcord-mod/cloudcord/releases/download/v1.14.13.1/CloudCordSetup-linux-amd64)
+- [-](https://github.com/cloudcord-mod/release-hub/releases/download/v1.14.13.1/CloudCordSetup-linux-amd64)
 
 
 ```shell
-sh -c "$(curl -sS https://raw.githubusercontent.com/cloudcord-mod/cloudcord/refs/heads/main/misc/install.sh)"
+sh -c "$(curl -sS https://raw.githubusercontent.com/cloudcord-mod/release-hub/refs/heads/main/misc/install.sh)"
 ```
 
 ## Installing CloudCord Devbuild
@@ -45,7 +45,7 @@ npm i -g pnpm
 Clone CloudCord:
 
 ```shell
-git clone https://github.com/cloudcord-mod/cloudcord
+git clone https://github.com/cloudcord-mod/release-hub
 cd CloudCord
 ```
 
@@ -83,11 +83,11 @@ Thank you to [Vendicated](https://github.com/Vendicated) for creating [Vencord](
 
 ## Star History
 
-<a href="https://star-history.com/#cloudcord-mod/cloudcord&Timeline">
+<a href="https://star-history.com/#cloudcord-mod/release-hub&Timeline">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cloudcord-mod/cloudcord&type=Timeline&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=cloudcord-mod/cloudcord&type=Timeline" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=cloudcord-mod/cloudcord&type=Timeline" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cloudcord-mod/release-hub&type=Timeline&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=cloudcord-mod/release-hub&type=Timeline" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=cloudcord-mod/release-hub&type=Timeline" />
   </picture>
 </a>
 

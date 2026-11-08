@@ -32,7 +32,7 @@ Basic install flow:
 
 ## Links
 
-GitHub: https://github.com/cloudcord-mod/cloudcord
+GitHub: https://github.com/cloudcord-mod/release-hub
 
 Discord Server: https://discord.gg/5naTPJYemX
 

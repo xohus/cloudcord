@@ -172,9 +172,9 @@ func installLatestBuilds() (retErr error) {
 
 	if downloadUrl == "" {
 		if IsTestBuild {
-			downloadUrl = "https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_test_desktop/desktop-test.asar"
+			downloadUrl = "https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_test_desktop/desktop-test.asar"
 		} else {
-			downloadUrl = "https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_t_desktop/desktop.asar"
+			downloadUrl = "https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_t_desktop/desktop.asar"
 		}
 	}
 

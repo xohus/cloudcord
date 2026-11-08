@@ -12,7 +12,7 @@ import definePlugin from "@utils/types";
 import { Text } from "@webpack/common";
 import type { ReactNode } from "react";
 
-const REPO_URL = "https://github.com/cloudcord-mod/cloudcord";
+const REPO_URL = "https://github.com/cloudcord-mod/release-hub";
 
 function InfoRow({ label, value }: { label: string; value: ReactNode; }) {
     return (

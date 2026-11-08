@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
 const PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-const STORECLOUD_ICON = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png";
+const STORECLOUD_ICON = "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/cloudcord-favicon.png";
 
 export default function StoreCloud() {
     useProxy(VdPluginManager.plugins);

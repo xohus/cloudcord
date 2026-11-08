@@ -76,7 +76,7 @@ namespace CloudCord.Installer
         static readonly string DataDir = IOPath.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CloudCord");
         public static readonly string AsarPath = IOPath.Combine(DataDir, "cloudcord.asar");
-        const string ReleaseApi = "https://api.github.com/repos/cloudcord-mod/cloudcord/releases/latest";
+        const string ReleaseApi = "https://api.github.com/repos/cloudcord-mod/release-hub/releases/latest";
 
         public static List<DiscordBuild> FindBuilds()
         {

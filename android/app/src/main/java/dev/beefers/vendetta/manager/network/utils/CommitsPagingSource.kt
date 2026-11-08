@@ -17,7 +17,7 @@ class CommitsPagingSource(
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Commit> {
         val page = (params.key ?: 1).coerceAtLeast(1)
 
-        return when (val response = repo.getCommits("cloudcord-mod/cloudcord", page)) {
+        return when (val response = repo.getCommits("cloudcord-mod/release-hub", page)) {
             is ApiResponse.Success -> LoadResult.Page(
                 data = response.data,
                 prevKey = if (page > 1) page - 1 else null,

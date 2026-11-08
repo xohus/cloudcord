@@ -226,7 +226,7 @@
         [body stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet
                                                                      URLQueryAllowedCharacterSet]];
 
-NSString *urlString = [NSString stringWithFormat:@"https://github.com/cloudcord-mod/cloudcord/issues/new?title=%@&body=%@",
+NSString *urlString = [NSString stringWithFormat:@"https://github.com/cloudcord-mod/release-hub/issues/new?title=%@&body=%@",
                      encodedTitle, encodedBody];
 
     NSURL *url          = [NSURL URLWithString:urlString];

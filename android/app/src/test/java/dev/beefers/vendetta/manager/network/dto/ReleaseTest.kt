@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ReleaseTest {
     private val asset = ReleaseAsset("CloudCordManager.apk",
-        "https://github.com/cloudcord-mod/cloudcord/releases/download/manager-101/CloudCordManager.apk",
+        "https://github.com/cloudcord-mod/release-hub/releases/download/manager-101/CloudCordManager.apk",
         1000, "sha256:" + "a".repeat(64))
 
     @Test fun acceptsOnlyManagerVersionTags() {

@@ -9,6 +9,6 @@ Desktop identity:
 - Product: CloudCord
 - Runtime: CloudCord Desktop
 - Version: 0.1.0
-- Repository: https://github.com/cloudcord-mod/cloudcord
+- Repository: https://github.com/cloudcord-mod/release-hub
 
 The old homemade desktop runtime and Electron installer were removed and replaced by this Sincord-based source tree.

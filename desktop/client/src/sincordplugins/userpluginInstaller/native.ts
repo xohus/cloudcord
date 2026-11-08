@@ -45,7 +45,7 @@ function run(command: string, args: string[], cwd: string): Promise<void> {
 async function ensureCustomBuildCheckout() {
     if (!existsSync(join(customClientRoot, "package.json"))) {
         await mkdir(join(customBuildRoot, ".."), { recursive: true });
-        await run("git", ["clone", "--depth", "1", "https://github.com/cloudcord-mod/cloudcord.git", customBuildRoot], join(customBuildRoot, ".."));
+        await run("git", ["clone", "--depth", "1", "https://github.com/cloudcord-mod/release-hub.git", customBuildRoot], join(customBuildRoot, ".."));
     } else {
         await run("git", ["pull", "--ff-only"], customBuildRoot);
     }

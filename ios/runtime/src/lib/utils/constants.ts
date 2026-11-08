@@ -1,6 +1,6 @@
 export const DISCORD_SERVER = "https://discord.gg/6cN7wKa8gp";
 export const CODEBERG = "";
-export const GITHUB = "https://github.com/cloudcord-mod/cloudcord";
+export const GITHUB = "https://github.com/cloudcord-mod/release-hub";
 export const HTTP_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
 export const HTTP_REGEX_MULTI = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 

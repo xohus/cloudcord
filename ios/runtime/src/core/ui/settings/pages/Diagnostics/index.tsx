@@ -194,7 +194,7 @@ export default function Diagnostics() {
     const [versions, setVersions] = useState<Array<{ sha: string; date: string; title: string; }>>([]);
     useEffect(() => initializeDiagnosticsCapture(), []);
     useEffect(() => {
-        fetch("https://api.github.com/repos/cloudcord-mod/cloudcord/commits?path=dist/cc.js&per_page=10")
+        fetch("https://api.github.com/repos/cloudcord-mod/release-hub/commits?path=dist/cc.js&per_page=10")
             .then(response => response.ok ? response.json() : [])
             .then((items: any[]) => setVersions(items.slice(0, 10).map(item => ({
                 sha: String(item.sha),
@@ -309,7 +309,7 @@ export default function Diagnostics() {
                             return;
                         }
                         loaderConfig.customLoadUrl.enabled = true;
-                        loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/cloudcord-mod/cloudcord/${version.sha}/dist/cc.js`;
+                        loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/cloudcord-mod/release-hub/${version.sha}/dist/cc.js`;
                         showToast("Version selected. Apply and reload when ready.", findAssetId("Check"));
                     }} />}
                 />)}

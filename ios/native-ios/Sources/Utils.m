@@ -247,7 +247,7 @@ void showBundleSelector(UIViewController *presenter) {
                                      preferredStyle:UIAlertControllerStyleAlert];
     [presenter presentViewController:loadingAlert animated:YES completion:nil];
 
-    NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/cloudcord-mod/cloudcord/branches"];
+    NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/cloudcord-mod/release-hub/branches"];
     NSURLSession *session = [NSURLSession
         sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
 
@@ -325,7 +325,7 @@ static void showCommitsForBranch(NSString *branch, UIViewController *presenter,
 
     NSString *commitsUrl = [NSString
         stringWithFormat:
-            @"https://api.github.com/repos/cloudcord-mod/cloudcord/commits?sha=%@&path=dist/cc.js&per_page=10", branch];
+            @"https://api.github.com/repos/cloudcord-mod/release-hub/commits?sha=%@&path=dist/cc.js&per_page=10", branch];
     NSURL *commitsURL    = [NSURL URLWithString:commitsUrl];
 
     [[session
@@ -392,7 +392,7 @@ static void showCommitsForBranch(NSString *branch, UIViewController *presenter,
                                                                        NSString *bundleUrl =
                                                                            [NSString
                                                                                stringWithFormat:
-                                                                                   @"https://raw.githubusercontent.com/cloudcord-mod/cloudcord/%@/dist/cc.js",
+                                                                                   @"https://raw.githubusercontent.com/cloudcord-mod/release-hub/%@/dist/cc.js",
                                                                                    sha];
                                                                        NSURL *url = [NSURL
                                                                            URLWithString:bundleUrl];

@@ -16,7 +16,7 @@ import Search from "@ui/components/Search";
 import { showToast } from "@ui/toasts";
 import { View } from "react-native";
 
-const CLOUDCORD_INDEX = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/themes/mobile/index.json";
+const CLOUDCORD_INDEX = "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/themes/mobile/index.json";
 const MARKETPLACE = "https://raw.githubusercontent.com/kmmiio99o/theme-marketplace/refs/heads/main/themes.json";
 
 interface StoreTheme {

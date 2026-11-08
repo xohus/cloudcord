@@ -138,7 +138,7 @@ class HomeViewModel(
 
     private fun checkForUpdate() {
         screenModelScope.launch {
-            release = repo.getLatestRelease("cloudcord-mod/cloudcord").dataOrNull
+            release = repo.getLatestRelease("cloudcord-mod/release-hub").dataOrNull
             showUpdateDialog = (release?.managerVersionCode ?: 0) > BuildConfig.VERSION_CODE
         }
     }

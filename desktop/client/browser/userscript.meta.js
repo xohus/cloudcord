@@ -2,12 +2,12 @@
 // @name            CloudCord
 // @description     Your Discord, your way.
 // @version         %version%
-// @author          CloudCord (https://github.com/cloudcord-mod/cloudcord)
+// @author          CloudCord (https://github.com/cloudcord-mod/release-hub)
 // @namespace       https://github.com/xohus/cloudcord
-// @supportURL      https://github.com/cloudcord-mod/cloudcord
-// @updateURL       https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_t_desktop/CloudCord.user.js
-// @downloadURL     https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_t_desktop/CloudCord.user.js
-// @icon            https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/desktop/client/browser/icon.png
+// @supportURL      https://github.com/cloudcord-mod/release-hub
+// @updateURL       https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_t_desktop/CloudCord.user.js
+// @downloadURL     https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_t_desktop/CloudCord.user.js
+// @icon            https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/desktop/client/browser/icon.png
 // @license         GPL-3.0
 // @match           *://*.discord.com/*
 // @grant           GM_xmlhttpRequest
