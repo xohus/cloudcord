@@ -29,6 +29,17 @@ import dev.beefers.vendetta.manager.installer.step.StepStatus
 import dev.beefers.vendetta.manager.installer.step.download.base.DownloadStep
 import dev.beefers.vendetta.manager.utils.thenIf
 
+internal fun aggregateStepStatus(
+    statuses: List<StepStatus>,
+    isActive: Boolean = false,
+): StepStatus = when {
+    statuses.isEmpty() -> StepStatus.QUEUED
+    statuses.any { it == StepStatus.UNSUCCESSFUL } -> StepStatus.UNSUCCESSFUL
+    isActive || statuses.any { it == StepStatus.ONGOING } -> StepStatus.ONGOING
+    statuses.all { it == StepStatus.SUCCESSFUL } -> StepStatus.SUCCESSFUL
+    else -> StepStatus.QUEUED
+}
+
 /**
  * Collapsable card containing a group of steps
  *
@@ -41,15 +52,11 @@ import dev.beefers.vendetta.manager.utils.thenIf
 fun StepGroupCard(
     name: String,
     isCurrent: Boolean,
+    isActive: Boolean,
     steps: List<Step>,
     onClick: () -> Unit
 ) {
-    val status = when {
-        steps.all { it.status == StepStatus.QUEUED } -> StepStatus.QUEUED
-        steps.all { it.status == StepStatus.SUCCESSFUL } -> StepStatus.SUCCESSFUL
-        steps.any { it.status == StepStatus.ONGOING } -> StepStatus.ONGOING
-        else -> StepStatus.UNSUCCESSFUL
-    }
+    val status = aggregateStepStatus(steps.map { it.status }, isActive)
 
     Column(
         modifier = Modifier

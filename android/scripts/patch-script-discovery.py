@@ -1,33 +1,31 @@
-"""Find Android script loading delegates even when R8 renames ReactInstance."""
+"""Hook Discord's explicit React Native script-loader implementations."""
 from pathlib import Path
 import sys
 
 path = Path(sys.argv[1])
 source = path.read_text(encoding="utf-8")
+old_candidates = '''        listOf(
+            "com.facebook.react.runtime.ReactInstance\\$loadJSBundle$1",'''
+if source.count(old_candidates) != 1:
+    raise SystemExit("Unexpected script loader class candidates")
+source = source.replace(old_candidates, '''        listOf(
+            "org.chromium.net.j",
+            "com.facebook.react.runtime.ReactInstance\\$loadJSBundle$1",''')
 old = ').mapNotNull { classLoader.safeLoadClass(it) }.forEach { hook(it) }'
 if source.count(old) != 1:
     raise SystemExit("Unexpected script loader class discovery")
-source = source.replace(old, ''').plus(runCatching {
-            ScriptLoaderDiscovery.discover(listOf(appInfo.sourceDir) + (appInfo.splitSourceDirs?.toList() ?: emptyList()))
-        }.onFailure { Log.e("CloudCord script delegate discovery failed", it) }.getOrDefault(emptySet()))
-            .distinct().mapNotNull { classLoader.safeLoadClass(it) }
-            .filterNot { it.isInterface || java.lang.reflect.Modifier.isAbstract(it.modifiers) }
-            .forEach { hook(it) }''')
 path.write_text(source, encoding="utf-8")
-path.with_name("ScriptLoaderDiscovery.kt").write_text(
-    Path(__file__).with_name("ScriptLoaderDiscovery.kt").read_text(encoding="utf-8"), encoding="utf-8")
 
 payload_path = path.with_name("PayloadGlobalModule.kt")
 payload = payload_path.read_text(encoding="utf-8")
+old_script_loader = '''        val scriptLoader = classLoader.safeLoadClass("com.facebook.react.runtime.ReactInstance\\$loadJSBundle$1")'''
+if payload.count(old_script_loader) != 1:
+    raise SystemExit("Unexpected payload script loader selection")
+payload = payload.replace(old_script_loader, '''        val scriptLoader = classLoader.safeLoadClass("org.chromium.net.j")
+            ?: classLoader.safeLoadClass("com.facebook.react.runtime.ReactInstance\\$loadJSBundle$1")''')
 old = '        listOf(catalystInstance, scriptLoader).forEach { if (it != null) hook(it, hook) }'
 if payload.count(old) != 1:
     raise SystemExit("Unexpected payload script loader discovery")
-payload = payload.replace(old, '''        val discovered = ScriptLoaderDiscovery.discover(
-            listOf(appInfo.sourceDir) + (appInfo.splitSourceDirs?.toList() ?: emptyList())
-        ).mapNotNull { classLoader.safeLoadClass(it) }
-        (listOfNotNull(catalystInstance, scriptLoader) + discovered).distinct()
-            .filterNot { it.isInterface || java.lang.reflect.Modifier.isAbstract(it.modifiers) }
-            .forEach { hook(it, hook) }''')
 payload = payload.replace('scriptLoader!!.method(', 'param.method.declaringClass.method(')
 old = '''        val hook = MethodHookBuilder().run {
             before {

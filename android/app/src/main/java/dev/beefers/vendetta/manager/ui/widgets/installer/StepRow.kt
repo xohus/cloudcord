@@ -3,17 +3,17 @@ package dev.beefers.vendetta.manager.ui.widgets.installer
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.beefers.vendetta.manager.R
 import dev.beefers.vendetta.manager.installer.step.StepStatus
 
@@ -56,14 +56,18 @@ fun StepRow(
 
         if (status != StepStatus.ONGOING && status != StepStatus.QUEUED) { // Only display for completed steps
             if (cached) {
-                Text(
-                    text = stringResource(R.string.installer_cached),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    fontStyle = FontStyle.Italic,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    shape = MaterialTheme.shapes.extraSmall,
+                ) {
+                    Text(
+                        text = stringResource(R.string.installer_cached),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
             }
 
             Text(

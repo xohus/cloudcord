@@ -33,10 +33,31 @@ def patch_loader(path: Path) -> None:
     )
     source = source.replace(
         "if (mainScript.exists()) runScriptFile(mainScript)",
-        "if (mainScript.isFile && mainScript.length() > 0) runScriptFile(mainScript)",
+        """val cachedBundleIsCloudCord = runCatching {
+                    mainScript.isFile && mainScript.length() > 0 &&
+                        mainScript.inputStream().use { input ->
+                            val header = ByteArray(64 * 1024)
+                            val read = input.read(header)
+                            read > 0 && String(header, 0, read, Charsets.UTF_8)
+                                .contains("__CLOUDCORD_RUNTIME_REVISION__")
+                        }
+                }.getOrDefault(false)
+                if (cachedBundleIsCloudCord) runScriptFile(mainScript)""",
         1,
     )
-    if "runBlocking" in source or "readyDeferred" in source or "updateRequested.compareAndSet" not in source:
+    fallback_log = 'Log.i("Main script does not exist, falling back")'
+    if source.count(fallback_log) != 1:
+        raise ValueError("Unexpected bundled runtime fallback log")
+    source = source.replace(
+        fallback_log,
+        'Log.i(if (mainScript.exists()) "Cached bundle is not CloudCord; using embedded CloudCord runtime" else "Main script does not exist, falling back")',
+    )
+    if (
+        "runBlocking" in source
+        or "readyDeferred" in source
+        or "updateRequested.compareAndSet" not in source
+        or "__CLOUDCORD_RUNTIME_REVISION__" not in source
+    ):
         raise ValueError("Blocking startup hook remains")
     path.write_text(source, encoding="utf-8")
 

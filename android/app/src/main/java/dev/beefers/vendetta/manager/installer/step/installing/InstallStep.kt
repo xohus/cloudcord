@@ -11,6 +11,7 @@ import dev.beefers.vendetta.manager.installer.shizuku.ShizukuInstaller
 import dev.beefers.vendetta.manager.installer.step.Step
 import dev.beefers.vendetta.manager.installer.step.StepGroup
 import dev.beefers.vendetta.manager.installer.step.StepRunner
+import dev.beefers.vendetta.manager.installer.util.AxmlUtil
 import dev.beefers.vendetta.manager.installer.util.ApkValidation
 import dev.beefers.vendetta.manager.installer.util.Signer
 import dev.beefers.vendetta.manager.utils.isMiui
@@ -43,37 +44,49 @@ class InstallStep(
             ?.takeIf { it.isNotEmpty() }
             ?: throw Error("Missing APKs from LSPatch step; failure likely")
 
-        files.forEach { apk ->
+        val signerFingerprints = files.associateWith { apk ->
             ApkValidation.validate(apk)
             Signer.verifyApk(apk)
+        }
+
+        val manifests = files.associateWith(AxmlUtil::readManifestInfo)
+        val baseApk = files.singleOrNull { manifests.getValue(it).splitName == null }
+            ?: error("Expected exactly one base APK in the LSPatch output")
+        val baseManifest = manifests.getValue(baseApk)
+        manifests.values.forEach { manifest ->
+            check(
+                manifest.packageName == baseManifest.packageName &&
+                    manifest.longVersionCode == baseManifest.longVersionCode
+            ) {
+                "Discord APK splits do not belong to the same app version. Import a complete APK/APKM or retry the download."
+            }
+        }
+        val signers = signerFingerprints.getValue(baseApk)
+        check(signers.isNotEmpty()) { "Patched APK signing certificate is missing" }
+
+        // Android 10 cannot read metadata from standalone config splits; apksig verifies them directly.
+        files.filterNot { it == baseApk }.forEach { apk ->
+            check(signerFingerprints.getValue(apk) == signers) {
+                "Discord APK splits have different signing certificates. Installation stopped."
+            }
         }
 
         // Detect a lost/replaced per-device signing key before opening the OS installer.
         // Never uninstall an existing client to hide a certificate conflict.
         @Suppress("DEPRECATION")
-        val archives = files.map { apk ->
-            context.packageManager.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
-                ?: error("Cannot read signed APK metadata: ${apk.name}")
-        }
-        val base = archives.first()
-        val signers = base.signingInfo?.apkContentsSigners?.toSet()
-        check(!signers.isNullOrEmpty()) { "Patched APK signing certificate is missing" }
-        archives.forEach { archive ->
-            check(archive.packageName == base.packageName && archive.longVersionCode == base.longVersionCode) {
-                "Discord APK splits do not belong to the same app version. Import a complete APK/APKM or retry the download."
-            }
-            check(archive.signingInfo?.apkContentsSigners?.toSet() == signers) {
-                "Discord APK splits have different signing certificates. Installation stopped."
-            }
-        }
-        @Suppress("DEPRECATION")
         val installed = try {
-            context.packageManager.getPackageInfo(base.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            context.packageManager.getPackageInfo(
+                baseManifest.packageName,
+                PackageManager.GET_SIGNING_CERTIFICATES
+            )
         } catch (_: PackageManager.NameNotFoundException) {
             null
         }
         if (installed != null) {
-            check(installed.signingInfo?.apkContentsSigners?.toSet() == signers) {
+            val installedSigners = installed.signingInfo?.apkContentsSigners
+                ?.map { Signer.certificateFingerprint(it.toByteArray()) }
+                ?.toSet()
+            check(installedSigners == signers) {
                 "Signing key mismatch with the installed CloudCord client. Updating requires the original Manager's signing key. Do not uninstall Discord or clear app data to bypass this error."
             }
         }

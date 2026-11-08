@@ -24,6 +24,13 @@ export function usesModernSettings() {
     } catch { return true; }
 }
 
+function usesCachedSettingsList() {
+    try {
+        const version = parseInt(String(NativeClientInfoModule?.getConstants?.()?.Version ?? ""), 10);
+        return Number.isFinite(version) && version >= 352;
+    } catch { return false; }
+}
+
 export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const fallbackNames = [
         "renderer-live-table",
@@ -215,6 +222,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         const node = props?.node;
         const sections = node?.sections;
         if (!Array.isArray(sections) || !sections.some(section => section?.settings?.includes?.("ACCOUNT"))) return props;
+        if (sections.some(section => section?.label === "CloudCord")) return props;
         const copy = sections.map(section => ({ ...section,
             ...(Array.isArray(section?.settings) ? { settings: [...section.settings] } : {})
         }));
@@ -343,6 +351,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         patchedScreens.add(parent);
     };
 
+    const cachedSettingsList = usesCachedSettingsList();
     unpatches.push(observeSettingsModules((exports, path) => {
         // Match exports only after their factory succeeded. Each hook is
         // independent, so a frozen namespace cannot disable the other hooks.
@@ -350,16 +359,23 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             if (!module || (typeof module !== "object" && typeof module !== "function")) continue;
             try { if (Object.getOwnPropertyNames(module).includes("SETTING_RENDERER_CONFIG")) patchRendererConfig(module); }
             catch (error) { console.warn("CloudCord settings renderer patch failed", error); }
-            try { if (Object.getOwnPropertyNames(module).includes("createList") && typeof module.createList === "function") patchCreateListModule(module); }
-            catch (error) { console.warn("CloudCord settings list patch failed", error?.stack ?? error); }
+            if (!cachedSettingsList) {
+                try {
+                    if (Object.getOwnPropertyNames(module).includes("createList") && typeof module.createList === "function") patchCreateListModule(module);
+                } catch (error) { console.warn("CloudCord settings list patch failed", error?.stack ?? error); }
+            }
         }
-        const screen = exports?.SettingsOverviewScreen ?? exports?.default;
         const list = exports?.SearchableSettingsList ?? exports?.default;
         if (exports?.SearchableSettingsList || path?.endsWith("/SearchableSettingsList.tsx") ||
             [list?.name, list?.displayName, list?.type?.name, list?.render?.name].includes("SearchableSettingsList")) {
             try { patchSearchList(exports); }
             catch (error) { console.warn("CloudCord direct settings list patch failed", error); }
         }
+        // Android 352 passes a cached list node through SearchableSettingsList.
+        // The JSX and direct list hooks cover cached component references;
+        // recursive createList/overview tree hooks only repeat work on renders.
+        if (cachedSettingsList) return;
+        const screen = exports?.SettingsOverviewScreen ?? exports?.default;
         if (path?.endsWith("/SettingsOverviewScreen.tsx") ||
             [screen?.name, screen?.displayName, screen?.type?.name, screen?.render?.name].includes("SettingsOverviewScreen")) {
             patchOverview(exports);

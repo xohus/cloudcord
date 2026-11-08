@@ -1,4 +1,4 @@
-"""Keep module registration reachable after Discord removed ReactActivity."""
+"""Keep module registration reachable across Discord activity class changes."""
 import sys
 from pathlib import Path
 
@@ -8,10 +8,11 @@ def patch_activity_hook(path: Path) -> None:
     old = "        val reactActivity = classLoader.loadClass(Constants.TARGET_ACTIVITY)"
     if source.count(old) != 1:
         raise ValueError("Unexpected upstream Discord activity lookup")
-    source = source.replace(old, """        val reactActivity = try {
-            classLoader.loadClass(Constants.TARGET_ACTIVITY)
-        } catch (_: ClassNotFoundException) {
-            Activity::class.java
+    source = source.replace(old, """        val reactActivity = runCatching {
+        classLoader.loadClass("${Constants.TARGET_PACKAGE}.main.MainActivity")
+        }.getOrElse {
+            runCatching { classLoader.loadClass(Constants.TARGET_ACTIVITY) }
+                .getOrElse { Activity::class.java }
         }
         val targetPackage = packageName""")
     old = "                val act = thisObject as Activity\n                Log.i(\"Received Activity\")"

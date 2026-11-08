@@ -32,6 +32,7 @@
     <string name="msg_download_verify_failed">Could not verify downloaded file, check logs for more details</string>
     <string name="msg_invalid_discord_apk">Invalid Discord APK/APKM file</string>
     <string name="msg_copied">Copied to clipboard</string>
+    <string name="msg_copied_logs_truncated">Copied recent logs. Use Share logs for the complete log.</string>
 
     <string name="group_download">Download APKs</string>
     <string name="group_patch">Patching</string>

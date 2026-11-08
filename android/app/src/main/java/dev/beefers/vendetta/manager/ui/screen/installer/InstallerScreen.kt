@@ -127,10 +127,6 @@ class InstallerScreen(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                InstallerStatus(viewModel)
-
-                Spacer(modifier = Modifier.height(12.dp))
-
                 FilledTonalButton(
                     onClick = { importLauncher.launch(arrayOf("*/*")) },
                     modifier = Modifier.fillMaxWidth()
@@ -158,6 +154,8 @@ class InstallerScreen(
                         StepGroupCard(
                             name = stringResource(group.nameRes),
                             isCurrent = viewModel.expandedGroup == group,
+                            isActive = !viewModel.runner.completed &&
+                                viewModel.runner.currentStep?.group == group,
                             onClick = { viewModel.expandGroup(group) },
                             steps = steps,
                         )
@@ -201,35 +199,6 @@ class InstallerScreen(
                     }
                 }
             }
-        }
-    }
-
-    @Composable
-    private fun InstallerStatus(viewModel: InstallerViewModel) {
-        val step = viewModel.runner.currentStep
-        val statusText = when (step?.status) {
-            StepStatus.ONGOING -> stringResource(R.string.status_ongoing)
-            StepStatus.SUCCESSFUL -> stringResource(R.string.status_successful)
-            StepStatus.UNSUCCESSFUL -> stringResource(R.string.status_fail)
-            StepStatus.QUEUED, null -> stringResource(R.string.status_queued)
-        }
-        val progressText = step?.progress?.let { " ${(it * 100).toInt()}%" }.orEmpty()
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = step?.let { stringResource(it.nameRes) } ?: stringResource(R.string.title_installer),
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "$statusText$progressText",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
         }
     }
 
