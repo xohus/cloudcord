@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { buildCxRepeatMessage, type CxRepeatMessage } from "@lib/api/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
@@ -836,7 +836,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
 
 type CxMobileMessageMenu = {
     channel?: { id: string; guild_id?: string; isThread?: () => boolean; };
-    message?: CxRepeatMessage & { author?: { id?: string; }; channel_id?: string; };
+    message?: CxRepeatMessage & Parameters<typeof getCxEmbedToggle>[0];
     chatInputRef?: { current?: { insertText?: (text: string, start: null, appendSpace: boolean, nodes: undefined, end: null) => void; }; };
 };
 
@@ -893,6 +893,36 @@ function registerQuickMention(enabled: () => boolean) {
             close();
         } }];
     });
+}
+
+function registerEmbedToggle(enabled: () => boolean) {
+    const rest = findByProps("get", "post", "patch", "del");
+    const { Permissions } = findByProps("Fonts", "Permissions") ?? {};
+    const permissionStore = findByStoreName("PermissionStore");
+    if (typeof rest?.patch !== "function") {
+        throw new Error("Discord's embed actions are unavailable");
+    }
+    return registerMessageMenuActions(enabled, ({ message, channel }, close) => {
+        if (!message || !channel) return [];
+        const getToggle = (candidate: Parameters<typeof getCxEmbedToggle>[0]) => getCxEmbedToggle(candidate, channel.id,
+            UserStore?.getCurrentUser?.()?.id, {
+                canEmbed: !channel.guild_id || Permissions?.EMBED_LINKS != null && permissionStore?.can?.(Permissions.EMBED_LINKS, channel) === true,
+                canManage: !!channel.guild_id && Permissions?.MANAGE_MESSAGES != null && permissionStore?.can?.(Permissions.MANAGE_MESSAGES, channel) === true,
+            });
+        const toggle = getToggle(message);
+        if (!toggle) return [];
+        return [{ label: toggle.label, async run() {
+            try {
+                const latest = MessageStore?.getMessage?.(channel.id, toggle.id);
+                const current = latest && getToggle(latest);
+                if (!current || current.label !== toggle.label) return;
+                close();
+                await rest.patch({ url: "/channels/" + channel.id + "/messages/" + current.id, body: { flags: current.flags } });
+            } catch {
+                showToast("Couldn’t change embed visibility.");
+            }
+        } }];
+    }, false);
 }
 
 function registerRepeatMessages(enabled: () => boolean) {
@@ -1643,6 +1673,8 @@ export default function CxExtensions() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention(enabled);
+                        case "toggle-message-embeds":
+                            return registerEmbedToggle(enabled);
                         case "repeat-message":
                             return registerRepeatMessages(enabled);
                         case "attachment-image-quality":

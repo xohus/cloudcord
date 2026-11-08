@@ -185,6 +185,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const mentionActions = [];
         let fetchAttachment;
         const repeated = [];
+        const embedPatches = [];
+        const embedPermissions = { SEND_MESSAGES: 2048n, MANAGE_MESSAGES: 8192n, EMBED_LINKS: 16384n };
+        const embedEndpoints = { MESSAGE: (channel, message) => "/channels/" + channel + "/messages/" + message };
+        let embedMessage;
         const repeatChannel = "100000000000000011";
         const messagePopover = new Map();
         function NativeActionSheet() {}
@@ -309,7 +313,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             }) },
             MessageStore: {
                 getMessages: id => id === reactionChannel ? reactionCache : undefined,
-                getMessage: (channel, id) => channel === gestureChannel ? gestureMessages.get(id) : { author: { id: id === "partial" ? sender : me } },
+                getMessage: (channel, id) => channel === embedMessage?.channel_id && id === embedMessage.id ? embedMessage
+                    : channel === gestureChannel ? gestureMessages.get(id) : { author: { id: id === "partial" ? sender : me } },
                 getLastMessage: () => latestMessage, getLastEditableMessage: () => latestMessage,
             },
             EmojiStore: {
@@ -540,7 +545,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 ComponentDispatch: { dispatchToLastSubscribed(event, payload) {
                     if (event === "INSERT_TEXT") mentionActions.push([event, payload.rawText, payload.plainText]);
                 } },
-                PermissionsBits: { SEND_MESSAGES: 2048n },
+                PermissionsBits: embedPermissions,
                 React: { isValidElement: element => !!element?.type && !!element?.props,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
                 useSyncExternalStore: (subscribe, read) => {
@@ -550,8 +555,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 ...channelDispatcher,
-            }, Constants: { Endpoints: { REACTION: (channel, message, emoji) => [channel, message, emoji] } },
-                RestAPI: { put: ({ url: [channel, message, emoji] }) => addReaction(channel, message, { name: emoji }) },
+            }, Constants: { Endpoints: { ...embedEndpoints, REACTION: (channel, message, emoji) => [channel, message, emoji] } },
+                RestAPI: { patch: request => embedPatches.push(request), put: ({ url: [channel, message, emoji] }) => addReaction(channel, message, { name: emoji }) },
             },
             "@lib/api/cx": moduleBox.exports,
             "@lib/api/ccpInspect": reportModule.exports,
@@ -628,7 +633,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "ActionSheetRow" ? { ActionSheetRow: Object.assign(() => null, { Group: "ActionSheetRowGroup" }) }
                     : name === "openLazy" ? { hideActionSheet() { dismissedMentionSheets++; } }
-                    : name === "Fonts" ? { Permissions: { SEND_MESSAGES: 2048n } }
+                    : name === "get" ? { patch: request => embedPatches.push(request) }
+                    : name === "Fonts" ? { Permissions: embedPermissions }
                     : name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
                     : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : ["editMessage", "jumpToMessage"].includes(name) ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
@@ -802,6 +808,49 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(repeated.length, 1);
             assert.equal(messagePopover.size, 0);
             selectedChannel = "test-channel";
+        }
+
+        {
+            selectCatalog("UnsuppressEmbeds");
+            click(render(), "Allow for this session");
+            selectedChannel = repeatChannel;
+            embedMessage = { id: sender, channel_id: repeatChannel, author: { id: me }, flags: 4096, embeds: [{}] };
+            const findAction = label => {
+                if (desktop) {
+                    const entries = [];
+                    [...menuPatches].at(-1)(entries, { message: embedMessage });
+                    return button(entries, label)?.props.action;
+                }
+                const hook = appearanceHooks.get(LongPressMessageActionSheet);
+                const wrapper = hook(null, jsx(LongPressMessageActionSheet, {
+                    message: embedMessage, channel: stores.ChannelStore.getChannel(repeatChannel),
+                }));
+                const sheet = wrapper.type(wrapper.props);
+                return button(sheet.type(sheet.props), label)?.props.onPress;
+            };
+            const suppress = findAction("Suppress Embeds");
+            assert.equal(typeof suppress, "function");
+            canSend = false;
+            suppress();
+            assert.equal(embedPatches.length, 0);
+            canSend = true;
+            embedMessage = { ...embedMessage, flags: 4096 + 64 };
+            suppress();
+            assert.deepEqual(JSON.parse(JSON.stringify(embedPatches)), [{
+                url: embedEndpoints.MESSAGE(repeatChannel, sender), body: { flags: 4096 + 64 + 4 },
+            }]);
+            embedMessage = { ...embedMessage, flags: 4100, embeds: [] };
+            suppress();
+            assert.equal(embedPatches.length, 1);
+            const unsuppress = findAction("Unsuppress Embeds");
+            assert.equal(typeof unsuppress, "function");
+            unsuppress();
+            assert.equal(embedPatches[1].body.flags, 4096);
+            click(render(), "Disable UnsuppressEmbeds");
+            unsuppress();
+            assert.equal(embedPatches.length, 2);
+            selectedChannel = "test-channel";
+            embedMessage = undefined;
         }
         for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
             const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;

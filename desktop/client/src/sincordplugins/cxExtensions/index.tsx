@@ -7,7 +7,7 @@ import { addServerListElement, removeServerListElement, ServerListRenderPosition
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
-import { buildCxRepeatMessage } from "@utils/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
@@ -50,6 +50,35 @@ function registerQuickMention() {
         };
     }, MentionIcon);
     return () => { active = false; removeMessagePopoverButton(id); };
+}
+
+function registerEmbedToggle() {
+    let active = true;
+    const getToggle = (message: Message) => {
+        const channel = ChannelStore.getChannel(message.channel_id);
+        if (!channel) return;
+        return getCxEmbedToggle(message, channel.id, UserStore.getCurrentUser()?.id, {
+            canEmbed: !channel.guild_id || PermissionStore.can(PermissionsBits.EMBED_LINKS, channel),
+            canManage: !!channel.guild_id && PermissionStore.can(PermissionsBits.MANAGE_MESSAGES, channel),
+        });
+    };
+    const patch: NavContextMenuPatchCallback = (children, { message }) => {
+        const toggle = active && message && getToggle(message);
+        if (!toggle) return;
+        children.push(<Menu.MenuItem id="cx-toggle-embeds" label={toggle.label} action={async () => {
+            if (!active) return;
+            try {
+                const latest = MessageStore.getMessage(message.channel_id, toggle.id);
+                const current = latest && getToggle(latest);
+                if (!current || current.label !== toggle.label) return;
+                await RestAPI.patch({ url: Constants.Endpoints.MESSAGE(message.channel_id, current.id), body: { flags: current.flags } });
+            } catch {
+                showToast("Couldn’t change embed visibility.");
+            }
+        }} />);
+    };
+    addContextMenuPatch("message", patch);
+    return () => { active = false; removeContextMenuPatch("message", patch); };
 }
 
 function registerRepeatMessages() {
@@ -501,6 +530,8 @@ export function CxSettings() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention();
+                        case "toggle-message-embeds":
+                            return registerEmbedToggle();
                         case "repeat-message":
                             return registerRepeatMessages();
                         case "scroll-to-latest":

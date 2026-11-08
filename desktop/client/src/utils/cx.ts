@@ -18,7 +18,7 @@ export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxP
 export { formatCxChannelName, type CxChannelLabel } from "./cxChannelNames";
 export { isCxNotificationMuted, type CxMessageAlert } from "./cxIncoming";
 export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, markCxServersReadAndWait, runCxFriendInvites } from "./cxClientCommands";
-export { animateCxAssets, buildCxRepeatMessage, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, getCxMessageGesture, overrideCxMethods, raiseCxAvatarResolution, type CxRepeatMessage } from "./cxNativeEffects";
+export { animateCxAssets, buildCxRepeatMessage, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, getCxEmbedToggle, getCxMessageGesture, overrideCxMethods, raiseCxAvatarResolution, type CxRepeatMessage } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
@@ -55,6 +55,7 @@ const permissionLabels = {
     "messages.openeditor": "Open Discord’s editor for your own message when you double-click or double-tap it",
     "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user’s message",
     "messages.insertmention": "Insert a mention into your current draft when you choose Quick Mention",
+    "messages.toggleembeds": "Change embed visibility on the selected message when you choose its menu action.",
     "messages.repeat": "Send a copy of the selected message when you choose Repeat or Repeat and Reply. Mentions are suppressed.",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
     "uploads.rename": "Change attachment filenames before Discord uploads them",

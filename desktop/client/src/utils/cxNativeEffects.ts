@@ -28,6 +28,7 @@ export const cxNativeEffects = {
     "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
     "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
     "quick-mention": { permission: "messages.insertmention", label: "Insert the selected message author's mention into the current draft" },
+    "toggle-message-embeds": { permission: "messages.toggleembeds", label: "Suppress or unsuppress embeds in the selected message" },
     "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },
@@ -40,6 +41,29 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+type CxEmbedMessage = {
+    id?: string;
+    channel_id?: string;
+    author?: { id?: string; };
+    flags?: unknown;
+    embeds?: readonly unknown[];
+    messageSnapshots?: readonly { message?: { embeds?: readonly unknown[]; }; }[];
+    message_snapshots?: CxEmbedMessage["messageSnapshots"];
+};
+
+export function getCxEmbedToggle(message: CxEmbedMessage, channelId: string, userId: string | undefined, permissions: {
+    canEmbed: boolean; canManage: boolean;
+}) {
+    const { id, flags } = message;
+    if (!isCxProfileUserId(id) || !isCxProfileUserId(channelId) || message.channel_id !== channelId
+        || !isCxProfileUserId(userId) || typeof flags !== "number" || !Number.isSafeInteger(flags) || flags < 0
+        || (message.author?.id === userId ? !permissions.canEmbed : !permissions.canManage)) return;
+    const suppressed = (flags & 4) !== 0;
+    if (!suppressed && !message.embeds?.length
+        && !(message.messageSnapshots ?? message.message_snapshots)?.some(snapshot => snapshot.message?.embeds?.length)) return;
+    return { id, flags: flags + (suppressed ? -4 : 4), label: suppressed ? "Unsuppress Embeds" : "Suppress Embeds" };
+}
 
 type RepeatAttachment = { filename?: string; url?: string; size?: number; };
 export type CxRepeatMessage = {

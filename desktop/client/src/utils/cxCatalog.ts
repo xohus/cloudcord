@@ -165,13 +165,14 @@ import plugin163 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
 import plugin164 from "../../../../examples/cx/catalog/plugins/transparent-chat-bar.cx";
 import plugin165 from "../../../../examples/cx/catalog/plugins/unindent.cx";
 import plugin166 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin167 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
-import plugin168 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
-import plugin169 from "../../../../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx";
-import plugin170 from "../../../../examples/cx/catalog/plugins/wider-channel-list.cx";
-import plugin171 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
-import plugin172 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin173 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin167 from "../../../../examples/cx/catalog/plugins/unsuppress-embeds.cx";
+import plugin168 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin169 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
+import plugin170 from "../../../../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx";
+import plugin171 from "../../../../examples/cx/catalog/plugins/wider-channel-list.cx";
+import plugin172 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
+import plugin173 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin174 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -441,13 +442,14 @@ export const cxCatalog = {
         { name: "TransparentChatBar", source: plugin164 },
         { name: "Unindent", source: plugin165 },
         { name: "UnitConverter", source: plugin166 },
-        { name: "VibeCheck", source: plugin167 },
-        { name: "VoiceJoinMessages", source: plugin168 },
-        { name: "Vriska'sTypingQuirk", source: plugin169 },
-        { name: "WiderChannelList", source: plugin170 },
-        { name: "WikiLookup", source: plugin171 },
-        { name: "WriteUpperCase", source: plugin172 },
-        { name: "ZeroWidthSanitizer", source: plugin173 },
+        { name: "UnsuppressEmbeds", source: plugin167 },
+        { name: "VibeCheck", source: plugin168 },
+        { name: "VoiceJoinMessages", source: plugin169 },
+        { name: "Vriska'sTypingQuirk", source: plugin170 },
+        { name: "WiderChannelList", source: plugin171 },
+        { name: "WikiLookup", source: plugin172 },
+        { name: "WriteUpperCase", source: plugin173 },
+        { name: "ZeroWidthSanitizer", source: plugin174 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },
