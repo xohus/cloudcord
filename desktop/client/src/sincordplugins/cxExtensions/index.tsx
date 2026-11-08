@@ -7,7 +7,7 @@ import { addServerListElement, removeServerListElement, ServerListRenderPosition
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
-import { buildCxRepeatMessage, getCxEmbedToggle } from "@utils/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
@@ -20,7 +20,7 @@ import { cxCatalog } from "@utils/cxCatalog";
 import type { Message } from "@vencord/discord-types";
 import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 const session = createCxSession();
@@ -50,6 +50,31 @@ function registerQuickMention() {
         };
     }, MentionIcon);
     return () => { active = false; removeMessagePopoverButton(id); };
+}
+
+function registerPinShortcut() {
+    let active = true;
+    const permission = PermissionsBits.PIN_MESSAGES ?? PermissionsBits.MANAGE_MESSAGES;
+    const patch: NavContextMenuPatchCallback = (children, { message }) => {
+        if (!active || !message) return;
+        const channel = ChannelStore.getChannel(message.channel_id);
+        if (!channel) return;
+        const canPin = () => !channel.guild_id || PermissionStore.can(permission, channel);
+        const action = getCxPinAction(message, channel.id, canPin());
+        if (!action) return;
+        children.push(<Menu.MenuItem id="cx-pin-shortcut" label={action.label} action={async () => {
+            if (!active) return;
+            try {
+                const latest = MessageStore.getMessage(channel.id, action.id);
+                const current = latest && getCxPinAction(latest, channel.id, canPin());
+                if (current?.method === action.method) await PinActions[current.method](channel, current.id);
+            } catch {
+                showToast("Couldn’t change the message pin.");
+            }
+        }} />);
+    };
+    addContextMenuPatch("message", patch);
+    return () => { active = false; removeContextMenuPatch("message", patch); };
 }
 
 function registerEmbedToggle() {
@@ -530,6 +555,8 @@ export function CxSettings() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention();
+                        case "pin-message-shortcut":
+                            return registerPinShortcut();
                         case "toggle-message-embeds":
                             return registerEmbedToggle();
                         case "repeat-message":

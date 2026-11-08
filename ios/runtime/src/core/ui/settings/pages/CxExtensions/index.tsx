@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { buildCxRepeatMessage, getCxEmbedToggle, type CxRepeatMessage } from "@lib/api/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
@@ -836,7 +836,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
 
 type CxMobileMessageMenu = {
     channel?: { id: string; guild_id?: string; isThread?: () => boolean; };
-    message?: CxRepeatMessage & Parameters<typeof getCxEmbedToggle>[0];
+    message?: CxRepeatMessage & Parameters<typeof getCxEmbedToggle>[0] & { pinned?: boolean; };
     chatInputRef?: { current?: { insertText?: (text: string, start: null, appendSpace: boolean, nodes: undefined, end: null) => void; }; };
 };
 
@@ -895,8 +895,35 @@ function registerQuickMention(enabled: () => boolean) {
     });
 }
 
+function registerPinShortcut(enabled: () => boolean) {
+    const pins = findByProps("pinMessage", "unpinMessage");
+    const permissions = findByProps("Fonts", "Permissions")?.Permissions;
+    const permission = permissions?.PIN_MESSAGES ?? permissions?.MANAGE_MESSAGES;
+    const permissionStore = findByStoreName("PermissionStore");
+    if (typeof pins?.pinMessage !== "function" || typeof pins?.unpinMessage !== "function") {
+        throw new Error("Discord's pin actions are unavailable");
+    }
+    return registerMessageMenuActions(enabled, ({ message, channel }, close) => {
+        if (!message || !channel) return [];
+        const canPin = () => !channel.guild_id || permission != null && permissionStore?.can?.(permission, channel) === true;
+        const action = getCxPinAction(message, channel.id, canPin());
+        if (!action) return [];
+        return [{ label: action.label, async run() {
+            try {
+                const latest = MessageStore?.getMessage?.(channel.id, action.id);
+                const current = latest && getCxPinAction(latest, channel.id, canPin());
+                if (current?.method !== action.method) return;
+                close();
+                await pins[current.method](channel, current.id);
+            } catch {
+                showToast("Couldn’t change the message pin.");
+            }
+        } }];
+    }, false);
+}
+
 function registerEmbedToggle(enabled: () => boolean) {
-    const rest = findByProps("get", "post", "patch", "del");
+    const rest = findByProps("HTTP")?.HTTP ?? findByProps("get", "post", "patch", "del");
     const { Permissions } = findByProps("Fonts", "Permissions") ?? {};
     const permissionStore = findByStoreName("PermissionStore");
     if (typeof rest?.patch !== "function") {
@@ -1695,6 +1722,8 @@ export default function CxExtensions() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention(enabled);
+                        case "pin-message-shortcut":
+                            return registerPinShortcut(enabled);
                         case "toggle-message-embeds":
                             return registerEmbedToggle(enabled);
                         case "repeat-message":

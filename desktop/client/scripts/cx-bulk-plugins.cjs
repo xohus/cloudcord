@@ -428,7 +428,7 @@ function compileBetterDiscordTypingRules(source) {
     if (lines.length) return ["  needs messages.transform", "  before send rewrite-text:", ...lines];
 }
 
-function inspectBetterDiscord(file, code, appearance) {
+function inspectBetterDiscord(file, code, appearance, nativeEffects) {
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
     const name = header?.match(/^\s*\*\s*@name\s+([^\r\n*]+?)\s*$/m)?.[1];
@@ -447,6 +447,12 @@ function inspectBetterDiscord(file, code, appearance) {
     const sha256 = reviewedBetterDiscordSources[rawSha256] ? rawSha256
         : createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
     const review = reviewedBetterDiscordSources[sha256];
+    if (review?.name === name && review.recipe === "native-effect" && !source.parseDiagnostics.length
+        && nativeEffects && Object.hasOwn(nativeEffects, review.effect)) {
+        return { ...record, review: { ...review, sha256 }, capability: "native-effect",
+            cx: ["plugin " + JSON.stringify(name) + ":", "  needs " + nativeEffects[review.effect].permission,
+                "  use " + review.effect, ""].join("\n") };
+    }
     if (review?.name === name && review.recipe === "configurable-appearance" && !source.parseDiagnostics.length) {
         const compiled = configurableHides(readBetterDiscordSwitches(source), chatButtonOptions, appearance);
         if (compiled) return { ...record, review: { ...review, sha256 }, capability: compiled.capability,
@@ -493,18 +499,6 @@ function inspectBetterDiscord(file, code, appearance) {
             ...record, review: { ...review, sha256 }, capability: "reply-default",
             cx: ["plugin " + JSON.stringify(name) + ":", "  needs replies.suppressping",
                 '  on incoming reply-ping-default ""', ""].join("\n"),
-        };
-    }
-    if (review?.name === name && review.recipe === "hide-disabled-emojis" && !source.parseDiagnostics.length) {
-        return {
-            ...record, review: { ...review, sha256 }, capability: "native-effect",
-            cx: ["plugin " + JSON.stringify(name) + ":", "  needs appearance.hide", "  use hide-disabled-emojis", ""].join("\n"),
-        };
-    }
-    if (review?.name === name && review.recipe === "scroll-to-latest" && !source.parseDiagnostics.length) {
-        return {
-            ...record, review: { ...review, sha256 }, capability: "native-effect",
-            cx: ["plugin " + JSON.stringify(name) + ":", "  needs channels.markonopen", "  use scroll-to-latest", ""].join("\n"),
         };
     }
     if (review?.name === name && review.recipe === "avatar-resolution" && !source.parseDiagnostics.length) {
@@ -1236,7 +1230,7 @@ function compileTimestampFormats(name, source, readCompanion) {
 }
 
 function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}, readStylesheet) {
-    if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
+    if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance, nativeEffects);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
     const entry = source.statements.find(ts.isExportAssignment);
     const call = entry && expression(entry.expression);
@@ -1501,11 +1495,11 @@ function scan(sourceDir, { includeCompanions = false, reviewedSources = [] } = {
         if (externalHashes.has(hash)) continue;
         externalHashes.add(hash);
         const label = sourceDirs.length === 1 ? path.relative(directory, file) : file;
-        const record = inspectPlugin(label.replaceAll("\\", "/"), code, "betterdiscord", cxAppearanceTargets);
+        const record = inspectPlugin(label.replaceAll("\\", "/"), code, "betterdiscord", cxAppearanceTargets, cxNativeEffects);
         if (record) records.push(record);
     }
     for (const { file, code, sha256 } of reviewedSources) {
-        const record = inspectBetterDiscord(file, code, cxAppearanceTargets);
+        const record = inspectBetterDiscord(file, code, cxAppearanceTargets, cxNativeEffects);
         if (!record?.cx || record.review?.sha256 !== sha256) throw new Error("No CX recipe matched reviewed source " + file);
         records.push(record);
     }

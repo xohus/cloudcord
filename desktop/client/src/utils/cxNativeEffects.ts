@@ -28,6 +28,7 @@ export const cxNativeEffects = {
     "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
     "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
     "quick-mention": { permission: "messages.insertmention", label: "Insert the selected message author's mention into the current draft" },
+    "pin-message-shortcut": { permission: "messages.pin", label: "Pin or unpin the selected message with one menu action" },
     "toggle-message-embeds": { permission: "messages.toggleembeds", label: "Suppress or unsuppress embeds in the selected message" },
     "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
@@ -41,6 +42,13 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+export function getCxPinAction(message: { id?: string; channel_id?: string; pinned?: boolean; }, channel: string, canPin: boolean) {
+    if (!canPin || !isCxProfileUserId(channel) || message.channel_id !== channel
+        || !isCxProfileUserId(message.id) || typeof message.pinned !== "boolean") return;
+    return { id: message.id, method: message.pinned ? "unpinMessage" as const : "pinMessage" as const,
+        label: message.pinned ? "Unpin Without Confirmation" : "Pin Without Confirmation" };
+}
 
 type CxEmbedMessage = {
     id?: string;

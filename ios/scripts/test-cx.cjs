@@ -186,6 +186,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let fetchAttachment;
         const repeated = [];
         const embedPatches = [];
+        const pinCalls = [];
+        const pinActions = {
+            pinMessage: (channel, id) => pinCalls.push(["pin", channel.id, id]),
+            unpinMessage: (channel, id) => pinCalls.push(["unpin", channel.id, id]),
+        };
         const embedPermissions = { SEND_MESSAGES: 2048n, MANAGE_MESSAGES: 8192n, EMBED_LINKS: 16384n };
         const embedEndpoints = { MESSAGE: (channel, message) => "/channels/" + channel + "/messages/" + message };
         let embedMessage;
@@ -546,7 +551,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 ComponentDispatch: { dispatchToLastSubscribed(event, payload) {
                     if (event === "INSERT_TEXT") mentionActions.push([event, payload.rawText, payload.plainText]);
                 } },
-                PermissionsBits: embedPermissions,
+                PermissionsBits: embedPermissions, PinActions: pinActions,
                 React: { isValidElement: element => !!element?.type && !!element?.props,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
                 useSyncExternalStore: (subscribe, read) => {
@@ -635,7 +640,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "ActionSheetRow" ? { ActionSheetRow: Object.assign(() => null, { Group: "ActionSheetRowGroup" }) }
                     : name === "openLazy" ? { hideActionSheet() { dismissedMentionSheets++; } }
-                    : name === "get" ? { patch: request => embedPatches.push(request) }
+                    : name === "HTTP" ? { HTTP: { patch: request => embedPatches.push(request) } }
+                    : name === "pinMessage" ? pinActions
                     : name === "Fonts" ? { Permissions: embedPermissions }
                     : name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
                     : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : ["editMessage", "jumpToMessage"].includes(name) ? messageEditor
@@ -852,6 +858,27 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable UnsuppressEmbeds");
             unsuppress();
             assert.equal(embedPatches.length, 2);
+            selectCatalog("NoConfirmPin");
+            click(render(), "Allow for this session");
+            embedMessage = { ...embedMessage, pinned: false };
+            const pin = findAction("Pin Without Confirmation");
+            assert.equal(typeof pin, "function");
+            canSend = false;
+            pin();
+            assert.equal(pinCalls.length, 0);
+            canSend = true;
+            pin();
+            assert.deepEqual(pinCalls, [["pin", repeatChannel, sender]]);
+            embedMessage = { ...embedMessage, pinned: true };
+            pin();
+            assert.equal(pinCalls.length, 1);
+            const unpin = findAction("Unpin Without Confirmation");
+            assert.equal(typeof unpin, "function");
+            unpin();
+            assert.deepEqual(pinCalls[1], ["unpin", repeatChannel, sender]);
+            click(render(), "Disable NoConfirmPin");
+            unpin();
+            assert.equal(pinCalls.length, 2);
             selectedChannel = "test-channel";
             embedMessage = undefined;
         }
