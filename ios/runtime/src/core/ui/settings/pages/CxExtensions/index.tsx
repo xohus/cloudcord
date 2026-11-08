@@ -21,11 +21,14 @@ import { NativeFileModule } from "@lib/api/native/modules";
 import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
+import { createStorageAsync } from "@lib/api/storage";
+import { dismissAlert, openAlert } from "@lib/ui/alerts";
 import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { getCxMessageGesture } from "@lib/api/cx";
 import { getCxChannelNameCopy, getCxProfileMedia } from "@lib/api/cx";
+import { createCxUserNotes, CX_USER_NOTE_LIMIT } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
@@ -1724,7 +1727,7 @@ function registerReducedMotion() {
 
 type ProfileMenuItem = { label: string; action: () => void; };
 type ProfileMenuEntry = {
-    key: CxProfileMenuAction | "profile-media";
+    key: CxProfileMenuAction | "profile-media" | "user-notes";
     getItems: (id: string, guildId?: string) => ProfileMenuItem[];
 };
 const profileMenuActions = new Set<ProfileMenuEntry>();
@@ -1793,6 +1796,54 @@ function registerProfileMenuAction(action: CxProfileMenuAction) {
             } }];
         },
     });
+}
+
+let clearLocalUserNotes: (() => void) | undefined;
+let localUserNotesStorage: Promise<Record<string, Record<string, string>>> | undefined;
+
+function registerUserNotes() {
+    if (clearLocalUserNotes) throw new Error("Local user notes are already enabled");
+    const { AlertModal, AlertActions, AlertActionButton } = findByProps("AlertModal", "AlertActions") ?? {};
+    if (!AlertModal || !AlertActions || !AlertActionButton) throw new Error("Discord's note editor is unavailable");
+    const getStorage = () => localUserNotesStorage ??= createStorageAsync<Record<string, Record<string, string>>>("plugins/storage/cloudcord.cx-user-notes.json");
+    const notes = createCxUserNotes(() => UserStore.getCurrentUser()?.id, async account => (await getStorage())[account],
+        async (account, mutate) => {
+            const storage = await getStorage();
+            storage[account] = mutate(storage[account]);
+        }, () => !settings.safeMode?.enabled);
+    const failed = () => showToast("Couldn’t update local user notes.");
+    const alertKey = "cloudcord-cx-user-note";
+    const stopMenu = registerProfileMenuEntry({
+        key: "user-notes",
+        getItems: id => [{ label: "Local User Note", action: () => {
+            void notes.open(id, (initial, save) => {
+                let draft = initial;
+                openAlert(alertKey, <AlertModal title="Local User Note"
+                    extraContent={<TextInput accessibilityLabel="Private note" defaultValue={initial} multiline maxLength={CX_USER_NOTE_LIMIT}
+                        style={{ minHeight: 100, padding: 10, color: resolveSemanticColor(semanticColors.TEXT_DEFAULT) }}
+                        onChangeText={value => { draft = value; }} />}
+                    actions={<AlertActions>
+                        <AlertActionButton text="Cancel" variant="secondary" onPress={() => dismissAlert(alertKey)} />
+                        <AlertActionButton text="Save" variant="primary" onPress={() => {
+                            void save(draft).then(() => dismissAlert(alertKey), failed);
+                        }} />
+                    </AlertActions>} />);
+            }).catch(failed);
+        } }],
+    });
+    clearLocalUserNotes = () => {
+        void notes.clear(() => new Promise<boolean>(resolve => Alert.alert(
+            "Clear local user notes?", "This removes every local note for this account on this device.",
+            [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                { text: "Clear notes", style: "destructive", onPress: () => resolve(true) }],
+            { cancelable: true, onDismiss: () => resolve(false) },
+        ))).catch(failed);
+    };
+    return () => {
+        notes.stop();
+        clearLocalUserNotes = undefined;
+        stopMenu();
+    };
 }
 
 function registerProfileMedia() {
@@ -2215,6 +2266,8 @@ export default function CxExtensions() {
                             return registerMediaLinkCopy();
                         case "profile-media":
                             return registerProfileMedia();
+                        case "user-notes":
+                            return registerUserNotes();
                         case "copy-channel-name":
                             return registerCopyChannelName(enabled);
                         case "hide-suggested-channels": {
@@ -2661,6 +2714,7 @@ export default function CxExtensions() {
                         setStatus(`${name} disabled.`);
                     }} />,
                 ])}
+                {clearLocalUserNotes && <TableRow label="Clear local user notes" onPress={clearLocalUserNotes} />}
             </TableRowGroup>
             <Text accessibilityLiveRegion="polite" style={{ color: "#b5bac1" }}>{status}</Text>
         </Stack>

@@ -1,6 +1,7 @@
 import { playAudio } from "@api/AudioPlayer";
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { addContextMenuPatch, findGroupChildrenByChildId, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
+import * as DataStore from "@api/DataStore";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { addMessagePopoverButton, removeMessagePopoverButton } from "@api/MessagePopover";
 import { showNotification } from "@api/Notifications";
@@ -16,6 +17,7 @@ import { bindCxCameraTone, bindCxMutedVoice, createCxVoiceQueue, getCxImageSearc
 import { escapeRegExp } from "@utils/text";
 import { copyToClipboard } from "@utils/clipboard";
 import { getCxChannelNameCopy, getCxProfileMedia } from "@utils/cx";
+import { createCxUserNotes, CX_USER_NOTE_LIMIT } from "@utils/cx";
 import { openImageModal } from "@utils/discord";
 import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
@@ -148,6 +150,45 @@ function registerCopyChannelName() {
     const menus = ["channel-context", "thread-context", "user-context", "gdm-context"];
     addContextMenuPatch(menus, patch);
     return () => { active = false; removeContextMenuPatch(menus, patch); };
+}
+
+let clearLocalUserNotes: (() => void) | undefined;
+
+function registerUserNotes() {
+    if (clearLocalUserNotes) throw new Error("Local user notes are already enabled");
+    const key = (account: string) => "CloudCord.CX.UserNotes." + account;
+    const notes = createCxUserNotes(() => UserStore.getCurrentUser()?.id,
+        account => DataStore.get(key(account)), (account, mutate) => DataStore.update(key(account), mutate));
+    const failed = () => showToast("Couldn’t update local user notes.");
+    const menus = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        const id = props?.user?.id ?? props?.userId;
+        if (!isCxProfileUserId(id) || children.some(child => child?.props?.id === "cx-user-note")) return;
+        children.push(<Menu.MenuItem id="cx-user-note" label="Local User Note" action={() => {
+            void notes.open(id, (initial, save) => {
+                let draft = initial;
+                Alerts.show({
+                    title: "Local User Note",
+                    body: <textarea aria-label="Private note" defaultValue={initial} maxLength={CX_USER_NOTE_LIMIT}
+                        rows={5} style={{ width: "100%", boxSizing: "border-box" }}
+                        onChange={event => { draft = event.currentTarget.value; }} />,
+                    cancelText: "Cancel", confirmText: "Save", onConfirm: () => { void save(draft).catch(failed); },
+                });
+            }).catch(failed);
+        }} />);
+    };
+    addContextMenuPatch(menus, patch);
+    clearLocalUserNotes = () => {
+        void notes.clear(() => Alerts.confirm({
+            title: "Clear local user notes?", body: "This removes every local note for this account on this device.",
+            cancelText: "Cancel",
+        })).catch(failed);
+    };
+    return () => {
+        notes.stop();
+        clearLocalUserNotes = undefined;
+        removeContextMenuPatch(menus, patch);
+    };
 }
 
 function registerProfileMedia() {
@@ -820,6 +861,8 @@ export function CxSettings() {
                         }
                         case "profile-media":
                             return registerProfileMedia();
+                        case "user-notes":
+                            return registerUserNotes();
                         case "copy-channel-name":
                             return registerCopyChannelName();
                         case "hide-suggested-channels":
@@ -1214,6 +1257,7 @@ export function CxSettings() {
                 setStatus(`${name} disabled.`);
             }}>Disable {name}</button>
         </div>)}
+        {clearLocalUserNotes && <button onClick={clearLocalUserNotes}>Clear local user notes</button>}
         <p role="status">{status}</p>
     </section>;
 }

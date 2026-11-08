@@ -534,9 +534,6 @@ async function testReviewedFetch() {
         return new Response(code.replaceAll("\n", "\r\n"));
     });
     assert.deepEqual(fetched, [{ file: "Owner/Repo/folder/Example.plugin.js", code: "reviewed source\r\n", sha256: hash }]);
-    assert.deepEqual(await fetchReviewedBetterDiscordSources({
-        [hash]: { name: "Cached example", source: source.replace(rev, "main"), cachedOnly: true },
-    }, () => { throw new Error("Cached reviews must not perform a download"); }), []);
     await assert.rejects(fetchReviewedBetterDiscordSources(sources, () => new Response("changed")), /hash differs/);
     await assert.rejects(fetchReviewedBetterDiscordSources(sources, () => new Response("", { status: 404 })), /HTTP 404/);
     await assert.rejects(fetchReviewedBetterDiscordSources(sources, () => new Response("x".repeat(512 * 1024 + 1))), /exceeds 512 KiB/);

@@ -36,6 +36,7 @@ export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
 export { createCxVoicePing } from "./cxVoicePing";
 export { bindCxMutedVoice } from "./cxMutedVoice";
+export { createCxUserNotes, CX_USER_NOTE_LIMIT } from "./cxUserNotes";
 export { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "./cxVoiceCount";
 export { bindCxCameraTone, type CxCameraToneOptions } from "./cxCameraTone";
 export { createCxVoiceQueue, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "./cxVoiceQueue";
@@ -119,6 +120,7 @@ const permissionLabels = {
     "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
     "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
     "lookup.translate": "Send the text and language you enter to Google Translate when you run the translate command",
+    "profile.localnotes": "Read and edit your private user notes stored on this device",
     "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command",
 };
 

@@ -1478,9 +1478,7 @@ function betterDiscordFiles(folder) {
 }
 
 async function fetchReviewedBetterDiscordSources(reviews = reviewedBetterDiscordSources, request = fetch) {
-    // Cached reviews still require an exact source hash during a local scan.
-    // Only immutable GitHub file URLs can be fetched automatically.
-    const entries = Object.entries(reviews).filter(([, review]) => review.cachedOnly !== true);
+    const entries = Object.entries(reviews);
     const sources = [];
     for (let offset = 0; offset < entries.length; offset += 8) {
         const batch = await Promise.all(entries.slice(offset, offset + 8).map(async ([sha256, review]) => {

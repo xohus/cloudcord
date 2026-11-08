@@ -1,0 +1,3 @@
+plugin "UserNotes":
+  needs profile.localnotes
+  use user-notes

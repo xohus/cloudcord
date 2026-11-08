@@ -166,10 +166,17 @@
     "64ca857fca4adc1b2e760dac75ef06706336d620f7486ef7a907600e34eecdb4": {
         "name": "NotifyWhenMuted",
         "author": "nicola02nb",
-        "source": "https://github.com/nicola02nb/BetterDiscord-Stuff/tree/main/Plugins/NotifyWhenMuted",
-        "cachedOnly": true,
+        "source": "https://github.com/nicola02nb/BetterDiscord-Stuff/blob/3ebb1a1e909f0bc87886e9e667c1053f60a5a9a7/Plugins/NotifyWhenMuted/NotifyWhenMuted.plugin.js",
         "recipe": "native-effect",
         "effect": "notify-when-muted",
+        "basis": "independent behavior implementation"
+    },
+    "670394fb8e0f812c75a90bfe958bf4372ae3b319df3a41abc91874849804393d": {
+        "name": "UserNotes",
+        "author": "DevilBro",
+        "source": "https://github.com/mwittrien/BetterDiscordAddons/blob/c561c50fadf8ce7e7862e6a090e48196f6069b9b/Plugins/UserNotes/UserNotes.plugin.js",
+        "recipe": "native-effect",
+        "effect": "user-notes",
         "basis": "independent behavior implementation"
     }
 }

@@ -1,6 +1,7 @@
 import { isCxProfileUserId } from "./cxProfileMenu";
 
 export const cxNativeEffects = {
+    "user-notes": { permission: "profile.localnotes", label: "Add a local user note editor to profile menus" },
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "static-typing-dots": { permission: "appearance.style", label: "Keep Discord's typing dots still" },
     "code-block-gap": { permission: "appearance.style", label: "Remove the extra blank line after fenced code blocks" },

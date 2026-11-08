@@ -193,6 +193,7 @@ import plugin_catalog_transparent_chat_bar from "../../../../examples/cx/catalog
 import plugin_catalog_unindent from "../../../../examples/cx/catalog/plugins/unindent.cx";
 import plugin_catalog_unit_converter from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
 import plugin_catalog_unsuppress_embeds from "../../../../examples/cx/catalog/plugins/unsuppress-embeds.cx";
+import plugin_catalog_user_notes from "../../../../examples/cx/catalog/plugins/user-notes.cx";
 import plugin_catalog_vibe_check from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
 import plugin_catalog_voice_count from "../../../../examples/cx/catalog/plugins/voice-count.cx";
 import plugin_catalog_voice_join_messages from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
@@ -500,6 +501,7 @@ export const cxCatalog = {
         { name: "Unindent", source: plugin_catalog_unindent },
         { name: "UnitConverter", source: plugin_catalog_unit_converter },
         { name: "UnsuppressEmbeds", source: plugin_catalog_unsuppress_embeds },
+        { name: "UserNotes", source: plugin_catalog_user_notes },
         { name: "VibeCheck", source: plugin_catalog_vibe_check },
         { name: "VoiceCount", source: plugin_catalog_voice_count },
         { name: "VoiceJoinMessages", source: plugin_catalog_voice_join_messages },

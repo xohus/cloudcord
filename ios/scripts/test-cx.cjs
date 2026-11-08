@@ -619,11 +619,17 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         function GuildsBarFooterWrapper(props) { return props.children; }
         function UsersFastList(props) { return props; }
         let deviceFontScale = 1.25, discordFontScale = 1;
+        const localNotes = {};
+        let noteAlert, confirmNotes;
         const mocks = {
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/AudioPlayer": { playAudio: name => queueSounds.push(name) },
             "@api/Commands": commandApi,
+            "@api/DataStore": {
+                get: async key => localNotes[key],
+                update: async (key, mutate) => { localNotes[key] = mutate(localNotes[key]); },
+            },
             "@api/Settings": { Settings: { plugins: { CallTimer: { enabled: false } } } },
             "@api/ContextMenu": {
                 addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context", "message", "channel-context"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
@@ -668,7 +674,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                         : key === "startEditMessage" ? messageEditor
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
             "@webpack/common": {
-                Alerts: { show(props) {
+                Alerts: { confirm: () => new Promise(resolve => { confirmNotes = resolve; }), show(props) {
+                    if (props.title === "Local User Note") { noteAlert = props; return; }
                     const target = props.title === "Confirm message" ? nativeConfirmations : queuePrompts;
                     target.push({ props, resolve: value => value ? props.onConfirm() : props.onCancel() });
                 } },
@@ -714,6 +721,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/native/modules": {},
             "@lib/api/native/loader": { isThemeSupported: () => true },
             "@lib/api/settings": { settings },
+            "@lib/api/storage": { createStorageAsync: async () => localNotes },
+            "@lib/ui/alerts": { openAlert: (_, alert) => { noteAlert = alert.props; }, dismissAlert: () => {} },
             "@lib/api/patcher": { instead(name, owner, callback) {
                 const original = owner[name];
                 owner[name] = function (...args) { return callback.call(this, args, original); };
@@ -780,7 +789,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.includes("/defs/native/") ? { default: settingsEntrys.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
-                name === "ActionSheetRow" ? { ActionSheetRow: Object.assign(() => null, { Group: "ActionSheetRowGroup" }) }
+                name === "AlertModal" ? { AlertModal: "AlertModal", AlertActions: "AlertActions", AlertActionButton: "AlertActionButton" }
+                    : name === "ActionSheetRow" ? { ActionSheetRow: Object.assign(() => null, { Group: "ActionSheetRowGroup" }) }
                     : name === "openLazy" ? { hideActionSheet() { dismissedMentionSheets++; } }
                     : name === "HTTP" ? { HTTP: { get: getJump, patch: request => embedPatches.push(request) } }
                     : name === "transitionToChannel" ? { transitionToMessage: (channel, message) => jumpRoutes.push([channel, message]) }
@@ -809,7 +819,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup", TableSwitchRow: "TableSwitchRow" },
             "react-native": {
                 Alert: { alert: (title, body, buttons, options) => {
-                    if (title === "Confirm message") nativeConfirmations.push({ props: { title, body }, buttons, options });
+                    if (title === "Clear local user notes?") confirmNotes = value => buttons[value ? 1 : 0].onPress();
+                    else if (title === "Confirm message") nativeConfirmations.push({ props: { title, body }, buttons, options });
                     else if (title === "Voice channel is full" || title === "A voice slot is open") {
                         queuePrompts.push({ props: { title, body, confirmText: buttons[1].text },
                             resolve: value => value ? buttons[1].onPress() : buttons[0].onPress() });
@@ -1774,6 +1785,53 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         actionList(other, guildId)[0].action();
         assert.equal(notifications.pop(), "No profile colors found.");
         click(render(), "Disable CopyProfileColors");
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "UserNotes").source;
+            assert.throws(() => activateCx(port, host, ["profilemenu.copy"]), /approval/);
+            selectCatalog("UserNotes");
+            click(render(), "Allow for this session");
+            const openNote = async (id, expected) => {
+                noteAlert = undefined;
+                const actions = actionList(id);
+                assert.deepEqual(Array.from(actions, item => item.label), ["Local User Note"]);
+                actions[0].action();
+                await new Promise(setImmediate);
+                const input = desktop ? noteAlert.body.props : noteAlert.extraContent.props;
+                assert.equal(input.defaultValue, expected);
+                return input;
+            };
+            const saveNote = async (input, value) => {
+                if (desktop) {
+                    input.onChange({ currentTarget: { value } });
+                    noteAlert.onConfirm();
+                } else {
+                    input.onChangeText(value);
+                    find(noteAlert.actions, item => item.props.text === "Save").props.onPress();
+                }
+                await new Promise(setImmediate);
+            };
+            await saveNote(await openNote(sender, ""), "First line\nSecond line");
+            await openNote(sender, "First line\nSecond line");
+            await openNote(other, "");
+            activeAccount = other;
+            await openNote(sender, "");
+            activeAccount = me;
+            const stale = await openNote(sender, "First line\nSecond line");
+            activeAccount = other;
+            await saveNote(stale, "Wrong account");
+            activeAccount = me;
+            await openNote(sender, "First line\nSecond line");
+            click(render(), "Clear local user notes");
+            confirmNotes(false);
+            await new Promise(setImmediate);
+            await openNote(sender, "First line\nSecond line");
+            click(render(), "Clear local user notes");
+            confirmNotes(true);
+            await new Promise(setImmediate);
+            await openNote(sender, "");
+            click(render(), "Disable UserNotes");
+            assert.equal(menuPatches.size + appearanceHooks.size, 0);
+        }
         const profileMedia = cxCatalog.plugins.find(entry => entry.name === "ProfileMedia").source;
         assert.throws(() => activateCx(profileMedia, host, []), /approval/);
         assert.throws(() => parseCx(profileMedia.replace(/^  needs profilemenu\.media\r?\n/m, "")), /permissions/);
