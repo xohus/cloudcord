@@ -36392,6 +36392,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       cxAppearanceTargets = {
+        "voice-krisp-button": {
+          plugin: "ShowPing",
+          label: "the desktop Krisp button beside the voice connection controls",
+          css: '[class*="voiceButtonsContainer_"] > button[aria-label$="Krisp" i] { display: none !important; }',
+          desktopOnly: true,
+          mobile: []
+        },
         "bot-tags": {
           plugin: "HideBotTags",
           label: "APP and BOT tags",
@@ -37148,6 +37155,37 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var url2 = typeof page === "string" && /^https:\/\/en\.wikipedia\.org\/wiki\/[^\s<>]{1,500}$/.test(page) ? page : "https://en.wikipedia.org/wiki/" + title;
       var excerpt = escaped(data.extract.trim().slice(0, 1200));
       return "**" + escaped(heading.slice(0, 120)) + "**\n" + excerpt.slice(0, 1600) + "\n<" + url2 + ">";
+    })();
+  }
+  function translateCxText(text, target, signal) {
+    return _async_to_generator(function* () {
+      var query = Object.entries({
+        client: "gtx",
+        sl: "auto",
+        tl: target,
+        dt: "t",
+        q: text
+      }).map(([key, value]) => key + "=" + encodeURIComponent(value)).join("&");
+      if (query.length > 16e3)
+        throw new Error("Translation input is too long");
+      var response = yield fetch("https://translate.googleapis.com/translate_a/single?" + query, {
+        credentials: "omit",
+        redirect: "error",
+        signal
+      });
+      if (!response.ok)
+        throw new Error("Translation request failed");
+      var data = yield response.json();
+      if (!Array.isArray(data) || !Array.isArray(data[0]))
+        throw new Error("Invalid translation response");
+      var translated = data[0].map((part) => Array.isArray(part) && typeof part[0] === "string" ? part[0] : "").join("");
+      if (!translated.trim() || translated.length > 4e3)
+        throw new Error("Invalid translation text");
+      var language = typeof data[2] === "string" && /^[a-z]{2,3}(?:-[a-z]{2,8})?$/i.test(data[2]) ? data[2] : "auto";
+      return {
+        translated,
+        language
+      };
     })();
   }
   function formatCxSpotify(action, text, track) {
@@ -38956,6 +38994,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "webcam-start-notifier": {
           permission: "voice.cameratone",
           label: "Play different tones when someone turns their camera on or off"
+        },
+        "notify-when-muted": {
+          permission: "voice.mutedtone",
+          label: "Play a sound when you try to speak while muted"
         },
         "wait-for-slot": {
           permission: "voice.waitslot",
@@ -43745,7 +43787,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           if (!enabled() || !store.isConnected() || channelId && store.getChannelId() !== channelId)
             return;
           var ping = store.getLastPing();
-          return typeof ping === "number" && Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + " ms" : void 0;
+          return typeof ping === "number" && Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + " ms" : "N/A";
         };
         var subscribed = [];
         function stop() {
@@ -43773,6 +43815,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   }
   var init_cxVoicePing = __esm({
     "src/lib/api/cxVoicePing.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
+  // src/lib/api/cxMutedVoice.ts
+  function bindCxMutedVoice(store, inCall, play, options, enabled = () => true) {
+    if (typeof store?.getSpeakingWhileMuted !== "function" || typeof store.isMute !== "function" || typeof store.isSelfMute !== "function" || typeof store.isSelfDeaf !== "function" || typeof store.addChangeListener !== "function" || typeof store.removeChangeListener !== "function")
+      throw new Error("Discord's speaking-while-muted detection is unavailable");
+    var active = true;
+    var nextAlert = -Infinity;
+    var onChange = () => {
+      var now = Date.now();
+      if (!active || !enabled() || !inCall() || now < nextAlert || !store.getSpeakingWhileMuted() || !store.isMute() || !options.serverMute && !store.isSelfMute() || options.ignoreDeafened && store.isSelfDeaf())
+        return;
+      nextAlert = now + options.cooldownSeconds * 1e3;
+      try {
+        play();
+      } catch (e) {
+      }
+    };
+    store.addChangeListener(onChange);
+    return () => {
+      if (!active)
+        return;
+      active = false;
+      store.removeChangeListener(onChange);
+    };
+  }
+  var init_cxMutedVoice = __esm({
+    "src/lib/api/cxMutedVoice.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
@@ -44659,16 +44733,26 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           cameraToneOptions = {
             scope
           };
-        } else if (name3 === "voice-channel-count") {
+        } else if (name3 === "notify-when-muted") {
           var flags2 = effect2[2]?.split(" ") ?? [];
-          if (flags2.some((flag) => ![
+          var delays = flags2.filter((flag) => /^cooldown-(?:[1-9]|[1-5]\d|60)$/.test(flag));
+          if (delays.length > 1 || new Set(flags2).size !== flags2.length || flags2.some((flag) => flag !== "server-mute" && flag !== "ignore-deafened" && !delays.includes(flag)))
+            throw new Error("Mute alert options are server-mute, ignore-deafened, and cooldown-1 through cooldown-60");
+          mutedVoiceOptions = {
+            serverMute: flags2.includes("server-mute"),
+            ignoreDeafened: flags2.includes("ignore-deafened"),
+            cooldownSeconds: delays.length ? Number(delays[0].slice(9)) : 5
+          };
+        } else if (name3 === "voice-channel-count") {
+          var flags3 = effect2[2]?.split(" ") ?? [];
+          if (flags3.some((flag) => ![
             "show-empty",
             "hide-limit"
-          ].includes(flag)) || new Set(flags2).size !== flags2.length)
+          ].includes(flag)) || new Set(flags3).size !== flags3.length)
             throw new Error("Voice count options are show-empty and hide-limit");
           voiceCountOptions = {
-            showEmpty: flags2.includes("show-empty"),
-            hideLimit: flags2.includes("hide-limit")
+            showEmpty: flags3.includes("show-empty"),
+            hideLimit: flags3.includes("hide-limit")
           };
         } else if (effect2[2])
           throw new Error("This client effect takes no options");
@@ -44851,6 +44935,26 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
+      var schedule = /^    schedule message "([a-z][a-z0-9_-]{0,31})" after "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
+      if (schedule && current && !current.actions.length && !current.text && current.inputs.length === 2 && current.inputs.some((input2) => input2.name === schedule[1] && input2.type === "text" && input2.required) && current.inputs.some((input2) => input2.name === schedule[2] && input2.type === "integer" && input2.required)) {
+        current.actions.push({
+          kind: "schedule-message",
+          text: schedule[1],
+          minutes: schedule[2]
+        });
+        current = void 0;
+        return "continue";
+      }
+      var translation = /^    translate "([a-z][a-z0-9_-]{0,31})" to "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
+      if (translation && current && !current.actions.length && !current.text && current.inputs.length === 2 && current.inputs.some((input2) => input2.name === translation[1] && input2.type === "text" && input2.required) && current.inputs.some((input2) => input2.name === translation[2] && input2.type === "text" && !input2.required)) {
+        current.actions.push({
+          kind: "translate",
+          text: translation[1],
+          target: translation[2]
+        });
+        current = void 0;
+        return "continue";
+      }
       var spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
       if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1 && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
         current.actions.push({
@@ -45007,6 +45111,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var avatarResolution;
     var voiceMemberOptions;
     var voiceQueueOptions;
+    var mutedVoiceOptions;
     var cameraToneOptions;
     var voiceCountOptions;
     var uploadNaming;
@@ -45101,6 +45206,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       voiceMemberOptions,
       voiceQueueOptions,
       cameraToneOptions,
+      mutedVoiceOptions,
       voiceCountOptions,
       uploadNaming,
       previousRule,
@@ -45223,6 +45329,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var cleanups = [];
     var optionCleanups = /* @__PURE__ */ new Map();
     var activeLookups = /* @__PURE__ */ new Map();
+    var scheduled = /* @__PURE__ */ new Set();
     var active = true;
     var uploadAnonymiser = document.uploadNaming && createCxUploadAnonymiser(document.uploadNaming);
     function hideTarget(target3) {
@@ -45244,6 +45351,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     function stop() {
       active = false;
+      for (var timer of scheduled)
+        clearTimeout(timer);
+      scheduled.clear();
       for (var controller of activeLookups.values())
         controller.abort();
       activeLookups.clear();
@@ -45323,47 +45433,109 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var _loop3 = function(action3) {
             if (!getActionPermissions(action3).every((permission) => grants.has(permission)))
               return "continue";
-            if (action3.kind === "lookup") {
+            if (action3.kind === "schedule-message") {
               var reply = invocation?.reply;
-              if (!reply || activeLookups.has(action3.service))
+              if (!reply)
                 return "continue";
+              var content = inputs.get(action3.text);
+              var minutes = Number(inputs.get(action3.minutes));
+              if (minutes < 1 || minutes > 1440) {
+                reply("Choose a delay from 1 to 1440 minutes.");
+                return "continue";
+              }
+              if (scheduled.size >= 20) {
+                reply("This plugin already has 20 pending messages.");
+                return "continue";
+              }
+              var channel = invocation.prepareChannel?.();
+              if (!channel) {
+                reply("Scheduling is unavailable in this chat.");
+                return "continue";
+              }
+              var delay = minutes * 6e4;
+              var timer = setTimeout(() => {
+                scheduled.delete(timer);
+                if (!active)
+                  return;
+                void channel.send(content).catch(() => {
+                  if (active)
+                    channel.reply("Couldn\u2019t send the scheduled message.");
+                });
+              }, delay);
+              scheduled.add(timer);
+              reply("Scheduled for <t:" + Math.floor((Date.now() + delay) / 1e3) + ":t>. Keep CloudCord open until then.");
+              return "continue";
+            }
+            if (action3.kind === "translate") {
+              var channel1 = invocation?.prepareChannel?.();
+              if (!channel1 || activeLookups.has("translate"))
+                return "continue";
+              var target3 = inputs.get(action3.target).trim().toLowerCase() || "en";
+              if (!/^[a-z]{2,3}(?:-[a-z]{2,8})?$/.test(target3)) {
+                channel1.reply("Enter a language code such as en, fr or zh-cn.");
+                return "continue";
+              }
               var controller = new AbortController();
-              activeLookups.set(action3.service, controller);
-              var timer = setTimeout(() => controller.abort(), 8e3);
-              void cxExternalLookups[action3.service].run(inputs.get(action3.input), controller.signal).then((result) => {
+              activeLookups.set("translate", controller);
+              var timer1 = setTimeout(() => controller.abort(), 8e3);
+              var send = invocation?.sendRequested === true;
+              void translateCxText(inputs.get(action3.text), target3, controller.signal).then(({ translated, language }) => {
+                if (!active || controller.signal.aborted)
+                  return;
+                var text2 = translated.replace(/<@|@(?=everyone\b|here\b)/gi, (match) => match.replace("@", "\uFF20"));
+                if (send)
+                  return channel1.send(text2);
+                channel1.reply("**Translated from " + language + ":** " + text2);
+              }).catch(() => {
                 if (active)
-                  reply(result);
+                  channel1.reply(send ? "Couldn\u2019t translate or send the text." : "Couldn\u2019t translate the text. Try again.");
+              }).finally(() => {
+                clearTimeout(timer1);
+                activeLookups.delete("translate");
+              });
+              return "continue";
+            }
+            if (action3.kind === "lookup") {
+              var reply1 = invocation?.reply;
+              if (!reply1 || activeLookups.has(action3.service))
+                return "continue";
+              var controller1 = new AbortController();
+              activeLookups.set(action3.service, controller1);
+              var timer2 = setTimeout(() => controller1.abort(), 8e3);
+              void cxExternalLookups[action3.service].run(inputs.get(action3.input), controller1.signal).then((result) => {
+                if (active)
+                  reply1(result);
               }, () => {
                 if (active)
-                  reply("Couldn\u2019t reach the lookup service. Try again.");
+                  reply1("Couldn\u2019t reach the lookup service. Try again.");
               }).finally(() => {
-                clearTimeout(timer);
+                clearTimeout(timer2);
                 activeLookups.delete(action3.service);
               });
               return "continue";
             }
             if (action3.kind === "friend-invites") {
-              var reply1 = invocation?.reply;
-              if (reply1 && invocation.friendInvites) {
+              var reply2 = invocation?.reply;
+              if (reply2 && invocation.friendInvites) {
                 void invocation.friendInvites(action3.operation).then((result) => {
                   if (active)
-                    reply1(result);
+                    reply2(result);
                 }, () => {
                   if (active)
-                    reply1("Friend invites failed. Try again.");
+                    reply2("Friend invites failed. Try again.");
                 });
               }
               return "continue";
             }
             if (action3.kind === "copy-diagnostics") {
-              var reply2 = invocation?.reply;
-              if (reply2 && invocation.copyDiagnostics) {
+              var reply3 = invocation?.reply;
+              if (reply3 && invocation.copyDiagnostics) {
                 void invocation.copyDiagnostics().then((result) => {
                   if (active)
-                    reply2(result);
+                    reply3(result);
                 }, () => {
                   if (active)
-                    reply2("Couldn\u2019t copy the diagnostic report.");
+                    reply3("Couldn\u2019t copy the diagnostic report.");
                 });
               }
               return "continue";
@@ -45442,7 +45614,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           for (var action2 of command2.actions)
             _loop3(action2);
           return outgoing;
-        }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action2) => action2.kind === "reply or send"), command2.inputs));
+        }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action2) => action2.kind === "reply or send" || action2.kind === "translate"), command2.inputs));
       };
       if (document.sendConfirmation) {
         var { phrases, prompt } = document.sendConfirmation;
@@ -45495,6 +45667,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "all-call-time-counter": document.voiceMemberOptions,
         "wait-for-slot": document.voiceQueueOptions,
         "webcam-start-notifier": document.cameraToneOptions,
+        "notify-when-muted": document.mutedVoiceOptions,
         "voice-channel-count": document.voiceCountOptions
       };
       for (var effect of document.nativeEffects) {
@@ -45635,6 +45808,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxMediaLabels();
       init_cxTimestamps();
       init_cxVoicePing();
+      init_cxMutedVoice();
       init_cxVoiceCount();
       init_cxCameraTone();
       init_cxVoiceQueue();
@@ -45648,6 +45822,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "ui.toast": "Show local popups",
         "reply.local": "Show a command reply visible only to you",
         "messages.send": "Send the result to the current chat when you run a listed command",
+        "messages.schedule": "Send text to the same chat later when you run a listed command",
         "messages.split": "Send your long drafts as separate messages in the same channel",
         "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
         "media.search": "Share the selected image URL with the search engine you choose",
@@ -45698,6 +45873,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "voice.latency": "Read your current voice connection latency",
         "voice.channelcount": "Show the number of connected users next to visible voice and stage channels",
         "voice.cameratone": "Play local sounds when camera state changes in your current voice call",
+        "voice.mutedtone": "Read Discord's local speaking-while-muted flag and play a local alert",
         "voice.waitslot": "Watch a voice channel you queue for and join when you confirm or enable auto-join",
         "voice.membertime": "Use voice updates already loaded by Discord to show member call times on this device",
         "voice.calltime": "Read the current voice channel and show its elapsed call time on this device",
@@ -45711,6 +45887,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "typing.suppress": "Suppress your outgoing typing indicator",
         "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
         "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
+        "lookup.translate": "Send the text and language you enter to Google Translate when you run the translate command",
         "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command"
       };
       leetCharacters = {
@@ -45770,9 +45947,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ] : action.kind === "lookup" ? [
         "reply.local",
         cxExternalLookups[action.service].permission
+      ] : action.kind === "translate" ? [
+        "reply.local",
+        "lookup.translate",
+        "messages.send"
       ] : action.kind === "copy-diagnostics" ? [
         "reply.local",
         "diagnostics.copy"
+      ] : action.kind === "schedule-message" ? [
+        "reply.local",
+        "messages.schedule"
       ] : action.kind === "upload-spoilers" ? [
         "reply.local",
         "uploads.rename"
@@ -47328,6 +47512,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/notify-when-muted.cx
+  var notify_when_muted_default;
+  var init_notify_when_muted = __esm({
+    "../examples/cx/catalog/plugins/notify-when-muted.cx"() {
+      notify_when_muted_default = 'plugin "NotifyWhenMuted":\n  needs voice.mutedtone\n  use notify-when-muted\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/open-steam-links-in-app.cx
   var open_steam_links_in_app_default;
   var init_open_steam_links_in_app = __esm({
@@ -47464,6 +47656,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/scheduled-messages.cx
+  var scheduled_messages_default;
+  var init_scheduled_messages = __esm({
+    "../examples/cx/catalog/plugins/scheduled-messages.cx"() {
+      scheduled_messages_default = 'plugin "ScheduledMessages":\n  needs commands.register\n  needs messages.schedule\n  needs reply.local\n  on command "schedule":\n    input "message" text\n    input "minutes" integer\n    schedule message "message" after "minutes"\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/scroll-to-latest.cx
   var scroll_to_latest_default;
   var init_scroll_to_latest = __esm({
@@ -47500,7 +47700,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var show_ping_default;
   var init_show_ping = __esm({
     "../examples/cx/catalog/plugins/show-ping.cx"() {
-      show_ping_default = 'plugin "ShowPing":\n  needs voice.latency\n  use show-voice-ping\n';
+      show_ping_default = 'plugin "ShowPing":\n  needs voice.latency\n  needs appearance.hide\n  option hide voice-krisp-button default-on\n  use show-voice-ping\n';
     }
   });
 
@@ -47629,6 +47829,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_text_replace = __esm({
     "../examples/cx/catalog/plugins/text-replace.cx"() {
       text_replace_default = 'plugin "TextReplace":\n  needs messages.transform\n  before send replace ":shrug:" with "\xAF\\\\_(\u30C4)_/\xAF"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/translate.cx
+  var translate_default;
+  var init_translate = __esm({
+    "../examples/cx/catalog/plugins/translate.cx"() {
+      translate_default = 'plugin "Translate":\n  needs commands.register\n  needs lookup.translate\n  needs reply.local\n  needs messages.send\n  on command "translate":\n    input "text" text\n    input "to" text optional\n    translate "text" to "to"\n';
     }
   });
 
@@ -48741,6 +48949,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_no_typing_animation();
       init_no_unblock_to_jump();
       init_normalize_message_links();
+      init_notify_when_muted();
       init_open_steam_links_in_app();
       init_ping_notifications();
       init_polish_wording();
@@ -48758,6 +48967,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_reverse_text();
       init_round_server_icons();
       init_rounded_chat_bar();
+      init_scheduled_messages();
       init_scroll_to_latest();
       init_sed_enhanced();
       init_send_timestamps();
@@ -48779,6 +48989,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_talk_in_reverse();
       init_terezi_typing_quirk();
       init_text_replace();
+      init_translate();
       init_transparent_chat_bar();
       init_unindent();
       init_unit_converter();
@@ -49492,6 +49703,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: normalize_message_links_default
           },
           {
+            name: "NotifyWhenMuted",
+            source: notify_when_muted_default
+          },
+          {
             name: "OpenSteamLinksInApp",
             source: open_steam_links_in_app_default
           },
@@ -49558,6 +49773,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "RoundedChatBar",
             source: rounded_chat_bar_default
+          },
+          {
+            name: "ScheduledMessages",
+            source: scheduled_messages_default
           },
           {
             name: "ScrollToLatest",
@@ -49642,6 +49861,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "TextReplace",
             source: text_replace_default
+          },
+          {
+            name: "Translate",
+            source: translate_default
           },
           {
             name: "TransparentChatBar",
@@ -52506,6 +52729,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       stop();
     };
   }
+  function supportsMobileHide({ target }) {
+    return !("desktopOnly" in cxAppearanceTargets[target]);
+  }
   function CxExtensions() {
     var [source, setSource] = React2.useState("");
     var [showCatalog, setShowCatalog] = React2.useState(false);
@@ -52525,7 +52751,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         setCandidate({
           source: next,
           review: preview2,
-          selected: preview2.appearanceOptions.filter((option) => option.defaultOn).map((option) => option.target)
+          selected: preview2.appearanceOptions.filter((option) => option.defaultOn && supportsMobileHide(option)).map((option) => option.target)
         });
         setStatus("");
       } catch (error) {
@@ -52638,6 +52864,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           registerSendConfirmation,
           registerTimestampFormats,
           hideAppearanceTarget(target) {
+            if (!supportsMobileHide({
+              target
+            }))
+              return () => {
+              };
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile || "renderComponent" in mobile)
               return registerTreeAppearance(mobile);
@@ -52973,6 +53204,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return registerNoRoleHeaders();
               case "show-voice-ping":
                 return registerVoicePing(enabled);
+              case "notify-when-muted": {
+                var sound = findByFilePath("modules/sound_playback/native/SoundUtils.tsx");
+                if (typeof sound?.playSound !== "function" || !effectOptions || !("serverMute" in effectOptions))
+                  throw new Error("Discord's mute alert controls are unavailable");
+                return bindCxMutedVoice(findByStoreName("MediaEngineStore"), () => Boolean(SelectedChannelStore.getVoiceChannelId()), () => {
+                  void Promise.resolve(sound.playSound("user_leave")).catch(() => {
+                  });
+                }, effectOptions, enabled);
+              }
               case "voice-channel-count":
                 if (!effectOptions || !("showEmpty" in effectOptions))
                   throw new Error("Missing voice count options");
@@ -53452,6 +53692,30 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     if (!settings.safeMode?.enabled && context.channel?.id)
                       messageUtil.sendBotMessage(context.channel.id, message);
                   },
+                  prepareChannel() {
+                    var channelId = context.channel?.id;
+                    var accountId = UserStore2?.getCurrentUser?.()?.id;
+                    if (!channelId || !accountId)
+                      return;
+                    var isCurrent = () => !settings.safeMode?.enabled && UserStore2?.getCurrentUser?.()?.id === accountId;
+                    return {
+                      reply(content) {
+                        if (isCurrent())
+                          messageUtil.sendBotMessage(channelId, content);
+                      },
+                      send(content) {
+                        return _async_to_generator(function* () {
+                          if (!isCurrent())
+                            return;
+                          if (!ChannelStore?.getChannel(channelId))
+                            throw new Error("The original channel is unavailable");
+                          yield messageUtil.sendMessage(channelId, {
+                            content
+                          });
+                        })();
+                      }
+                    };
+                  },
                   lookup(name2, input) {
                     if (name2 === "roleMembers" || name2 === "randomMember") {
                       var guild = context.guild?.id ?? ChannelStore?.getChannel?.(context.channel?.id)?.guild_id;
@@ -53681,7 +53945,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   ...candidate.review.commands ?? []
                 ].join("\n")
               }),
-              candidate?.review.appearanceOptions.map(({ target, label: label2 }) => /* @__PURE__ */ jsx(TableSwitchRow, {
+              candidate?.review.appearanceOptions.filter(supportsMobileHide).map(({ target, label: label2 }) => /* @__PURE__ */ jsx(TableSwitchRow, {
                 label: label2,
                 value: candidate.selected.includes(target),
                 onValueChange: (checked) => {
@@ -53700,7 +53964,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 onPress: () => setSource(candidate.source)
               }),
               session.list().flatMap(({ id, name }) => [
-                ...session.appearanceOptions(id).map(({ target, label: label2, enabled }) => /* @__PURE__ */ jsx(TableSwitchRow, {
+                ...session.appearanceOptions(id).filter(supportsMobileHide).map(({ target, label: label2, enabled }) => /* @__PURE__ */ jsx(TableSwitchRow, {
                   label: `${name} \xB7 ${label2}`,
                   value: enabled,
                   onValueChange: (checked) => {
@@ -54860,7 +55124,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8f93a43ee83a07ff3f46b2aee2545b46f6ecf8f8";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "5d69429aa89e55122a816d050a95f97833ceb301";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
