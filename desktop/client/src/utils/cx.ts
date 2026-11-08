@@ -53,6 +53,7 @@ const permissionLabels = {
     "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
     "messages.openeditor": "Open Discord’s editor for your own message when you double-click or double-tap it",
     "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user’s message",
+    "messages.insertmention": "Insert a mention into your current draft when you choose Quick Mention",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
     "uploads.rename": "Change attachment filenames before Discord uploads them",
     "replies.suppressping": "Send replies without pinging the person you reply to",

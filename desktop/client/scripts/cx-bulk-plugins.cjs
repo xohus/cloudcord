@@ -900,6 +900,10 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
 const desktopEffectRecipes = {
+    QuickMention: {
+        effect: "quick-mention",
+        sha256: "d56d94f08626f2d4bddebd4917650217be0a3e862a53a2d053444b31d28fc59b",
+    },
     NoRoleHeaders: {
         effect: "hide-role-headers",
         sha256: "04c990206c32b0d8f0d26cb4fb4fad35c725378eb0ad7fe957de718e6eacc3dc",

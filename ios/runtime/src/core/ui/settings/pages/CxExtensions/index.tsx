@@ -833,6 +833,50 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
     });
 }
 
+function registerQuickMention(enabled: () => boolean) {
+    const menu = findByFilePath("modules/messages/native/long_press/LongPressMessageActionSheet.tsx")?.default;
+    const sheet = findByProps("ActionSheet")?.ActionSheet;
+    const { ActionSheetRow } = findByProps("ActionSheetRow") ?? {};
+    const sheetActions = findByProps("openLazy", "hideActionSheet");
+    const permissions = findByProps("Fonts", "Permissions")?.Permissions;
+    const permissionStore = findByStoreName("PermissionStore");
+    if (!menu || !sheet || !ActionSheetRow || typeof sheetActions?.hideActionSheet !== "function") {
+        throw new Error("Discord's message actions are unavailable");
+    }
+    type Props = {
+        channel?: { id: string; guild_id?: string; };
+        message?: { author?: { id?: string; }; channel_id?: string; };
+        chatInputRef?: { current?: { insertText?: (text: string, start: null, appendSpace: boolean, nodes: undefined, end: null) => void; }; };
+    };
+    let active = true;
+    const stop = registerRenderedTree(menu, (tree, props: Props) => {
+        const { channel, message, chatInputRef } = props;
+        const author = message?.author?.id;
+        if (!active || !enabled() || !channel || message?.channel_id !== channel.id || !isCxProfileUserId(author)) return tree;
+        const { id: channelId, guild_id: guildId } = channel;
+        function canInsert() {
+            return active && enabled() && SelectedChannelStore?.getChannelId?.() === channelId
+                && (!guildId || permissions?.SEND_MESSAGES != null
+                    && permissionStore?.can?.(permissions.SEND_MESSAGES, channel) === true);
+        }
+        if (!canInsert() || typeof chatInputRef?.current?.insertText !== "function") return tree;
+        return mapAppearanceElements(tree, element => {
+            if (element.type !== sheet) return element;
+            const insert = () => {
+                const composer = chatInputRef.current;
+                if (!canInsert() || typeof composer?.insertText !== "function") return;
+                composer.insertText("<@" + author + "> ", null, false, undefined, null);
+                sheetActions.hideActionSheet();
+            };
+            return React.cloneElement(element, { children: <>
+                {element.props.children}
+                <ActionSheetRow key="cx-quick-mention" label="Quick Mention" onPress={insert} />
+            </> });
+        });
+    });
+    return () => { active = false; stop(); };
+}
+
 let messageGestures: { edit: number; reply: number; stop: () => void; } | undefined;
 
 function registerMessageGesture(mode: "edit" | "reply") {
@@ -1496,6 +1540,8 @@ export default function CxExtensions() {
                         case "double-click-edit":
                         case "double-click-reply":
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
+                        case "quick-mention":
+                            return registerQuickMention(enabled);
                         case "attachment-image-quality":
                         case "original-attachment-images":
                             return registerAttachmentImageQuality(effect === "original-attachment-images");

@@ -180,6 +180,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const openedLinks = [];
         const openExternal = async link => { openedLinks.push(link); };
         let selectedChannel = "test-channel";
+        let canSend = true;
+        let dismissedMentionSheets = 0;
+        const mentionActions = [];
+        const messagePopover = new Map();
+        function NativeActionSheet() {}
+        function LongPressMessageActionSheet() {
+            return jsx("Analytics", { children: jsx(NativeActionSheet, { children: jsx("OriginalAction", {}) }) });
+        }
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
         const guildId = "100000000000000004";
         const roleId = "100000000000000005";
@@ -281,8 +289,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" ? guildId : undefined,
+            ChannelStore: { getChannel: id => ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" ? guildId : undefined,
                 rateLimitPerUser: id === "slow-channel" ? 10 : 0 }) },
+            PermissionStore: { can: () => canSend },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
             GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
             GuildChannelStore: { getChannels: () => ({
@@ -434,7 +443,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let profileUser;
         let expressionSelection;
         const expressionSheets = { MessageEmojiActionSheet: () => null, StickerDetailActionSheet: () => null,
-            StickerOptionsActionSheet: () => null, BottomSheet: () => null, ActionSheet: () => null };
+            StickerOptionsActionSheet: () => null, BottomSheet: () => null, ActionSheet: NativeActionSheet };
         const editHooks = new Set();
         const AboutMeCard = () => null;
         const markupCache = new WeakMap();
@@ -499,6 +508,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 onEditMessage(listener) { editHooks.add(listener); return () => { editHooks.delete(listener); }; }
             },
             "@api/Notifications": { showNotification: alert => { notifications.push(alert.body); desktopAlerts.push(alert); } },
+            "@api/MessagePopover": {
+                addMessagePopoverButton: (id, render) => messagePopover.set(id, render),
+                removeMessagePopoverButton: id => messagePopover.delete(id),
+            },
             "@api/ServerList": { ServerListRenderPosition: { Above: 0 },
                 addServerListElement: (_, component) => serverListButtons.add(component),
                 removeServerListElement: (_, component) => serverListButtons.delete(component),
@@ -516,7 +529,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     : key === "removeRelationship" ? relationshipActions : key === "sendMessage" ? commandApi
                         : key === "startEditMessage" ? messageEditor
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
-            "@webpack/common": { React: { isValidElement: element => !!element?.type && !!element?.props,
+            "@webpack/common": {
+                ComponentDispatch: { dispatchToLastSubscribed(event, payload) {
+                    if (event === "INSERT_TEXT") mentionActions.push([event, payload.rawText, payload.plainText]);
+                } },
+                PermissionsBits: { SEND_MESSAGES: 2048n },
+                React: { isValidElement: element => !!element?.type && !!element?.props,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
                 useSyncExternalStore: (subscribe, read) => {
                 subscribe(() => typingSubscribers.add(read()));
@@ -573,6 +591,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/ChatInputSendUtils.tsx") ? splitComposer
                 : path.endsWith("/useComputeEmojiPickerFunctions.tsx") ? mobileEmojiPicker
                 : path.endsWith("/MessageEmojiActionSheet.tsx") ? { default: expressionSheets.MessageEmojiActionSheet }
+                : path.endsWith("/LongPressMessageActionSheet.tsx") ? { default: LongPressMessageActionSheet }
                 : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
                 : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
                 : path.endsWith("/MediaShareActions.tsx") ? mediaShare
@@ -599,7 +618,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.includes("/defs/native/") ? { default: settingsEntrys.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
-                name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
+                name === "ActionSheetRow" ? { ActionSheetRow: "ActionSheetRow" }
+                    : name === "openLazy" ? { hideActionSheet() { dismissedMentionSheets++; } }
+                    : name === "Fonts" ? { Permissions: { SEND_MESSAGES: 2048n } }
+                    : name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
                     : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : ["editMessage", "jumpToMessage"].includes(name) ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
@@ -668,6 +690,60 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             searchFor(name);
             click(render(), name);
         };
+        selectCatalog("QuickMention");
+        click(render(), "Allow for this session");
+        selectedChannel = "guild-channel";
+        const mentionMessage = { channel_id: selectedChannel, author: { id: sender } };
+        const mentionDraft = "<@" + sender + "> ";
+        let insertMention;
+        if (desktop) {
+            const getAction = messagePopover.get("CxQuickMention");
+            insertMention = getAction(mentionMessage).onClick;
+            assert.deepEqual(mentionActions, []);
+            canSend = false;
+            assert.equal(getAction(mentionMessage), null);
+            insertMention();
+            assert.deepEqual(mentionActions, []);
+            canSend = true;
+            insertMention();
+            assert.deepEqual(mentionActions, [["INSERT_TEXT", mentionDraft, mentionDraft]]);
+        } else {
+            const hook = appearanceHooks.get(LongPressMessageActionSheet);
+            const ref = { current: { insertText: (...args) => mentionActions.push(args) } };
+            const props = { message: mentionMessage, channel: stores.ChannelStore.getChannel(selectedChannel), chatInputRef: ref };
+            const wrapped = hook(null, jsx(LongPressMessageActionSheet, props));
+            const getMenu = () => {
+                const content = wrapped.type(wrapped.props);
+                return content.type(content.props);
+            };
+            const menu = getMenu();
+            insertMention = button(menu, "Quick Mention").props.onPress;
+            assert.ok(find(menu, item => item.type === "OriginalAction"));
+            canSend = false;
+            assert.equal(button(getMenu(), "Quick Mention"), undefined);
+            insertMention();
+            assert.deepEqual(mentionActions, []);
+            canSend = true;
+            insertMention();
+            assert.deepEqual(mentionActions, [[mentionDraft, null, false, undefined, null]]);
+            assert.equal(dismissedMentionSheets, 1);
+            ref.current = null;
+            insertMention();
+            assert.equal(mentionActions.length, 1);
+            ref.current = { insertText: (...args) => mentionActions.push(args) };
+            settings.safeMode = { enabled: true };
+            assert.equal(button(getMenu(), "Quick Mention"), undefined);
+            insertMention();
+            settings.safeMode = undefined;
+        }
+        selectedChannel = "test-channel";
+        insertMention();
+        click(render(), "Disable QuickMention");
+        selectedChannel = "guild-channel";
+        insertMention();
+        assert.equal(mentionActions.length, 1);
+        assert.equal(messagePopover.size, 0);
+        selectedChannel = "test-channel";
         for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
             const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;
             assert.throws(() => activateCx(appearancePort, host, []), /approval/);
@@ -3048,6 +3124,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             edit: editHooks.size,
             incoming: incomingHooks.length,
             menus: menuPatches.size,
+            popover: messagePopover.size,
             appearance: appearanceHooks.size,
             colors: colorOverlays.size,
             pendingEmojiPicker: emojiPickerWaiters.size,

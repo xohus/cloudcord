@@ -24,6 +24,7 @@ export const cxNativeEffects = {
     "preserve-image-links": { permission: "media.labels", label: "Show image links alongside their chat previews" },
     "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
     "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
+    "quick-mention": { permission: "messages.insertmention", label: "Insert the selected message author's mention into the current draft" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },
     "read-all-servers-button": { permission: "servers.markread", label: "Add a server list button to mark loaded server channels as read" },

@@ -1,0 +1,3 @@
+plugin "QuickMention":
+  needs messages.insertmention
+  use quick-mention

@@ -1,6 +1,7 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { addContextMenuPatch, findGroupChildrenByChildId, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
+import { addMessagePopoverButton, removeMessagePopoverButton } from "@api/MessagePopover";
 import { showNotification } from "@api/Notifications";
 import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
 import { TextButton } from "@components/Button";
@@ -21,6 +22,33 @@ import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispat
 import type { ReactNode } from "react";
 
 const session = createCxSession();
+
+function MentionIcon({ width = 24, height = 24, className }: { width?: number | string; height?: number | string; className?: string; }) {
+    return <svg viewBox="0 0 24 24" width={width} height={height} className={className} aria-hidden="true">
+        <text x="12" y="18" textAnchor="middle" fontSize="19" fontWeight="bold" fill="currentColor">@</text>
+    </svg>;
+}
+
+function registerQuickMention() {
+    const id = "CxQuickMention";
+    let active = true;
+    addMessagePopoverButton(id, message => {
+        const channel = ChannelStore.getChannel(message.channel_id);
+        const author = message.author?.id;
+        if (!channel || !isCxProfileUserId(author)
+            || channel.guild_id && !PermissionStore.can(PermissionsBits.SEND_MESSAGES, channel)) return null;
+        return {
+            label: "Quick Mention", icon: MentionIcon, message, channel,
+            onClick: () => {
+                if (!active || SelectedChannelStore.getChannelId() !== channel.id
+                    || channel.guild_id && !PermissionStore.can(PermissionsBits.SEND_MESSAGES, channel)) return;
+                const mention = "<@" + author + "> ";
+                ComponentDispatch.dispatchToLastSubscribed("INSERT_TEXT", { rawText: mention, plainText: mention });
+            },
+        };
+    }, MentionIcon);
+    return () => { active = false; removeMessagePopoverButton(id); };
+}
 const timestamps = createCxTimestampRegistry();
 const navigationControls = createCxNavigationControls();
 const ChannelToolbarIcon = findComponentByCodeLazy("tooltipPosition:", '"aria-haspopup":', '"data-jump-section":');
@@ -423,6 +451,8 @@ export function CxSettings() {
                         case "double-click-edit":
                         case "double-click-reply":
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
+                        case "quick-mention":
+                            return registerQuickMention();
                         case "scroll-to-latest":
                             return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
                                 selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,
@@ -731,7 +761,7 @@ export default definePlugin({
     description: "Review and run permission-scoped CX plugins and themes.",
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
-    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI"],
+    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI", "MessagePopoverAPI"],
     flux: {
         CHANNEL_SETTINGS_INIT({ channelId }: { channelId: string; }) {
             editingChannelId = channelId;
