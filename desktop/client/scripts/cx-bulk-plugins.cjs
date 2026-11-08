@@ -813,7 +813,7 @@ function compileMobileFilter(name, file, plugin, source) {
 }
 
 function compileMobileClientCommands(file, plugin, source) {
-    if (!/^ios\/runtime\/src\/core\/plugins\/(?:atsomeone|friendinvites|inrole|readallnotifications|scheduledmessages|spotifysharecommands)\/index\.ts$/.test(file)
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:atsomeone|friendinvites|inrole|readallnotifications|scheduledmessages|spotifysharecommands|translate)\/index\.ts$/.test(file)
         || !fieldsAre(plugin, ["manifest", "start", "stop"])
         || !imported(source, "registerCommand", "@lib/api/commands")) return;
     const start = handler(plugin, "start");
@@ -834,6 +834,10 @@ function compileMobileClientCommands(file, plugin, source) {
             permissions = ["messages.schedule", "reply.local"];
             lines = ['  on command "schedule":', '    input "message" text', '    input "minutes" integer',
                 '    schedule message "message" after "minutes"'];
+        } else if (name === "translate" && file.endsWith("/translate/index.ts")
+            && createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex") === "ad6d7a692e8395fbfaf2a1131e3463aefdbf0a3ff2ae535cb1a3fbd74ceb4a6e") {
+            permissions = ["lookup.translate", "reply.local", "messages.send"];
+            lines = ['  on command "translate":', '    input "text" text', '    input "to" text optional', '    translate "text" to "to"'];
         } else if (name === "inrole" && code.includes('findByStoreName("GuildMemberStore")') && code.includes("ApplicationCommandOptionType.ROLE")) {
             permissions = ["guild.members", "reply.local"];
             lines = ['  on command "inrole":', '    input "role" role', '    reply "${roleMembers(role)}"'];

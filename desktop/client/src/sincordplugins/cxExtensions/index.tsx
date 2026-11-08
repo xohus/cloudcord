@@ -1032,14 +1032,18 @@ export function CxSettings() {
                                 inputs: Object.fromEntries(inputs.map(input => [input.name, findOption(args, input.name)])),
                                 sendRequested: optionalSend && findOption<boolean>(args, "send") === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
-                                prepareScheduledSend() {
+                                prepareChannel() {
                                     const channelId = context.channel?.id;
                                     const accountId = UserStore?.getCurrentUser()?.id;
                                     if (!channelId || !accountId) return;
-                                    return async content => {
-                                        if (UserStore?.getCurrentUser()?.id !== accountId) return;
-                                        if (!ChannelStore?.getChannel(channelId)) throw new Error("The original channel is unavailable");
-                                        await MessageActions.sendMessage(channelId, { content, invalidEmojis: [], validNonShortcutEmojis: [], tts: false });
+                                    const isCurrent = () => UserStore?.getCurrentUser()?.id === accountId;
+                                    return {
+                                        reply(content) { if (isCurrent()) sendBotMessage(channelId, { content }); },
+                                        async send(content) {
+                                            if (!isCurrent()) return;
+                                            if (!ChannelStore?.getChannel(channelId)) throw new Error("The original channel is unavailable");
+                                            await MessageActions.sendMessage(channelId, { content, invalidEmojis: [], validNonShortcutEmojis: [], tts: false });
+                                        },
                                     };
                                 },
                                 lookup(name, input) {

@@ -1,5 +1,5 @@
 import { cxAppearanceTargets, type CxAppearanceTarget, type CxHideTarget, type CxStyleTarget } from "./cxAppearance";
-import { cxClientFunctions, cxExternalLookups, type CxClientFunction, type CxExternalLookup, type CxFriendInviteAction } from "./cxClientCommands";
+import { cxClientFunctions, cxExternalLookups, translateCxText, type CxClientFunction, type CxExternalLookup, type CxFriendInviteAction } from "./cxClientCommands";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
@@ -115,6 +115,7 @@ const permissionLabels = {
     "typing.suppress": "Suppress your outgoing typing indicator",
     "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
     "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
+    "lookup.translate": "Send the text and language you enter to Google Translate when you run the translate command",
     "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command",
 };
 
@@ -145,6 +146,7 @@ type BasicAction = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-
 type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction }
     | { kind: "copy-diagnostics"; }
     | { kind: "schedule-message"; text: string; minutes: string; }
+    | { kind: "translate"; text: string; target: string; }
     | { kind: "upload-spoilers"; input: string; }
     | { kind: "lookup"; service: CxExternalLookup; input: string; };
 const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
@@ -157,6 +159,7 @@ const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
 const getActionPermissions = (action: Action): CxPermission[] => action.kind === "friend-invites"
     ? ["reply.local", `friends.invites.${action.operation}`]
     : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission]
+        : action.kind === "translate" ? ["reply.local", "lookup.translate", "messages.send"]
         : action.kind === "copy-diagnostics" ? ["reply.local", "diagnostics.copy"]
             : action.kind === "schedule-message" ? ["reply.local", "messages.schedule"]
             : action.kind === "upload-spoilers" ? ["reply.local", "uploads.rename"] : actionPermissions[action.kind];
@@ -544,6 +547,14 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const translation = /^    translate "([a-z][a-z0-9_-]{0,31})" to "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
+        if (translation && current && !current.actions.length && !current.text && current.inputs.length === 2
+            && current.inputs.some(input => input.name === translation[1] && input.type === "text" && input.required)
+            && current.inputs.some(input => input.name === translation[2] && input.type === "text" && !input.required)) {
+            current.actions.push({ kind: "translate", text: translation[1], target: translation[2] });
+            current = undefined;
+            continue;
+        }
         const spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
         if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1
             && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
@@ -699,7 +710,7 @@ type Invocation = {
     markServersRead?: () => string;
     friendInvites?: (operation: CxFriendInviteAction) => Promise<string>;
     copyDiagnostics?: () => Promise<string>;
-    prepareScheduledSend?: () => ((message: string) => Promise<void>) | undefined;
+    prepareChannel?: () => { reply: (message: string) => void; send: (message: string) => Promise<void>; } | undefined;
 };
 type CxHost = {
     registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
@@ -756,7 +767,7 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
 
     const cleanups: (() => void)[] = [];
     const optionCleanups = new Map<CxHideTarget, () => void>();
-    const activeLookups = new Map<CxExternalLookup, AbortController>();
+    const activeLookups = new Map<CxExternalLookup | "translate", AbortController>();
     const scheduled = new Set<ReturnType<typeof setTimeout>>();
     let active = true;
     const uploadAnonymiser = document.uploadNaming && createCxUploadAnonymiser(document.uploadNaming);
@@ -905,8 +916,8 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
                             reply("This plugin already has 20 pending messages.");
                             continue;
                         }
-                        const send = invocation.prepareScheduledSend?.();
-                        if (!send) {
+                        const channel = invocation.prepareChannel?.();
+                        if (!channel) {
                             reply("Scheduling is unavailable in this chat.");
                             continue;
                         }
@@ -914,10 +925,35 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
                         const timer = setTimeout(() => {
                             scheduled.delete(timer);
                             if (!active) return;
-                            void send(content).catch(() => { if (active) reply("Couldn’t send the scheduled message."); });
+                            void channel.send(content).catch(() => { if (active) channel.reply("Couldn’t send the scheduled message."); });
                         }, delay);
                         scheduled.add(timer);
                         reply("Scheduled for <t:" + Math.floor((Date.now() + delay) / 1000) + ":t>. Keep CloudCord open until then.");
+                        continue;
+                    }
+                    if (action.kind === "translate") {
+                        const channel = invocation?.prepareChannel?.();
+                        if (!channel || activeLookups.has("translate")) continue;
+                        const target = inputs.get(action.target)!.trim().toLowerCase() || "en";
+                        if (!/^[a-z]{2,3}(?:-[a-z]{2,8})?$/.test(target)) {
+                            channel.reply("Enter a language code such as en, fr or zh-cn.");
+                            continue;
+                        }
+                        const controller = new AbortController();
+                        activeLookups.set("translate", controller);
+                        const timer = setTimeout(() => controller.abort(), 8000);
+                        const send = invocation?.sendRequested === true;
+                        void translateCxText(inputs.get(action.text)!, target, controller.signal).then(({ translated, language }) => {
+                            if (!active || controller.signal.aborted) return;
+                            const text = translated.replace(/<@|@(?=everyone\b|here\b)/gi, match => match.replace("@", "＠"));
+                            if (send) return channel.send(text);
+                            channel.reply("**Translated from " + language + ":** " + text);
+                        }).catch(() => {
+                            if (active) channel.reply(send ? "Couldn’t translate or send the text." : "Couldn’t translate the text. Try again.");
+                        }).finally(() => {
+                            clearTimeout(timer);
+                            activeLookups.delete("translate");
+                        });
                         continue;
                     }
                     if (action.kind === "lookup") {
@@ -996,7 +1032,8 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
                     else if ((!command.text || text.trim()) && message.trim()) outgoing = message;
                 }
                 return outgoing;
-            }, command.text, command.actions.some(sendsMessage), command.actions.some(action => action.kind === "reply or send"), command.inputs));
+            }, command.text, command.actions.some(sendsMessage),
+            command.actions.some(action => action.kind === "reply or send" || action.kind === "translate"), command.inputs));
         }
         return { stop, setAppearanceOption, isAppearanceOptionEnabled: target => optionCleanups.has(target) };
     } catch (error) {

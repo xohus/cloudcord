@@ -187,6 +187,7 @@ import plugin_catalog_stop_auto_unread from "../../../../examples/cx/catalog/plu
 import plugin_catalog_talk_in_reverse from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
 import plugin_catalog_terezi_typing_quirk from "../../../../examples/cx/catalog/plugins/terezi-typing-quirk.cx";
 import plugin_catalog_text_replace from "../../../../examples/cx/catalog/plugins/text-replace.cx";
+import plugin_catalog_translate from "../../../../examples/cx/catalog/plugins/translate.cx";
 import plugin_catalog_transparent_chat_bar from "../../../../examples/cx/catalog/plugins/transparent-chat-bar.cx";
 import plugin_catalog_unindent from "../../../../examples/cx/catalog/plugins/unindent.cx";
 import plugin_catalog_unit_converter from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
@@ -492,6 +493,7 @@ export const cxCatalog = {
         { name: "TalkInReverse", source: plugin_catalog_talk_in_reverse },
         { name: "TereziTypingQuirk", source: plugin_catalog_terezi_typing_quirk },
         { name: "TextReplace", source: plugin_catalog_text_replace },
+        { name: "Translate", source: plugin_catalog_translate },
         { name: "TransparentChatBar", source: plugin_catalog_transparent_chat_bar },
         { name: "Unindent", source: plugin_catalog_unindent },
         { name: "UnitConverter", source: plugin_catalog_unit_converter },

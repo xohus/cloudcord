@@ -39,6 +39,23 @@ export const cxExternalLookups = {
 } as const;
 export type CxExternalLookup = keyof typeof cxExternalLookups;
 
+// Adapted from CloudCord mobile's Translate command by Vee, AshtonMemer and koish1.
+export async function translateCxText(text: string, target: string, signal: AbortSignal) {
+    const query = Object.entries({ client: "gtx", sl: "auto", tl: target, dt: "t", q: text })
+        .map(([key, value]) => key + "=" + encodeURIComponent(value)).join("&");
+    if (query.length > 16_000) throw new Error("Translation input is too long");
+    const response = await fetch("https://translate.googleapis.com/translate_a/single?" + query, {
+        credentials: "omit", redirect: "error", signal,
+    });
+    if (!response.ok) throw new Error("Translation request failed");
+    const data: unknown = await response.json();
+    if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error("Invalid translation response");
+    const translated = data[0].map(part => Array.isArray(part) && typeof part[0] === "string" ? part[0] : "").join("");
+    if (!translated.trim() || translated.length > 4000) throw new Error("Invalid translation text");
+    const language = typeof data[2] === "string" && /^[a-z]{2,3}(?:-[a-z]{2,8})?$/i.test(data[2]) ? data[2] : "auto";
+    return { translated, language };
+}
+
 type SpotifyTrack = {
     id?: unknown;
     album?: { id?: unknown; };

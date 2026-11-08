@@ -1,0 +1,9 @@
+plugin "Translate":
+  needs commands.register
+  needs lookup.translate
+  needs reply.local
+  needs messages.send
+  on command "translate":
+    input "text" text
+    input "to" text optional
+    translate "text" to "to"

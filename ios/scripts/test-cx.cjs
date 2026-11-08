@@ -14,6 +14,7 @@ const code = buildSync({
     bundle: true, write: false, format: "cjs", minify: true,
 }).outputFiles[0].text;
 let wikiRequest;
+let translateRequest;
 let clockTime;
 const clockTimers = new Set();
 const scheduleTimers = new Map();
@@ -29,7 +30,8 @@ vm.runInNewContext(code, {
     setInterval: callback => { clockTimers.add(callback); return callback; },
     clearInterval: callback => clockTimers.delete(callback),
     fetch: (url, options) => new Promise((resolve, reject) => {
-        wikiRequest = { url, options, resolve };
+        if (url.startsWith("https://translate.googleapis.com/")) translateRequest = { url, options, resolve };
+        else wikiRequest = { url, options, resolve };
         options.signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true });
     }),
 });
@@ -2335,6 +2337,47 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(wikiRequest.options.signal.aborted, true);
         await new Promise(setImmediate);
         assert.equal(delivered.length, replyCount);
+
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "Translate").source;
+            assert.throws(() => activateCx(port, host, ["commands.register", "reply.local", "messages.send"]), /approval/);
+            selectCatalog("Translate");
+            click(render(), "Allow for this session");
+            const translate = registered.translate;
+            assert.ok(translate.options.some(option => option.name === "send"));
+            const args = [{ name: "text", value: "hi & bye" }];
+            const context = { channel: { id: "scheduled-channel" } };
+            const requestsBefore = translateRequest;
+            translate.execute([...args, { name: "to", value: "https://example.com" }], context);
+            assert.equal(translateRequest, requestsBefore);
+            assert.match(delivered.pop()[1], /Enter a language code/);
+            translate.execute(args, context);
+            const request = translateRequest;
+            const url = new URL(request.url);
+            assert.equal(url.origin, "https://translate.googleapis.com");
+            assert.equal(url.searchParams.get("tl"), "en");
+            assert.equal(url.searchParams.get("q"), "hi & bye");
+            assert.equal(request.options.credentials, "omit");
+            assert.equal(request.options.redirect, "error");
+            translate.execute(args, context);
+            assert.equal(translateRequest, request);
+            request.resolve({ ok: true, json: async () => [[["Hello @everyone"], [" and bye"]], null, "fr"] });
+            await new Promise(setImmediate);
+            assert.deepEqual(delivered.pop(), [context.channel.id, "**Translated from fr:** Hello ＠everyone and bye"]);
+            const sendsBefore = scheduledSends.length;
+            translate.execute([...args, { name: "to", value: "FR" }, { name: "send", value: true }], context);
+            assert.equal(new URL(translateRequest.url).searchParams.get("tl"), "fr");
+            translateRequest.resolve({ ok: true, json: async () => [[["Salut"]], null, "en"] });
+            await new Promise(setImmediate);
+            assert.equal(scheduledSends.length, sendsBefore + 1);
+            assert.equal(scheduledSends.at(-1)[1].content, "Salut");
+            translate.execute(args, context);
+            const pending = translateRequest;
+            click(render(), "Disable Translate");
+            assert.equal(pending.options.signal.aborted, true);
+            await new Promise(setImmediate);
+            assert.equal(registered.translate, undefined);
+        }
 
         selectCatalog("AtSomeone");
         click(render(), "Allow for this session");

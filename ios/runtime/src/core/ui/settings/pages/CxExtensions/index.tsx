@@ -2508,14 +2508,18 @@ export default function CxExtensions() {
                                 reply: message => {
                                     if (!settings.safeMode?.enabled && context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message);
                                 },
-                                prepareScheduledSend() {
+                                prepareChannel() {
                                     const channelId = context.channel?.id;
                                     const accountId = UserStore?.getCurrentUser?.()?.id;
                                     if (!channelId || !accountId) return;
-                                    return async content => {
-                                        if (settings.safeMode?.enabled || UserStore?.getCurrentUser?.()?.id !== accountId) return;
-                                        if (!ChannelStore?.getChannel(channelId)) throw new Error("The original channel is unavailable");
-                                        await messageUtil.sendMessage(channelId, { content });
+                                    const isCurrent = () => !settings.safeMode?.enabled && UserStore?.getCurrentUser?.()?.id === accountId;
+                                    return {
+                                        reply(content) { if (isCurrent()) messageUtil.sendBotMessage(channelId, content); },
+                                        async send(content) {
+                                            if (!isCurrent()) return;
+                                            if (!ChannelStore?.getChannel(channelId)) throw new Error("The original channel is unavailable");
+                                            await messageUtil.sendMessage(channelId, { content });
+                                        },
                                     };
                                 },
                                 lookup(name, input) {

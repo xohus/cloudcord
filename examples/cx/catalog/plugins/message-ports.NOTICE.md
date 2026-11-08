@@ -12,6 +12,7 @@ These GPL-3.0-or-later examples adapt features from CloudCord and BetterDiscord 
 - NoConfirmPin independently implements Skamt's pin and unpin shortcut as an explicit message menu action. [Original plugin](https://github.com/Skamt/BDAddons/tree/0a3e33fc679677183946ab40f3c19121b461de79/NoConfirmPin)
 - SendTimestamps by Vee, GGTyler, and Grzesiek11.
 - ScheduledMessages adapts the session-only mobile command by mmeta and prism.
+- Translate adapts the mobile slash command by Vee, AshtonMemer and koish1.
 - SilentMessageToggle by Nuckyz, CatNoir, and Z1xus. The CX version sends silently while enabled, which also covers the behavior of BetterDiscord’s AutoSilentMessage by glorytotheprc. [Pinned BetterDiscord source](https://github.com/BiscuitCleaner/BetterDiscordPlugins/blob/c011b402b927bcd9d091eda4d43bd263c5207e50/AutoSilentMessage.plugin.js)
 - TextReplace by AutumnVN, TheKodeToad, Etorix, and Ape.
 - EmbeddedURLs by rootpoi, kraethis, and ewlle (Endcord).
