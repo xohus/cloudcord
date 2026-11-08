@@ -44,6 +44,7 @@ import plugin_catalog_eridan_typing_quirk from "../../../../examples/cx/catalog/
 import plugin_catalog_fake_profile_themes from "../../../../examples/cx/catalog/plugins/fake-profile-themes.cx";
 import plugin_catalog_feferi_typing_quirk from "../../../../examples/cx/catalog/plugins/feferi-typing-quirk.cx";
 import plugin_catalog_file_name_randomization from "../../../../examples/cx/catalog/plugins/file-name-randomization.cx";
+import plugin_catalog_fix_codeblock_gap from "../../../../examples/cx/catalog/plugins/fix-codeblock-gap.cx";
 import plugin_catalog_fix_file_extensions from "../../../../examples/cx/catalog/plugins/fix-file-extensions.cx";
 import plugin_catalog_fix_images_quality from "../../../../examples/cx/catalog/plugins/fix-images-quality.cx";
 import plugin_catalog_floating_chat_bar from "../../../../examples/cx/catalog/plugins/floating-chat-bar.cx";
@@ -333,6 +334,7 @@ export const cxCatalog = {
         { name: "FakeProfileThemes", source: plugin_catalog_fake_profile_themes },
         { name: "FeferiTypingQuirk", source: plugin_catalog_feferi_typing_quirk },
         { name: "FileNameRandomization", source: plugin_catalog_file_name_randomization },
+        { name: "FixCodeblockGap", source: plugin_catalog_fix_codeblock_gap },
         { name: "FixFileExtensions", source: plugin_catalog_fix_file_extensions },
         { name: "FixImagesQuality", source: plugin_catalog_fix_images_quality },
         { name: "FloatingChatBar", source: plugin_catalog_floating_chat_bar },

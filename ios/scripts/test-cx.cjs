@@ -485,6 +485,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 const cached = markupCache.get(message);
                 if (cached?.inline === inline) return cached;
                 const parsed = { message, text: hideSimpleEmbedContent ? "" : (contentMessage ?? message).content, inline };
+                if (message.ast) Object.assign(parsed, { content: message.ast, isInlineReplyPreview: inline });
                 markupCache.set(message, parsed);
                 return parsed;
             },
@@ -535,6 +536,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
             "@utils/clipboard": { copyToClipboard: value => { clipboardWrites.push(value); return Promise.resolve(); } },
+            "@utils/text": { escapeRegExp: value => value.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\$&") },
             "@utils/discord": { openImageModal: item => viewedProfiles.push(item) },
             "@utils/web": { saveFile: file => savedProfileMedia.push(file) },
             "@utils/ccpInspect": reportModule.exports,
@@ -3151,6 +3153,45 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(card.props.pendingBio, undefined);
             click(render(), "Disable LinkConverter");
             assert.equal(wrapped.type(wrapped.props), card);
+        }
+
+        selectCatalog("FixCodeblockGap");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            const { find: codeBlockSource, replacement } = desktopPlugin.patches.find(patch =>
+                typeof patch.replacement.replace === "string" && patch.replacement.replace.includes("codeBlockMatcher"));
+            const original = new RegExp(codeBlockSource, "i");
+            const fixture = "source => " + String(original) + ".exec(source)";
+            const code = fixture.replace(replacement.match, replacement.replace.replace("$self", "plugin"));
+            assert.notEqual(code, fixture);
+            const match = new Function("plugin", "return " + code)(desktopPlugin);
+            const fence = String.fromCharCode(96).repeat(3);
+            const block = fence + "ts\nconst x = 1;\n" + fence;
+            const source = block + "\n\nMore text";
+            assert.equal(match(source)[0], block + "\n");
+            assert.equal(match(source)[1], "ts");
+            assert.equal(match(source)[2], "const x = 1;");
+            assert.equal(match("ordinary text"), null);
+            click(render(), "Disable FixCodeblockGap");
+            assert.equal(match(source)[0], block);
+        } else {
+            const code = Object.freeze({ type: "codeBlock", content: "const x = 1;" });
+            const text = Object.freeze({ type: "text", content: "\n\nMore text" });
+            const newline = Object.freeze({ type: "newline", content: "\n" });
+            const ast = Object.freeze([newline, code, text, code, newline, newline]);
+            const message = { ast };
+            const compact = markupParser.parseMessageMarkup(message, undefined, false);
+            assert.deepEqual(Array.from(compact.content, node => node.content), ["\n", code.content, "\nMore text", code.content, "\n"]);
+            assert.equal(compact.content[1], code);
+            assert.equal(markupParser.parseMessageMarkup(message, undefined, false), compact);
+            assert.equal(markupParser.parseMessageMarkup(message, undefined, false, true).content, ast);
+            assert.equal(markupParser.parseMessageMarkup({ ast: [newline, text] }, undefined, false).content[1], text);
+            const quoted = { type: "blockQuote", content: Object.freeze([code, newline, text]) };
+            const quote = markupParser.parseMessageMarkup({ ast: [quoted] }, undefined, false).content[0];
+            assert.deepEqual(Array.from(quote.content), [code, text]);
+            assert.equal(quoted.content.length, 3);
+            click(render(), "Disable FixCodeblockGap");
+            assert.equal(markupParser.parseMessageMarkup(message, undefined, false).content, ast);
         }
 
         selectCatalog("OpenSteamLinksInApp");

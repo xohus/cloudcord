@@ -967,6 +967,10 @@ const desktopEffectRecipes = {
         effect: "static-typing-dots",
         sha256: "845c1713b901057cb0fedbbb30db70238b3480da8170f79fccf6b64def7b055a",
     },
+    FixCodeblockGap: {
+        effect: "code-block-gap",
+        sha256: "8ba09f634b2778cb288bd1dfc93f02294b8d07bc387c30202bff6c3dffe35733",
+    },
     NoMosaic: {
         effect: "flat-attachments",
         sha256: "a28bf52feb55f75f2404b22e42805d1197496153a3cc31796f16c7a6fc0b2a21",

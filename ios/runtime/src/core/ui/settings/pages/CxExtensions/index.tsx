@@ -1904,6 +1904,44 @@ export default function CxExtensions() {
                                 },
                             }, enabled);
                         }
+                        case "code-block-gap": {
+                            const parser = findByFilePath("modules/messages/native/renderer/MarkupParsers.tsx");
+                            const cache = new WeakMap<object, unknown>();
+                            type MarkupNode = { type?: string; content?: unknown; } | null;
+                            function compactCodeBlocks(nodes: MarkupNode[], depth = 0): MarkupNode[] {
+                                let changed = false;
+                                const content = nodes.flatMap((node, index) => {
+                                    if (depth < 8 && (node?.type === "blockQuote" || node?.type === "paragraph") && Array.isArray(node.content)) {
+                                        const nested = compactCodeBlocks(node.content, depth + 1);
+                                        if (nested !== node.content) {
+                                            changed = true;
+                                            return [{ ...node, content: nested }];
+                                        }
+                                    }
+                                    if (nodes[index - 1]?.type !== "codeBlock") return [node];
+                                    if (node?.type === "newline" && (node.content == null || node.content === "\n")) {
+                                        changed = true;
+                                        return [];
+                                    }
+                                    if (node?.type !== "text" && node?.type !== "newline" || typeof node.content !== "string"
+                                        || !node.content.startsWith("\n")) return [node];
+                                    changed = true;
+                                    return node.content.length > 1 ? [{ ...node, content: node.content.slice(1) }] : [];
+                                });
+                                return changed ? content : nodes;
+                            }
+                            return overrideCxMethods(parser, {
+                                parseMessageMarkup(args, invoke) {
+                                    const row = invoke(args) as { content?: MarkupNode[]; isInlineReplyPreview?: boolean; hasBailedAst?: boolean; } | undefined;
+                                    if (!Array.isArray(row?.content) || row.isInlineReplyPreview || row.hasBailedAst) return row;
+                                    if (cache.has(row)) return cache.get(row);
+                                    const content = compactCodeBlocks(row.content);
+                                    const result = content === row.content ? row : { ...row, content };
+                                    cache.set(row, result);
+                                    return result;
+                                },
+                            }, enabled);
+                        }
                         case "quick-mention":
                             return registerQuickMention(enabled);
                         case "pin-message-shortcut":

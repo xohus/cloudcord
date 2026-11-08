@@ -10,6 +10,7 @@ import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { getCxSteamLink } from "@utils/cx";
+import { escapeRegExp } from "@utils/text";
 import { copyToClipboard } from "@utils/clipboard";
 import { getCxChannelNameCopy, getCxProfileMedia } from "@utils/cx";
 import { openImageModal } from "@utils/discord";
@@ -219,6 +220,9 @@ function ReadAllServersButton() {
 const profileBioTransforms = new Set<(bio: string) => string>();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
+let codeBlockGapUsers = 0;
+const stockCodeBlock = /^```(?:([a-z0-9_+\-.#]+?)\n)?\n*([^\n][^]*?)\n*```/i;
+const codeBlockWithoutGap = new RegExp(stockCodeBlock.source + "\\n?", stockCodeBlock.flags);
 let fixFileExtensionUsers = 0;
 let flatAttachmentUsers = 0;
 let attachmentQualityUsers = 0;
@@ -616,6 +620,9 @@ export function CxSettings() {
                             return registerChannelNames(effect === "clean-channel-names" ? "clean" : "titles");
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "code-block-gap":
+                            codeBlockGapUsers++;
+                            return () => { codeBlockGapUsers--; };
                         case "hide-disabled-emojis":
                             return hideDisabledEmojiInPicker();
                         case "copy-emoji-markdown":
@@ -1040,6 +1047,13 @@ export default definePlugin({
             },
         ],
     }, {
+        // FixCodeblockGap by Grzesiek11 (GPL-3.0-or-later).
+        find: stockCodeBlock.source,
+        replacement: {
+            match: new RegExp(escapeRegExp(String(stockCodeBlock))),
+            replace: "$self.codeBlockMatcher($&)",
+        },
+    }, {
         // NoRoleHeaders by Samwich (GPL-3.0-or-later).
         find: "this.updateMaxContentFeedRowSeen()",
         replacement: {
@@ -1167,6 +1181,7 @@ export default definePlugin({
             replace: "if(!$self.canSplitDraft($1)&&$1.length>$2)",
         },
     }],
+    codeBlockMatcher(original: RegExp) { return codeBlockGapUsers > 0 ? codeBlockWithoutGap : original; },
     hideRoleHeaders() { return roleHeaderUsers > 0; },
     renderTextAttachmentCopy({ fileContents, bytesLeft }: { fileContents?: string; bytesLeft?: number; } = {}) {
         if (!fileCopyUsers || typeof fileContents !== "string" || typeof bytesLeft !== "number" || !Number.isFinite(bytesLeft)) return null;

@@ -3,6 +3,7 @@ import { isCxProfileUserId } from "./cxProfileMenu";
 export const cxNativeEffects = {
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "static-typing-dots": { permission: "appearance.style", label: "Keep Discord's typing dots still" },
+    "code-block-gap": { permission: "appearance.style", label: "Remove the extra blank line after fenced code blocks" },
     "plus-reactions": { permission: "messages.reactshortcut", label: "React to the matching previous message when you send a plus shortcut" },
     "fix-file-extensions": { permission: "uploads.rename", label: "Use supported filename extensions for listed attachment formats" },
     "pending-friend-count": { permission: "appearance.hide", label: "Hide the pending friend request count" },
