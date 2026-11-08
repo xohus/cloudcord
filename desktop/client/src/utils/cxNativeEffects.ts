@@ -18,6 +18,7 @@ export const cxNativeEffects = {
     "hide-disabled-emojis": { permission: "appearance.hide", label: "Hide unavailable emoji in Discord’s emoji picker" },
     "copy-emoji-markdown": { permission: "emoji.clipboard", label: "Add a Copy Emoji Markdown action to the emoji menu" },
     "copy-media-link": { permission: "media.clipboard", label: "Add a clipboard action to media and link menus" },
+    "open-steam-links": { permission: "links.steam", label: "Send clicked Steam links to the Steam app" },
     "profile-media": { permission: "profilemenu.media", label: "Add View and Download actions for Discord avatars and banners" },
     "copy-channel-name": { permission: "channels.clipboard", label: "Add Copy Channel Name and Copy Category Name actions" },
     "hide-suggested-channels": { permission: "appearance.hide", label: "Hide the suggested channels section" },

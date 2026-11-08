@@ -9,6 +9,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
+import { getCxSteamLink } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { getCxChannelNameCopy, getCxProfileMedia } from "@utils/cx";
 import { openImageModal } from "@utils/discord";
@@ -622,6 +623,23 @@ export function CxSettings() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "open-steam-links": {
+                            const onClick = (event: MouseEvent) => {
+                                if (!event.isTrusted || event.defaultPrevented || event.button !== 0
+                                    || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !(event.target instanceof Element)) return;
+                                const anchor = event.target.closest("a[href]");
+                                if (!anchor?.closest("[data-message-id], [id^='chat-messages-']")) return;
+                                const link = getCxSteamLink(anchor.getAttribute("href"));
+                                if (!link || getCxSteamLink(anchor.textContent?.trim())?.https !== link.https) return;
+                                if (findStore("BlockedDomainStore")?.isBlockedDomain?.(link.https) != null) return;
+                                event.preventDefault();
+                                event.stopPropagation();
+                                if (IS_WEB) window.open(link.steam, "_blank", "noopener,noreferrer");
+                                else void VencordNative.native.openExternal(link.steam).catch(() => showToast("Couldn't open the Steam link."));
+                            };
+                            document.addEventListener("click", onClick, true);
+                            return () => document.removeEventListener("click", onClick, true);
+                        }
                         case "profile-media":
                             return registerProfileMedia();
                         case "copy-channel-name":

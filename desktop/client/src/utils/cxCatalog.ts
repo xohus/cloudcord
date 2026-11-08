@@ -137,6 +137,7 @@ import plugin_catalog_no_role_headers from "../../../../examples/cx/catalog/plug
 import plugin_catalog_no_server_emojis from "../../../../examples/cx/catalog/plugins/no-server-emojis.cx";
 import plugin_catalog_no_typing_animation from "../../../../examples/cx/catalog/plugins/no-typing-animation.cx";
 import plugin_catalog_normalize_message_links from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
+import plugin_catalog_open_steam_links_in_app from "../../../../examples/cx/catalog/plugins/open-steam-links-in-app.cx";
 import plugin_catalog_ping_notifications from "../../../../examples/cx/catalog/plugins/ping-notifications.cx";
 import plugin_catalog_polish_wording from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
 import plugin_catalog_profile_media from "../../../../examples/cx/catalog/plugins/profile-media.cx";
@@ -422,6 +423,7 @@ export const cxCatalog = {
         { name: "NoServerEmojis", source: plugin_catalog_no_server_emojis },
         { name: "NoTypingAnimation", source: plugin_catalog_no_typing_animation },
         { name: "NormalizeMessageLinks", source: plugin_catalog_normalize_message_links },
+        { name: "OpenSteamLinksInApp", source: plugin_catalog_open_steam_links_in_app },
         { name: "PingNotifications", source: plugin_catalog_ping_notifications },
         { name: "PolishWording", source: plugin_catalog_polish_wording },
         { name: "ProfileMedia", source: plugin_catalog_profile_media },

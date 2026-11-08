@@ -33,3 +33,18 @@ export function validateCxMediaLink(link: unknown) {
     if (typeof link !== "string" || link.length > 8192 || /[\s\x00-\x1f\x7f\\<>"\u202a-\u202e\u2066-\u2069]/u.test(link)) return;
     if (/^https?:\/\/(?:[a-z\d.-]+|\[[a-f\d:]+\])(?::\d{1,5})?(?:[/?#]|$)/i.test(link)) return link;
 }
+
+export function getCxSteamLink(input: unknown) {
+    if (typeof input !== "string") return;
+    const link = validateCxMediaLink(input.replace(/^steam:\/\/openurl\//i, ""));
+    const match = link && /^https?:\/\/(steamcommunity\.com|store\.steampowered\.com|help\.steampowered\.com|s\.team)(\/[^?#]*)?([?#].*)?$/i.exec(link);
+    if (!match) return;
+    const host = match[1].toLowerCase();
+    const path = match[2] ?? "/";
+    if (/%(?:2e|2f|5c)|(?:^|\/)\.{1,2}(?:\/|$)/i.test(path)) return;
+    if (host === "steamcommunity.com" && /^\/(?:linkfilter|openid)(?:\/|$)/i.test(path)) return;
+    if (host === "s.team" && !/^\/a\/\d+\/?$|^\/p\/[a-z0-9-]+\/[a-z0-9-]+\/?$/i.test(path)) return;
+    if (host === "store.steampowered.com" && /^\/(?:steamlink|m\/launchapp)(?:\/|$)/i.test(path)) return;
+    const https = "https://" + host + path + (match[3] ?? "");
+    return { https, steam: "steam://openurl/" + https, mobile: host !== "help.steampowered.com" };
+}

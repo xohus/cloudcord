@@ -1,0 +1,3 @@
+plugin "OpenSteamLinksInApp":
+  needs links.steam
+  use open-steam-links

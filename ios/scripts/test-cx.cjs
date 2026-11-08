@@ -244,6 +244,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             [other, { id: other, author: { id: sender }, type: 0, flags: 64, channel_id: gestureChannel }],
         ]);
         const documentListeners = new Map();
+        const stockSteamClick = options => options.href;
+        const nativeSteamLinks = { handleClick: stockSteamClick };
         function NativeMessages(props) { return props.output; }
         function MessagesRenderer(props) { return props.output; }
         function FavoritesGuildSuggestedChannels(props) { return props.children; }
@@ -635,6 +637,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
                 : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
                 : path.endsWith("/MediaShareActions.tsx") ? mediaShare
+                : path === "utils/MaskedLinkUtils.tsx" ? nativeSteamLinks
+                : path === "modules/blocked_domains/BlockedDomainStore.tsx" ? { default: { isBlockedDomain: url => url.endsWith("/blocked") ? { url } : null } }
                 : path.endsWith("/openMediaModal.tsx") ? { openMediaModal: options => viewedProfiles.push(options.initialSources[0]) }
                 : path.endsWith("/MediaSourceUtil.tsx") ? { downloadMediaAssetWithContentType: (...args) => savedProfileMedia.push(args) }
                 : path.endsWith("/MediaTypes.tsx") ? { MediaType: nativeMediaType }
@@ -3090,6 +3094,48 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable LinkConverter");
             assert.equal(wrapped.type(wrapped.props), card);
         }
+
+        selectCatalog("OpenSteamLinksInApp");
+        click(render(), "Allow for this session");
+        const steamLink = "https://store.steampowered.com/app/440/";
+        const beforeSteam = openedLinks.length;
+        if (desktop) {
+            const onClick = documentListeners.get("click");
+            const steamClick = (href, text = href, eventProps = {}) => {
+                const target = new GestureElement(me);
+                target.closest = () => ({ getAttribute: () => href, textContent: text, closest: () => ({}) });
+                const event = { target, button: 0, isTrusted: true, preventDefault() { this.defaultPrevented = true; },
+                    stopPropagation() { this.propagationStopped = true; }, ...eventProps };
+                onClick(event);
+                return event;
+            };
+            assert.equal(steamClick(steamLink, "Click here").defaultPrevented, undefined);
+            assert.equal(steamClick(steamLink, steamLink, { ctrlKey: true }).defaultPrevented, undefined);
+            assert.equal(steamClick(steamLink, steamLink, { isTrusted: false }).defaultPrevented, undefined);
+            for (const invalid of ["steam://run/440", "https://steamcommunity.com.evil.test/", "https://steamcommunity.com/linkfilter/?url=https://evil.test",
+                "https://store.steampowered.com/app/%2e%2e/steamlink", "https://s.team/anything"]) {
+                assert.equal(steamClick(invalid).defaultPrevented, undefined);
+            }
+            assert.equal(openedLinks.length, beforeSteam);
+            const event = steamClick(steamLink);
+            assert.equal(event.defaultPrevented, true);
+            assert.equal(event.propagationStopped, true);
+            assert.equal(openedLinks.at(-1), "steam://openurl/" + steamLink);
+        } else {
+            const options = { href: steamLink, trusted: true, messageId: me, channelId: gestureChannel };
+            assert.equal(nativeSteamLinks.handleClick({ ...options, trusted: false }), steamLink);
+            assert.equal(nativeSteamLinks.handleClick({ ...options, shouldConfirm: true }), steamLink);
+            const blocked = "https://steamcommunity.com/blocked";
+            assert.equal(nativeSteamLinks.handleClick({ ...options, href: blocked }), blocked);
+            const support = "https://help.steampowered.com/en/";
+            assert.equal(nativeSteamLinks.handleClick({ ...options, href: support }), support);
+            assert.equal(openedLinks.length, beforeSteam);
+            nativeSteamLinks.handleClick(options);
+            assert.equal(openedLinks.at(-1), steamLink);
+        }
+        click(render(), "Disable OpenSteamLinksInApp");
+        assert.equal(nativeSteamLinks.handleClick, stockSteamClick);
+        assert.equal(documentListeners.has("click"), false);
 
         selectCatalog("DoubleClickEdit");
         click(render(), "Allow for this session");

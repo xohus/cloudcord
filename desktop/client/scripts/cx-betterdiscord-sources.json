@@ -1,4 +1,12 @@
 {
+    "b6ea930d9f20b4d3578a774952acd472e342eca59b7ec50dbd56e9bd619eb7d3": {
+        "name": "OpenSteamLinksInApp",
+        "author": "DevilBro",
+        "source": "https://github.com/mwittrien/BetterDiscordAddons/blob/6af024ff4f9a325cfd51afe14f0a901e67d693a1/Plugins/OpenSteamLinksInApp/OpenSteamLinksInApp.plugin.js",
+        "recipe": "native-effect",
+        "effect": "open-steam-links",
+        "basis": "independent behavior implementation"
+    },
     "ebad1a5c7fa9e2d09171a0be154164bedbef6c72675249bd51759d3fcf64ac9b": {
         "name": "HoldYourTongue",
         "author": "Kaan",

@@ -24,7 +24,7 @@ export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
 export { createCxSplitSender, planCxMessageParts } from "./cxSplitMessages";
 export { filterCxEmojiCategories, filterCxEmojiGrid } from "./cxEmojiPicker";
-export { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "./cxExpressionLinks";
+export { formatCxEmojiMarkdown, formatCxStickerLink, getCxSteamLink, validateCxMediaLink, validateCxStickerLink } from "./cxExpressionLinks";
 export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
@@ -43,6 +43,7 @@ const permissionLabels = {
     "messages.split": "Send your long drafts as separate messages in the same channel",
     "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
     "media.clipboard": "Copy a selected media or web link when you choose its menu action",
+    "links.steam": "Open approved Steam links in the Steam app when you select them",
     "attachments.clipboard": "Copy a selected text attachment. On mobile, downloads the complete file from Discord before copying.",
     "media.imagequality": "Request higher-resolution image attachments from Discord’s CDN",
     "media.labels": "Show filenames, links, or descriptive alt text for visible media on this device",

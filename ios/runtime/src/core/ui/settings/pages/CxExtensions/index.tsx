@@ -1,6 +1,7 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
+import { getCxSteamLink } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
@@ -1860,6 +1861,25 @@ export default function CxExtensions() {
                         case "double-click-edit":
                         case "double-click-reply":
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
+                        case "open-steam-links": {
+                            const links = findByFilePath("utils/MaskedLinkUtils.tsx");
+                            const blockedDomains = findByFilePath("modules/blocked_domains/BlockedDomainStore.tsx")?.default;
+                            if (typeof blockedDomains?.isBlockedDomain !== "function") throw new Error("Discord's blocked domain check is unavailable");
+                            return overrideCxMethods(links, {
+                                handleClick(args, invoke) {
+                                    const options = args[0] as { href?: unknown; trusted?: unknown; messageId?: unknown; channelId?: unknown;
+                                        onClick?: unknown; onConfirm?: unknown; onCancel?: unknown; shouldConfirm?: unknown; } | undefined;
+                                    if (options?.trusted !== true || !isCxProfileUserId(options.messageId) || !isCxProfileUserId(options.channelId)
+                                        || options.onClick != null || options.onConfirm != null || options.onCancel != null
+                                        || options.shouldConfirm != null || args.length !== 1) return invoke(args);
+                                    const link = getCxSteamLink(options.href);
+                                    if (!link?.mobile || blockedDomains.isBlockedDomain(link.https) !== null) return invoke(args);
+                                    void Linking.openURL(link.https).catch(() => {
+                                        if (enabled()) showToast("Couldn't open the Steam link.");
+                                    });
+                                },
+                            }, enabled);
+                        }
                         case "quick-mention":
                             return registerQuickMention(enabled);
                         case "pin-message-shortcut":
