@@ -104,6 +104,7 @@ console.log('frozen color tables supported; native manager only receives real Di
 
 const jsx = (type, props) => ({type, props});
 const preferences = {customBackground: null};
+const wallpaperSettings = {};
 const nativeProps = Object.freeze({HACK_fixModalInteraction: false, onTapReaction() {}, style: Object.freeze({backgroundColor: '#202020'})});
 const surface = Object.freeze(jsx('NativeMessages', nativeProps));
 const root = Object.freeze(jsx('Fragment', Object.freeze({children: Object.freeze([null, surface])})));
@@ -137,6 +138,7 @@ for (const route of rendererRoutes) {
   const sameDeps = (next, previous) => previous && next.every((value, index) => Object.is(value, previous[index]));
   const patch = load('patches/background.tsx', {
     'react/jsx-runtime': {jsx, jsxs: jsx},
+    '@core/vendetta/storage': {useProxy(settings) { assert.equal(settings, wallpaperSettings); return settings; }},
     '@lib/addons/themes/colors/preferences': {colorsPref: preferences},
     '@lib/addons/themes/colors/updater': updater,
     '@lib/api/patcher': {after(name, object, callback) {
@@ -149,6 +151,7 @@ for (const route of rendererRoutes) {
       deleteJsxCreate(name, callback) { assert.equal(callback, hooks.get(name)); hooks.delete(name); }
     },
     '@lib/api/storage': {useObservable() {}},
+    '@lib/api/settings': {settings: wallpaperSettings},
     '@lib/utils/logger': {logger: {warn: error => assert.fail(error)}},
     '@metro': {findByFilePathLazy: name => name.endsWith('/MessagesRenderer.tsx') ? rendererModule : exported,
       findByDisplayName: () => ['display-name', 'missing-file'].includes(route) ? component : undefined},
@@ -179,7 +182,8 @@ for (const route of rendererRoutes) {
       }};
       return route === 'missing-file' ? undefined : {getExports: callback => { callback(value); }};
     }},
-    'react-native': {View: 'View', Image: 'Image', StyleSheet: {absoluteFillObject: {}, create: value => value, flatten: value => value}},
+    'react-native': {View: 'View', Image: 'Image', Platform: {OS: iosRoute ? 'ios' : 'android'},
+      StyleSheet: {absoluteFillObject: {}, create: value => value, flatten: value => value}},
     'chroma-js': Object.assign(() => ({alpha: opacity => ({hex: () => String(opacity)})}), {valid: () => true})
   }).default;
   const undo = patch();
@@ -205,7 +209,9 @@ for (const route of rendererRoutes) {
   const [image, loading] = render(wrapped);
   assert.equal(loading.props.children, original);
   assert.equal(image.props.pointerEvents, 'none');
+  assert.equal(image.props.style[1].backgroundColor, 'black');
   assert.equal(image.props.children.props.source.uri, wallpaper);
+  assert.equal(image.props.children.props.resizeMethod, iosRoute ? undefined : 'resize');
   assert.equal(image.props.children.props.blurRadius, 0.6);
   assert.equal(image.props.children.props.style.width, '100%');
   assert.equal(image.props.children.props.style.height, '100%');
@@ -215,6 +221,18 @@ for (const route of rendererRoutes) {
   assert.equal(tinted.props.style[1].backgroundColor, '0.25');
   if (iosRoute) assert.equal(tinted.props.ref, ref);
   assert.equal(surface.props.style.backgroundColor, '#202020');
+  assert.equal(render(wrapped)[0].props.children.props.source, image.props.children.props.source);
+  wallpaperSettings.safeMode = {enabled: true};
+  assert.equal(render(wrapped)[0], undefined);
+  image.props.children.props.onLoad();
+  assert.equal(render(wrapped)[1].props.children, original);
+  wallpaperSettings.safeMode = undefined;
+  const [resumed] = render(wrapped);
+  image.props.children.props.onLoad();
+  assert.equal(render(wrapped)[1].props.children, original);
+  resumed.props.children.props.onLoad();
+  assert.notEqual(render(wrapped)[1].props.children, original);
+  resumed.props.children.props.onError();
   image.props.children.props.onError();
   assert.equal(render(wrapped)[1].props.children, original);
   updater.updateBunnyColor({...ref.current, background: {url: wallpaper + 'other', opacity: 0.75}}, {update: false});

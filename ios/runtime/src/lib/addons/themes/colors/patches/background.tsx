@@ -1,14 +1,16 @@
+import { useProxy } from "@core/vendetta/storage";
 import { colorsPref } from "@lib/addons/themes/colors/preferences";
 import { getThemeColors, subscribeThemeColors } from "@lib/addons/themes/colors/updater";
 import { after } from "@lib/api/patcher";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
+import { settings } from "@lib/api/settings";
 import { useObservable } from "@lib/api/storage";
 import { logger } from "@lib/utils/logger";
 import { findByDisplayName, findByFilePathLazy } from "@metro";
 import { React } from "@metro/common";
 import { getLazyContext } from "@metro/lazy";
 import chroma from "chroma-js";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, Platform, StyleSheet, View } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
 const Messages = findByFilePathLazy("modules/messages/native/Messages.tsx", true);
@@ -41,14 +43,15 @@ function tintMessageSurface(node: React.ReactNode, opacity: number, fallback: st
 
 function ThemeBackground({ children, direct }: { children: React.ReactNode; direct?: boolean; }) {
     useObservable([colorsPref]);
+    const { safeMode } = useProxy(settings);
     const theme = React.useSyncExternalStore(subscribeThemeColors, getThemeColors);
-    const background = colorsPref.customBackground !== "hidden" ? theme?.background : undefined;
+    const background = !safeMode?.enabled && colorsPref.customBackground !== "hidden" ? theme?.background : undefined;
     const opacity = typeof background?.opacity === "number" && Number.isFinite(background.opacity)
         ? Math.min(1, Math.max(0, background.opacity))
         : 1;
     const url = opacity > 0 ? background?.url : undefined;
     const blur = background?.blur;
-    const request = React.useMemo(() => ({ url }), [url]);
+    const request = React.useMemo(() => ({ source: url ? { uri: url } : undefined }), [url]);
     const current = React.useRef<typeof request | null>(request);
     const [loaded, setLoaded] = React.useState<typeof request | null>(null);
     React.useLayoutEffect(() => {
@@ -60,13 +63,14 @@ function ThemeBackground({ children, direct }: { children: React.ReactNode; dire
     const content = url && loaded === request ? tintMessageSurface(children, opacity, tint, direct) : children;
 
     return <View style={styles.container}>
-        {url && <View pointerEvents="none" style={styles.imageLayer}>
+        {request.source && <View pointerEvents="none" style={[styles.imageLayer, { backgroundColor: tint }]}>
             <Image
                 key={url}
                 accessible={false}
-                source={{ uri: url }}
+                source={request.source}
                 style={styles.image}
                 resizeMode="cover"
+                resizeMethod={Platform.OS === "android" && request.source.uri.startsWith("data:image/") ? "resize" : undefined}
                 blurRadius={typeof blur === "number" ? blur : undefined}
                 onLoad={() => { if (current.current === request) setLoaded(request); }}
                 onError={() => { if (current.current === request) setLoaded(null); }}
