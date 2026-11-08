@@ -456,7 +456,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const menuPatches = new Set(), clipboardWrites = [];
         const nativeMediaActions = [{ label: "Download", action() {} }];
         const mediaShare = { useMediaShareActions: () => nativeMediaActions };
-        const linkSheet = { showSimpleActionSheet: sheet => sheet };
+        let imageSearchSheet;
+        const linkSheet = { showSimpleActionSheet(sheet) {
+            if (sheet.key === "CxReverseImageSearch") imageSearchSheet = sheet;
+            return sheet;
+        } };
         const attachmentRows = { default: ({ attachments }) => attachments };
         const viewerSources = { setMediaViewerSources: state => state };
         const gifPicker = { default: () => jsx("Pressable", { accessibilityLabel: "GIF 3", accessibilityRole: "button" }) };
@@ -3082,6 +3086,47 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         copyMedia();
         copyLink();
         assert.equal(clipboardWrites.length, beforeMediaCopy + 2);
+        const reverseSearch = cxCatalog.plugins.find(entry => entry.name === "ReverseImageSearch").source;
+        assert.throws(() => activateCx(reverseSearch, host, ["media.clipboard"]), /approval/);
+        selectCatalog("ReverseImageSearch");
+        click(render(), "Allow for this session");
+        const imageSearch = "https://cdn.discordapp.com/photo.png?a=2&b=3";
+        const searchStart = openedLinks.length;
+        let chooseSearch;
+        if (desktop) {
+            const patch = [...menuPatches][0];
+            const items = [];
+            patch(items, { itemSrc: imageSearch, cxImageSearchType: "video" });
+            patch(items, { src: "file:///secret.png" });
+            assert.equal(items.length, 0);
+            patch(items, { itemSrc: imageSearch, cxImageSearchType: "img" });
+            const options = items[0].props.children.flat();
+            assert.equal(options.length, 8);
+            chooseSearch = options.find(item => item.props.label === "Google").props.action;
+        } else {
+            const media = { source: { sourceURI: imageSearch }, shareable: true };
+            const actions = mediaShare.useMediaShareActions(media);
+            assert.equal(actions[0], nativeMediaActions[0]);
+            assert.equal(mediaShare.useMediaShareActions({ ...media, shareable: false }), nativeMediaActions);
+            assert.equal(mediaShare.useMediaShareActions({ ...media, source: { ...media.source, obscure: true } }), nativeMediaActions);
+            assert.equal(mediaShare.useMediaShareActions({ ...media, source: { ...media.source, videoURI: "https://example.org/video.mp4" } }), nativeMediaActions);
+            assert.equal(mediaShare.useMediaShareActions({ ...media, source: { sourceURI: "https://example.org/video?preview=a.png" } }), nativeMediaActions);
+            const showSearch = actions.find(action => action.label === "Search Image (CX)").action;
+            settings.safeMode = { enabled: true };
+            showSearch();
+            assert.equal(imageSearchSheet, undefined);
+            settings.safeMode = undefined;
+            showSearch();
+            assert.equal(imageSearchSheet.options.length, 7);
+            chooseSearch = imageSearchSheet.options.find(option => option.label === "Google").onPress;
+        }
+        assert.equal(openedLinks.length, searchStart);
+        chooseSearch();
+        assert.equal(openedLinks.at(-1), "https://lens.google.com/uploadbyurl?url=" + encodeURIComponent(imageSearch));
+        click(render(), "Disable ReverseImageSearch");
+        chooseSearch();
+        assert.equal(openedLinks.length, searchStart + 1);
+
         const priorChannel = selectedChannel;
         const priorLastMessage = stores.ReadStateStore.lastMessageId;
         const beforeScroll = acknowledged.length;

@@ -1,7 +1,7 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
-import { getCxSteamLink } from "@lib/api/cx";
+import { getCxImageSearchOptions, getCxSteamLink, type CxSearchMediaSource } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
@@ -406,24 +406,47 @@ function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links"
     };
 }
 
-function patchMediaViewerAction(label: string, enabled: () => boolean, select: (link: string) => (() => void) | undefined) {
+function patchMediaViewerAction(label: string, enabled: () => boolean, select: (link: string, source: CxSearchMediaSource) => (() => void) | undefined) {
     const mediaActions = findByFilePath("modules/media_viewer/native/components/MediaShareActions.tsx");
     const IconComponent = findByProps("LinkIcon")?.LinkIcon;
     return overrideCxMethods(mediaActions, {
         useMediaShareActions(args, invoke) {
             const actions = invoke(args);
             const media = args[0] as {
-                source?: { shareURI?: unknown; sourceURI?: unknown; uri?: unknown; obscure?: unknown; };
+                source?: CxSearchMediaSource;
                 shareable?: boolean; disableDownload?: boolean;
             } | undefined;
             if (!Array.isArray(actions) || !actions.length || media?.disableDownload || media?.shareable === false || media?.source?.obscure) return actions;
             const source = media?.source;
             const link = validateCxMediaLink(source?.shareURI) ?? validateCxMediaLink(source?.sourceURI) ?? validateCxMediaLink(source?.uri);
-            if (!link || actions.some(action => action?.label === label)) return actions;
-            const action = select(link);
+            if (!source || !link || actions.some(action => action?.label === label)) return actions;
+            const action = select(link, source);
             return action ? [...actions, { label, IconComponent, action }] : actions;
         },
     }, enabled);
+}
+
+function registerReverseImageSearch() {
+    const sheets = findByProps("showSimpleActionSheet");
+    if (typeof sheets?.showSimpleActionSheet !== "function") throw new Error("Discord's search menu is unavailable");
+    let active = true;
+    const enabled = () => active && !settings.safeMode?.enabled;
+    const stop = patchMediaViewerAction("Search Image (CX)", enabled, (link, source) => {
+        const image = validateCxMediaLink(source.sourceURI) ?? validateCxMediaLink(source.uri) ?? link;
+        const options = getCxImageSearchOptions(image, source);
+        if (!options.length) return;
+        return () => {
+            if (!enabled()) return;
+            sheets.showSimpleActionSheet({
+                key: "CxReverseImageSearch",
+                header: { title: "Search Image", subtitle: "The selected search engine will receive the image URL." },
+                options: options.map(({ label, url }) => ({ label, onPress: () => {
+                    if (enabled()) void Linking.openURL(url).catch(() => showToast("Couldn't open image search."));
+                } })),
+            });
+        };
+    });
+    return () => { active = false; stop(); };
 }
 
 function registerImageFilename(full: boolean) {
@@ -1896,6 +1919,8 @@ export default function CxExtensions() {
                         case "copy-emoji-markdown":
                         case "sticker-links":
                             return registerExpressionLinks(effect);
+                        case "reverse-image-search":
+                            return registerReverseImageSearch();
                         case "copy-media-link":
                             return registerMediaLinkCopy();
                         case "profile-media":

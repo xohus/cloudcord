@@ -155,6 +155,7 @@ import plugin_catalog_realtime_timestamps from "../../../../examples/cx/catalog/
 import plugin_catalog_relationship_notifier from "../../../../examples/cx/catalog/plugins/relationship-notifier.cx";
 import plugin_catalog_repeat_messages from "../../../../examples/cx/catalog/plugins/repeat-messages.cx";
 import plugin_catalog_reply_ping_control from "../../../../examples/cx/catalog/plugins/reply-ping-control.cx";
+import plugin_catalog_reverse_image_search from "../../../../examples/cx/catalog/plugins/reverse-image-search.cx";
 import plugin_catalog_reverse_text from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
 import plugin_catalog_round_server_icons from "../../../../examples/cx/catalog/plugins/round-server-icons.cx";
 import plugin_catalog_rounded_chat_bar from "../../../../examples/cx/catalog/plugins/rounded-chat-bar.cx";
@@ -446,6 +447,7 @@ export const cxCatalog = {
         { name: "RelationshipNotifier", source: plugin_catalog_relationship_notifier },
         { name: "RepeatMessages", source: plugin_catalog_repeat_messages },
         { name: "ReplyPingControl", source: plugin_catalog_reply_ping_control },
+        { name: "ReverseImageSearch", source: plugin_catalog_reverse_image_search },
         { name: "ReverseText", source: plugin_catalog_reverse_text },
         { name: "RoundServerIcons", source: plugin_catalog_round_server_icons },
         { name: "RoundedChatBar", source: plugin_catalog_rounded_chat_bar },

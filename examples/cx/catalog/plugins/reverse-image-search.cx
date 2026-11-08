@@ -1,0 +1,3 @@
+plugin "ReverseImageSearch":
+  needs media.search
+  use reverse-image-search

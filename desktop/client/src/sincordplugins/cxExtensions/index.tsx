@@ -9,7 +9,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
-import { getCxSteamLink } from "@utils/cx";
+import { getCxImageSearchOptions, getCxSteamLink } from "@utils/cx";
 import { escapeRegExp } from "@utils/text";
 import { copyToClipboard } from "@utils/clipboard";
 import { getCxChannelNameCopy, getCxProfileMedia } from "@utils/cx";
@@ -408,6 +408,30 @@ function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links"
     return () => { active = false; removeContextMenuPatch(menus, patch); };
 }
 
+function registerReverseImageSearch() {
+    let active = true;
+    function search(url: string) {
+        if (!active) return;
+        if (IS_WEB) window.open(url, "_blank", "noopener,noreferrer");
+        else void VencordNative.native.openExternal(url).catch(() => showToast("Couldn't open image search."));
+    }
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        if (!active || findGroupChildrenByChildId("search-image", children)) return;
+        const image = props?.src ?? (props?.cxImageSearchType === "img" ? props.itemHref ?? props.itemSrc : undefined);
+        const options = getCxImageSearchOptions(image);
+        if (!options.length) return;
+        const group = findGroupChildrenByChildId("copy-native-link", children)
+            ?? findGroupChildrenByChildId("copy-link", children) ?? children;
+        group.push(<Menu.MenuItem id="cx-reverse-image-search" label="Search Image">
+            {options.map(({ label, url }) => <Menu.MenuItem key={label} id={"cx-search-" + label} label={label} action={() => search(url)} />)}
+            <Menu.MenuItem id="cx-search-all" label="All" action={() => options.forEach(({ url }) => search(url))} />
+        </Menu.MenuItem>);
+    };
+    const menus = ["image-context", "message"];
+    addContextMenuPatch(menus, patch);
+    return () => { active = false; removeContextMenuPatch(menus, patch); };
+}
+
 function registerMediaLinkCopy() {
     let active = true;
     const id = "cx-copy-media-link";
@@ -661,6 +685,8 @@ export function CxSettings() {
                         case "copy-emoji-markdown":
                         case "sticker-links":
                             return registerExpressionLinks(effect);
+                        case "reverse-image-search":
+                            return registerReverseImageSearch();
                         case "copy-media-link":
                             return registerMediaLinkCopy();
                         case "open-steam-links": {
@@ -1132,6 +1158,13 @@ export default definePlugin({
         replacement: {
             match: /async uploadFiles\((\i)\)\{/,
             replace: "$&$self.fixUploadExtensions($1);",
+        },
+    }, {
+        // The message menu uses itemSrc for both image and video.
+        find: "#{intl::MESSAGE_ACTIONS_MENU_LABEL}),shouldHideMediaOptions:",
+        replacement: {
+            match: /favoriteableType:\i,(?<=(\i)\.getAttribute\("data-type"\).+?)/,
+            replace: (match, target) => `${match}cxImageSearchType:${target}.getAttribute("data-role"),`,
         },
     }, {
         find: ".handleImageLoad)",
