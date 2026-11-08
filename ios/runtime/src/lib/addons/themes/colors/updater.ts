@@ -67,12 +67,37 @@ export const _colorRef: {
     key: `bn-theme-${string}`; current: InternalColorDefinition | null;
     readonly origRaw: Record<string, string>; lastSetDiscordTheme: string;
 } = { current: null, key: "bn-theme-0", origRaw: origRawColor, lastSetDiscordTheme: "darker" };
+let baseTheme: InternalColorDefinition | null = null;
+let temporaryTheme: InternalColorDefinition | undefined;
+
 export function updateBunnyColor(manifest: ColorManifest | null, { update = true, mode }: {
     update?: boolean;
     mode?: "dark" | "light";
 } = {}) {
     if (settings.safeMode?.enabled) return;
-    const current = manifest ? parseColorManifest(manifest, mode) : null;
+    baseTheme = manifest ? parseColorManifest(manifest, mode) : null;
+    if (!temporaryTheme) publishTheme(baseTheme, update);
+}
+
+export function applyTemporaryTheme(manifest: ColorManifest, mode?: "dark" | "light") {
+    if (settings.safeMode?.enabled || temporaryTheme) throw new Error("Cannot apply a temporary theme");
+    const theme = parseColorManifest(manifest, mode);
+    temporaryTheme = theme;
+    try {
+        publishTheme(theme, true);
+    } catch (error) {
+        temporaryTheme = undefined;
+        publishTheme(baseTheme, false);
+        throw error;
+    }
+    return () => {
+        if (temporaryTheme !== theme) return;
+        temporaryTheme = undefined;
+        publishTheme(baseTheme, !settings.safeMode?.enabled);
+    };
+}
+
+function publishTheme(current: InternalColorDefinition | null, update: boolean) {
     const existing = String(ThemeStore?.theme ?? "darker");
     // Capture the native theme before the first override. Switching between
     // custom themes or disabling one must not save its temporary native mode.

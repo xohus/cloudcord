@@ -12,8 +12,7 @@ import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
 import { intercept } from "@lib/api/flux";
-import { getCurrentTheme } from "@lib/addons/themes";
-import { registerColorOverlay, updateBunnyColor } from "@lib/addons/themes/colors/updater";
+import { applyTemporaryTheme, registerColorOverlay } from "@lib/addons/themes/colors/updater";
 import { NativeFileModule } from "@lib/api/native/modules";
 import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
@@ -1702,7 +1701,7 @@ export default function CxExtensions() {
                     const palette = (value: string) => [value, value];
                     const surface = theme.surface ?? theme.background;
                     const sidebar = theme.sidebar ?? surface;
-                    updateBunnyColor({
+                    return applyTemporaryTheme({
                         name: theme.name,
                         spec: 2,
                         semanticColors: {
@@ -1719,8 +1718,7 @@ export default function CxExtensions() {
                         },
                         ...(theme.rawColors ? { rawColors: { ...theme.rawColors } } : {}),
                         ...(theme.wallpaper ? { background: { url: theme.wallpaper, alpha: theme.wallpaperOpacity ?? 1, blur: theme.wallpaperBlur } } : {}),
-                    }, { mode: theme.mode });
-                    return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
+                    }, theme.mode);
                 },
             }, candidate.review.permissions, candidate.selected);
             setStatus(`${candidate.review.name} is active for this session.`);

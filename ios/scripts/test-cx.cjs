@@ -538,9 +538,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/cxCatalog": { cxCatalog },
             "@lib/api/commands": commandApi,
             "@lib/api/commands/types": commandApi,
-            "@lib/addons/themes": { getCurrentTheme: () => ({ data: selectedTheme }) },
             "@lib/addons/themes/colors/updater": {
-                updateBunnyColor: (value, options) => { nativeTheme = value; nativeMode = options?.mode; },
+                applyTemporaryTheme(value, mode) {
+                    nativeTheme = value;
+                    nativeMode = mode;
+                    return () => { nativeTheme = selectedTheme; nativeMode = undefined; };
+                },
                 registerColorOverlay(value) { colorOverlays.add(value); return () => colorOverlays.delete(value); },
             },
             "@lib/api/native/modules": {},

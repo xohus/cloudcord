@@ -58,10 +58,10 @@ const updater = load('updater.ts', {
   '@lib/api/settings': {settings: {}}, '@metro': {findByProps: () => token, findByPropsLazy: () => appearance, findByStoreNameLazy: () => themeStore},
   './parser': {parseColorManifest: (manifest, mode) => manifest.spec === 2 ? parseColorManifest(manifest, mode) : manifest}
 });
-updater.updateBunnyColor({spec: 2}, {mode: 'light'});
+const disableLight = updater.applyTemporaryTheme({spec: 2}, 'light');
 assert.equal(calls.at(-1), 'light', 'CX light mode overrides the stored preference for this theme');
 themeStore.theme = 'light';
-updater.updateBunnyColor(null);
+disableLight();
 assert.equal(calls.at(-1), 'darker', 'disabling a CX light theme restores the original Discord mode');
 themeStore.theme = 'darker';
 updater.updateBunnyColor(ref.current);
@@ -201,7 +201,7 @@ for (const route of rendererRoutes) {
     assert.equal(component.render(), root, 'the actual renderer takes priority over the fallback');
   }
   assert.equal(render(wrapped)[0], undefined);
-  updater.updateBunnyColor({...ref.current, background: {url: wallpaper, opacity: 0.75, blur: 0.6}}, {update: false});
+  const disableCx = updater.applyTemporaryTheme({...ref.current, background: {url: wallpaper, opacity: 0.75, blur: 0.6}});
   const [image, loading] = render(wrapped);
   assert.equal(loading.props.children, original);
   assert.equal(image.props.pointerEvents, 'none');
@@ -218,7 +218,11 @@ for (const route of rendererRoutes) {
   image.props.children.props.onError();
   assert.equal(render(wrapped)[1].props.children, original);
   updater.updateBunnyColor({...ref.current, background: {url: wallpaper + 'other', opacity: 0.75}}, {update: false});
+  assert.equal(render(wrapped)[0].props.children.props.source.uri, wallpaper);
+  disableCx();
   const [replacement] = render(wrapped);
+  assert.equal(replacement.props.children.props.source.uri, wallpaper + 'other');
+  disableCx();
   image.props.children.props.onLoad();
   assert.equal(render(wrapped)[1].props.children, original);
   replacement.props.children.props.onLoad();
