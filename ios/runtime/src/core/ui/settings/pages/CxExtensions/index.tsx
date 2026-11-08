@@ -778,12 +778,11 @@ function hideAppearanceElements(tree: ReactNode, shouldHide: (element: ReactElem
 }
 
 function registerNoRoleHeaders() {
-    const scope = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/GuildChannelUserList.tsx")?.default;
     const list = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/UsersFastList.tsx")?.UsersFastList;
-    if (!scope || !list) throw new Error("Discord's member list is unavailable");
+    if (!list) throw new Error("Discord's member list is unavailable");
     let active = true;
-    const stop = registerRenderedTree(scope, tree => mapAppearanceElements(tree, element => {
-        if (!active || element.type !== list || element.key === "guild-channel-user-list-search-results") return element;
+    const stop = registerJsxAppearance([list], element => {
+        if (element.key !== "guild-channel-user-list") return element;
         const props = element.props as AppearanceProps & { getSectionProps?: (...args: unknown[]) => unknown; };
         const original = props.getSectionProps;
         if (typeof original !== "function") return element;
@@ -793,8 +792,20 @@ function registerNoRoleHeaders() {
                 && !section.props.action && !section.props.onTitlePress ? undefined : section;
         };
         return React.cloneElement(element as ReactElement<typeof props>, { getSectionProps });
-    }));
+    });
     return () => { active = false; stop(); };
+}
+
+function registerCompactMemberList() {
+    const list = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/UsersFastList.tsx")?.UsersFastList;
+    if (!list) throw new Error("Discord's member list is unavailable");
+    const fontScale = findByFilePath("modules/user_settings/appearance/native/FontScaleStore.tsx")?.useFontScaleStore;
+    return registerJsxAppearance([list], element => {
+        if (element.key !== "guild-channel-user-list" || element.props.getItemSize != null) return element;
+        if (PixelRatio.getFontScale() > 1 || fontScale?.getState?.()?.fontScale > 1) return element;
+        // Discord's member rows fill the height assigned by the virtual list.
+        return React.cloneElement(element, { getItemSize: 44 });
+    });
 }
 
 function registerTreeAppearance(rule: {
@@ -1762,6 +1773,7 @@ export default function CxExtensions() {
                         }, () => !settings.safeMode?.enabled);
                     }
                     if ("drawerWidthDelta" in style) return registerChannelDrawerWidth(style.drawerWidthDelta);
+                    if ("compactMemberList" in style) return registerCompactMemberList();
                     if ("renderedComponents" in style) return registerRenderedChannelStyle(style);
                     if ("serverIconScale" in style) {
                         const iconStyle = { transform: [{ scale: style.serverIconScale }] };

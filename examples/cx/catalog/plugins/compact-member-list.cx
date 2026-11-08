@@ -1,0 +1,3 @@
+plugin "CompactMemberList":
+  needs appearance.style
+  style compact-member-list

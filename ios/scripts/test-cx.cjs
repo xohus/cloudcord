@@ -523,8 +523,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const savedProfileMedia = [];
         const nativeMediaType = { IMAGE: "native-image", GIF: "native-gif" };
         function GuildsBarFooterWrapper(props) { return props.children; }
-        function GuildChannelUserList(props) { return props.children; }
         function UsersFastList(props) { return props; }
+        let deviceFontScale = 1.25, discordFontScale = 1;
         const mocks = {
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
@@ -656,8 +656,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
                 : path.endsWith("/GuildsBarFooterWrapper.tsx") ? { default: GuildsBarFooterWrapper }
-                : path.endsWith("/GuildChannelUserList.tsx") ? { default: GuildChannelUserList }
                 : path.endsWith("/UsersFastList.tsx") ? { UsersFastList }
+                : path.endsWith("/FontScaleStore.tsx") ? { useFontScaleStore: { getState: () => ({ fontScale: discordFontScale }) } }
                 : path === "modules/channel/useChannelName.tsx" ? channelNameModule
                 : path.endsWith("/guild_channels/ChannelContent.tsx") ? channelRowModule
                 : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
@@ -691,7 +691,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 Children: { toArray: children => Array.isArray(children) ? children : children == null ? [] : [children] },
                 isValidElement: element => !!element?.type && !!element?.props,
                 createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
-                cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
+                cloneElement: (element, props) => ({ ...element, props: { ...element.props, ...props } }),
             }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: channelDispatcher,
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup", TableSwitchRow: "TableSwitchRow" },
@@ -700,7 +700,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     if (title === "Confirm message") nativeConfirmations.push({ props: { title, body }, buttons, options });
                     else mediaAlerts.push([title, body]);
                 } },
-                PixelRatio: { getFontScale: () => 1.25 },
+                PixelRatio: { getFontScale: () => deviceFontScale },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
                 Image: { getSize: (_, success) => success(1200, 480) },
@@ -1103,6 +1103,30 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 click(render(), "Disable " + rule.plugin);
                 assert.equal(drawerSizing.getDrawerWidth, getDrawerWidth);
                 assert.equal(drawerSizing.useDrawerWidth, useDrawerWidth);
+                continue;
+            } else if (rule.style?.compactMemberList) {
+                const row = { ...jsx(UsersFastList, { sections: [3] }), key: "guild-channel-user-list" };
+                const search = { ...row, key: "guild-channel-user-list-search-results" };
+                const custom = { ...row, props: { ...row.props, getItemSize: 52 } };
+                const hook = appearanceHooks.get(UsersFastList);
+                const wrapped = hook(null, row);
+                const apply = input => {
+                    const rendered = hook(null, input);
+                    return rendered.type(rendered.props);
+                };
+                assert.equal(apply(row), row);
+                deviceFontScale = 1;
+                assert.equal(apply(row).props.getItemSize, 44);
+                assert.equal(apply(row).props.sections, row.props.sections);
+                assert.equal(apply(search), search);
+                assert.equal(apply(custom), custom);
+                discordFontScale = 1.25;
+                assert.equal(apply(row), row);
+                discordFontScale = 1;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(wrapped.type(wrapped.props), row);
+                assert.equal(appearanceHooks.size, 0);
+                deviceFontScale = 1.25;
                 continue;
             } else if (rule.style?.renderedComponents) {
                 const enabled = [];
@@ -2223,28 +2247,36 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 click(render(), "Disable NoRoleHeaders");
                 assert.equal(renderHeader(desktopPlugin, 1, constants), "label");
             } else {
-                const hook = appearanceHooks.get(GuildChannelUserList);
+                const hook = appearanceHooks.get(UsersFastList);
                 const heading = Object.freeze({ type: "section", props: Object.freeze({ title: "Members — 3" }) });
                 const placeholder = { type: "placeholder" };
                 const actionable = { type: "section", props: { title: "See more", action() {} } };
                 const getSectionProps = index => [heading, placeholder, actionable][index];
-                const list = jsx(UsersFastList, { getSectionProps, sections: [3, 0, 1] });
+                const list = { ...jsx(UsersFastList, { getSectionProps, sections: [3, 0, 1] }), key: "guild-channel-user-list" };
                 const search = { ...list, key: "guild-channel-user-list-search-results" };
-                const wrapped = hook(null, jsx(GuildChannelUserList, { children: jsx("View", { children: [list, search] }) }));
-                const container = wrapped.type(wrapped.props);
-                const result = container.type(container.props);
-                const [patched, untouched] = result.props.children;
+                const wrapped = hook(null, list);
+                const patched = wrapped.type(wrapped.props);
+                const untouched = hook(null, search);
                 assert.equal(patched.props.getSectionProps(0), undefined);
                 assert.equal(patched.props.getSectionProps(1), placeholder);
                 assert.equal(patched.props.getSectionProps(2), actionable);
                 assert.equal(patched.props.sections, list.props.sections);
-                assert.equal(untouched, search);
+                assert.equal(untouched.type(untouched.props), search);
                 assert.equal(list.props.getSectionProps(0), heading);
                 settings.safeMode = { enabled: true };
                 assert.equal(patched.props.getSectionProps(0), heading);
                 settings.safeMode = undefined;
+                deviceFontScale = 1;
+                selectCatalog("CompactMemberList");
+                click(render(), "Allow for this session");
+                const compact = wrapped.type(wrapped.props);
+                assert.equal(compact.props.getItemSize, 44);
+                assert.equal(compact.props.getSectionProps(0), undefined);
                 click(render(), "Disable NoRoleHeaders");
                 assert.equal(patched.props.getSectionProps(0), heading);
+                assert.equal(wrapped.type(wrapped.props).props.getItemSize, 44);
+                click(render(), "Disable CompactMemberList");
+                deviceFontScale = 1.25;
                 assert.equal(appearanceHooks.size, 0);
             }
         }

@@ -390,6 +390,11 @@ export const cxAppearanceTargets = {
         css: '[class*="sidebar_"] { width: 200px !important; }',
         style: { drawerWidthDelta: -40 },
     },
+    "compact-member-list": {
+        plugin: "CompactMemberList", label: "reduce the spacing in the server member list",
+        css: '[class*="member_"] { padding-top: 0 !important; padding-bottom: 0 !important; height: 38px !important; }',
+        style: { compactMemberList: true },
+    },
     "muted-channel-opacity": {
         plugin: "MutedChannelsFaded", label: "fade muted channels",
         css: '[class*="modeMuted"] { opacity: .45 !important; }',
