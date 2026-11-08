@@ -14,11 +14,11 @@ import { validateCxWallpaper } from "./cxWallpaper";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
-export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
+export { cxProfileMenuActions, getCxProfileMedia, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { formatCxChannelName, type CxChannelLabel } from "./cxChannelNames";
 export { isCxNotificationMuted, type CxMessageAlert } from "./cxIncoming";
 export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, markCxServersReadAndWait, runCxFriendInvites } from "./cxClientCommands";
-export { animateCxAssets, buildCxRepeatMessage, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, getCxMessageGesture, overrideCxMethods, raiseCxAvatarResolution, type CxRepeatMessage } from "./cxNativeEffects";
+export { animateCxAssets, buildCxRepeatMessage, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, getCxEmbedToggle, getCxMessageGesture, getCxPinAction, overrideCxMethods, raiseCxAvatarResolution, type CxRepeatMessage } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
@@ -55,6 +55,8 @@ const permissionLabels = {
     "messages.openeditor": "Open Discord’s editor for your own message when you double-click or double-tap it",
     "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user’s message",
     "messages.insertmention": "Insert a mention into your current draft when you choose Quick Mention",
+    "messages.pin": "Pin or unpin a message immediately when you choose its shortcut.",
+    "messages.toggleembeds": "Change embed visibility on the selected message when you choose its menu action.",
     "messages.repeat": "Send a copy of the selected message when you choose Repeat or Repeat and Reply. Mentions are suppressed.",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
     "uploads.rename": "Change attachment filenames before Discord uploads them",
@@ -70,6 +72,7 @@ const permissionLabels = {
     "channels.markonopen": "Mark the channel you open as read through its newest known message",
     "channels.jump": "Jump within the current channel when you choose the navigation control",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
+    "profilemenu.media": "Open or download the selected user's Discord avatar or banner when you choose a profile menu action.",
     "appearance.hide": "Hide the listed interface elements on this device",
     "appearance.style": "Apply the listed visual changes on this device",
     "appearance.avatarresolution": "Change image size requests for avatars hosted on Discord’s CDN",

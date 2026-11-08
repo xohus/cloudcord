@@ -1,0 +1,3 @@
+plugin "UnsuppressEmbeds":
+  needs messages.toggleembeds
+  use toggle-message-embeds

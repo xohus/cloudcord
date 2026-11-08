@@ -13,6 +13,8 @@ import { installLocalRelationshipActions } from "../../utils/localRelationshipAc
 import { profileStorage } from "./storage";
 import * as DataStore from "@api/DataStore";
 import { findStoreLazy } from "@webpack";
+import { copyToClipboard } from "@utils/clipboard";
+import { installGiftPreview } from "./giftPreview";
 import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
@@ -204,37 +206,18 @@ function fakeGiftBody(code: string) {
     };
 }
 
-const giftPath = (url: unknown) => typeof url === "string" ? url.match(/\/entitlements\/gift-codes\/([A-Za-z0-9-]+)(\/redeem)?/) : null;
-let restOriginals: { post: any; wrappedPost: any; } | null = null;
-// Only the code made on this device resolves as a gift, and only here. Everyone
-// else (and this device after you make a new link) gets Discord's "invalid gift".
-function installGiftHook() {
-    if (restOriginals || !RestAPI) return;
-    const post: any = RestAPI.post;
-    const owned = { post, wrappedPost: null as any };
-    const wrappedPost = function (this: any, req: any, ...rest: unknown[]) {
-        if (restOriginals !== owned) return post.call(this, req, ...rest);
-        const match = giftPath(req?.url);
-        if (match?.[2] && extras.giftCode && match[1] === extras.giftCode) {
-            showToast("This is your fake gift. It only looks real on your device.", Toasts.Type.MESSAGE);
-            return Promise.reject({ ok: false, status: 400, body: { code: 50050, message: "This gift is only a preview on this device." } });
-        }
-        return post.call(this, req, ...rest);
-    };
-    owned.wrappedPost = wrappedPost;
-    restOriginals = owned;
-    (RestAPI as any).post = wrappedPost;
-}
-function uninstallGiftHook() {
-    if (!restOriginals) return;
-    // We never changed GET, and another plugin may have wrapped POST since us.
-    if (RestAPI.post === restOriginals.wrappedPost) (RestAPI as any).post = restOriginals.post;
-    restOriginals = null;
-}
+let stopGiftPreview: (() => void) | undefined;
 
-// Called from the patched gift resolver: only the current device link resolves.
-export function fakeGiftFor(code: string) {
-    return extras.giftCode && code === extras.giftCode ? fakeGiftBody(code) : null;
+function installGiftHook() {
+    if (stopGiftPreview) return;
+    try {
+        if (typeof RestAPI?.get !== "function" || typeof RestAPI?.post !== "function") return;
+        stopGiftPreview = installGiftPreview(RestAPI, () => extras.giftCode, fakeGiftBody, () => {
+            showToast("This gift is a preview on your device.", Toasts.Type.MESSAGE);
+        });
+    } catch (error) {
+        logger.warn("Could not attach the local gift preview", error);
+    }
 }
 
 // ---- Fake boost ----
@@ -830,7 +813,8 @@ export function stopExtras() {
     for (const type of SHOP_OPEN) FluxDispatcher.unsubscribe(type, pauseForShop);
     for (const type of SHOP_CLOSE) FluxDispatcher.unsubscribe(type, resumeAfterShop);
     shopPaused = false;
-    uninstallGiftHook();
+    stopGiftPreview?.();
+    stopGiftPreview = undefined;
     uninstallBoostHooks();
     clearInterval(orbRetry);
     uninstallOrbHooks();
@@ -850,7 +834,15 @@ export function ExtrasPanel() {
     const [friendId, setFriendId] = React.useState("");
     const [, force] = React.useReducer(x => x + 1, 0);
     const code = state.giftCode;
-    const copy = () => { if (!code) return; navigator.clipboard?.writeText(giftUrl(code)).then(() => showToast("Copied gift link.", Toasts.Type.SUCCESS), () => { }); };
+    const copy = async () => {
+        if (!code) return;
+        try {
+            await copyToClipboard(giftUrl(code));
+            showToast("Copied gift link.", Toasts.Type.SUCCESS);
+        } catch {
+            showToast("Couldn’t copy the link. Select it to copy it manually.", Toasts.Type.FAILURE);
+        }
+    };
     return <>
         <Section title="Fake Nitro" description="Only on this device. Nothing changes for other people.">
             <Switch label="Act like I have Nitro" description="Removes Nitro previews, upsells and Get Nitro prompts. Turns on by itself while Nitro is on in your custom profile. Real Nitro features like big uploads still need real Nitro." checked={state.fakeNitro === true} onChange={value => { writeExtras({ ...extras, fakeNitro: value }); applyFakeNitro(); }} />
@@ -864,8 +856,9 @@ export function ExtrasPanel() {
                 <SelectField label="Design" options={GIFT_STYLES} value={state.giftStyle ?? 4} onChange={value => writeExtras({ ...extras, giftStyle: Number(value), giftCode: extras.giftCode && newGiftCode() })} />
             </Grid2>
             {code && <span className="cpx-hint">Changing the gift or design makes a new link, because Discord remembers each link once it's shown.</span>}
-            {code && <input className="cpx-input" readOnly value={giftUrl(code)} onFocus={event => event.currentTarget.select()} />}
             <div className="cpx-inline">
+                {code && <input aria-label="Fake Nitro gift link" className="cpx-input" readOnly value={giftUrl(code)}
+                    onFocus={event => event.currentTarget.select()} />}
                 <button type="button" className="cpx-btn" onClick={() => writeExtras({ ...extras, giftCode: newGiftCode() })}>{code ? "Refresh link" : "Make link"}</button>
                 {code && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={copy}>Copy</button>}
                 {code && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => writeExtras({ ...extras, giftCode: undefined })}>Remove</button>}

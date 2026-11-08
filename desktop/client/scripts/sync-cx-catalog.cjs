@@ -41,7 +41,7 @@ function buildCatalog(additions = new Map()) {
         }
         const files = [original, ...filenames.sort().map(name => folder + "/" + name)];
         if (files.length > target) throw new Error(`CX ${kind} catalog exceeds ${target} entries`);
-        groups[kind + "s"] = files.map((file, index) => {
+        groups[kind + "s"] = files.map(file => {
             const extra = kind === "plugin" && file !== original ? additions.get(path.basename(file)) : undefined;
             const { kind: actualKind, name, commands: declaredCommands } = parseCx(extra ?? fs.readFileSync(path.join(root, file), "utf8"));
             if (actualKind !== kind) throw new Error(`Unexpected CX kind in ${file}`);
@@ -52,7 +52,10 @@ function buildCatalog(additions = new Map()) {
                 if (commands.has(command)) throw new Error(`Duplicate CX command in ${file}: /${command}`);
                 commands.add(command);
             }
-            const binding = `${kind}${index + 1}`;
+            // Stable imports keep unrelated entries out of each migration diff.
+            const stem = path.basename(file, ".cx");
+            if (!/^[a-z0-9][a-z0-9-]*$/.test(stem)) throw new Error("Invalid CX filename: " + file);
+            const binding = kind + (file === original ? "_base_" : "_catalog_") + stem.replaceAll("-", "_");
             imports.push(`import ${binding} from "${"../../../../" + file}";`);
             return { name, binding };
         });

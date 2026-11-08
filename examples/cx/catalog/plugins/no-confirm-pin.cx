@@ -1,0 +1,3 @@
+plugin "NoConfirmPin":
+  needs messages.pin
+  use pin-message-shortcut

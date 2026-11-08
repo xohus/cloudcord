@@ -18,14 +18,16 @@
         "author": "Snues",
         "license": "MIT",
         "source": "https://github.com/Snusene/BetterDiscordPlugins/blob/8a8eb40fc5760d44757f3ae9e82b8631c056c384/ScrollToLatest/ScrollToLatest.plugin.js",
-        "recipe": "scroll-to-latest"
+        "recipe": "native-effect",
+        "effect": "scroll-to-latest"
     },
     "4e5682987afbf8ad831bd5f3080b66680d11d1c5a8cf8f5fb4266c563fe6c698": {
         "name": "HideDisabledEmojis",
         "author": "Zerebos",
         "license": "MIT",
         "source": "https://github.com/zerebos/BetterDiscordAddons/blob/c2fdb36b97e4aee083130381a20ace050dd16621/Plugins/HideDisabledEmojis/HideDisabledEmojis.plugin.js",
-        "recipe": "hide-disabled-emojis"
+        "recipe": "native-effect",
+        "effect": "hide-disabled-emojis"
     },
     "7f4189573fd5bad08e47e3c087bba279b05022e37ab28d7e343918dfecd1ebda": {
         "name": "High-Res Profile Images",
@@ -96,5 +98,13 @@
         "license": "Unlicense",
         "source": "https://github.com/BleedingBD/plugin-NoReplyPing/blob/c0376dc67966587d3ed256a828a311c62b91585e/NoReplyPing.plugin.js",
         "recipe": "reply-ping-default"
+    },
+    "3a062e933a6ad664a4a759e7d0ee06b3ba6f45fa5bb7478e73a3497ced2af668": {
+        "name": "NoConfirmPin",
+        "author": "Skamt",
+        "source": "https://github.com/Skamt/BDAddons/blob/0a3e33fc679677183946ab40f3c19121b461de79/NoConfirmPin/NoConfirmPin.plugin.js",
+        "recipe": "native-effect",
+        "effect": "pin-message-shortcut",
+        "basis": "independent behavior implementation"
     }
 }

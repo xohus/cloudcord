@@ -7,9 +7,12 @@ import { addServerListElement, removeServerListElement, ServerListRenderPosition
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
-import { buildCxRepeatMessage } from "@utils/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
+import { getCxProfileMedia } from "@utils/cx";
+import { openImageModal } from "@utils/discord";
+import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
@@ -20,10 +23,43 @@ import { cxCatalog } from "@utils/cxCatalog";
 import type { Message } from "@vencord/discord-types";
 import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 const session = createCxSession();
+
+function registerProfileMedia() {
+    let active = true;
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        const id = props?.user?.id ?? props?.userId;
+        if (!active || !isCxProfileUserId(id)) return;
+        const user = props.user ?? UserStore.getUser(id);
+        if (!user) return;
+        const media = getCxProfileMedia(id, user, UserProfileStore.getUserProfile(id)?.banner);
+        for (const asset of media) {
+            const { kind, url, filename } = asset;
+            children.push(
+                <Menu.MenuItem key={"cx-view-" + kind} id={"cx-view-" + kind} label={"View " + kind} action={() => {
+                    if (active) openImageModal({ url, width: kind === "Avatar" ? 512 : 1024 });
+                }} />,
+                <Menu.MenuItem key={"cx-download-" + kind} id={"cx-download-" + kind} label={"Download " + kind} action={async () => {
+                    if (!active) return;
+                    try {
+                        const response = await fetch(url, { credentials: "omit", redirect: "error" });
+                        if (!response.ok) throw new Error("Image unavailable");
+                        const blob = await response.blob();
+                        if (active) saveFile(new File([blob], filename));
+                    } catch {
+                        if (active) showToast("Couldn’t download the profile image.");
+                    }
+                }} />,
+            );
+        }
+    };
+    const menus = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
+    addContextMenuPatch(menus, patch);
+    return () => { active = false; removeContextMenuPatch(menus, patch); };
+}
 
 function MentionIcon({ width = 24, height = 24, className }: { width?: number | string; height?: number | string; className?: string; }) {
     return <svg viewBox="0 0 24 24" width={width} height={height} className={className} aria-hidden="true">
@@ -50,6 +86,60 @@ function registerQuickMention() {
         };
     }, MentionIcon);
     return () => { active = false; removeMessagePopoverButton(id); };
+}
+
+function registerPinShortcut() {
+    let active = true;
+    const permission = PermissionsBits.PIN_MESSAGES ?? PermissionsBits.MANAGE_MESSAGES;
+    const patch: NavContextMenuPatchCallback = (children, { message }) => {
+        if (!active || !message) return;
+        const channel = ChannelStore.getChannel(message.channel_id);
+        if (!channel) return;
+        const canPin = () => !channel.guild_id || PermissionStore.can(permission, channel);
+        const action = getCxPinAction(message, channel.id, canPin());
+        if (!action) return;
+        children.push(<Menu.MenuItem id="cx-pin-shortcut" label={action.label} action={async () => {
+            if (!active) return;
+            try {
+                const latest = MessageStore.getMessage(channel.id, action.id);
+                const current = latest && getCxPinAction(latest, channel.id, canPin());
+                if (current?.method === action.method) await PinActions[current.method](channel, current.id);
+            } catch {
+                showToast("Couldn’t change the message pin.");
+            }
+        }} />);
+    };
+    addContextMenuPatch("message", patch);
+    return () => { active = false; removeContextMenuPatch("message", patch); };
+}
+
+function registerEmbedToggle() {
+    let active = true;
+    const getToggle = (message: Message) => {
+        const channel = ChannelStore.getChannel(message.channel_id);
+        if (!channel) return;
+        return getCxEmbedToggle(message, channel.id, UserStore.getCurrentUser()?.id, {
+            canEmbed: !channel.guild_id || PermissionStore.can(PermissionsBits.EMBED_LINKS, channel),
+            canManage: !!channel.guild_id && PermissionStore.can(PermissionsBits.MANAGE_MESSAGES, channel),
+        });
+    };
+    const patch: NavContextMenuPatchCallback = (children, { message }) => {
+        const toggle = active && message && getToggle(message);
+        if (!toggle) return;
+        children.push(<Menu.MenuItem id="cx-toggle-embeds" label={toggle.label} action={async () => {
+            if (!active) return;
+            try {
+                const latest = MessageStore.getMessage(message.channel_id, toggle.id);
+                const current = latest && getToggle(latest);
+                if (!current || current.label !== toggle.label) return;
+                await RestAPI.patch({ url: Constants.Endpoints.MESSAGE(message.channel_id, current.id), body: { flags: current.flags } });
+            } catch {
+                showToast("Couldn’t change embed visibility.");
+            }
+        }} />);
+    };
+    addContextMenuPatch("message", patch);
+    return () => { active = false; removeContextMenuPatch("message", patch); };
 }
 
 function registerRepeatMessages() {
@@ -475,6 +565,8 @@ export function CxSettings() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "profile-media":
+                            return registerProfileMedia();
                         case "copy-text-attachment":
                             fileCopyUsers++;
                             return () => { fileCopyUsers--; };
@@ -501,6 +593,10 @@ export function CxSettings() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention();
+                        case "pin-message-shortcut":
+                            return registerPinShortcut();
+                        case "toggle-message-embeds":
+                            return registerEmbedToggle();
                         case "repeat-message":
                             return registerRepeatMessages();
                         case "scroll-to-latest":
@@ -811,7 +907,7 @@ export default definePlugin({
     description: "Review and run permission-scoped CX plugins and themes.",
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
-    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI", "MessagePopoverAPI"],
+    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI", "ServerListAPI", "MessagePopoverAPI", "DynamicImageModalAPI"],
     flux: {
         CHANNEL_SETTINGS_INIT({ channelId }: { channelId: string; }) {
             editingChannelId = channelId;

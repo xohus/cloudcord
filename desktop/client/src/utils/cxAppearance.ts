@@ -360,6 +360,16 @@ export const cxAppearanceTargets = {
         css: '[class*="numberBadge"] { display: none !important; }',
         mobile: { mentionBadges: true },
     },
+    "centered-chat": {
+        plugin: "CenteredChat", label: "center the message list on wide screens",
+        css: '[class*="messagesWrapper"] ol[class*="scrollerInner"] { max-width: 1100px; margin: 0 auto; }',
+        style: { centeredMessageList: "modules/messages/native/Messages.tsx", width: 1100 },
+    },
+    "readable-line-length": {
+        plugin: "ReadableLineLength", label: "limit the width of long message lines",
+        css: '[class*="messageContent"] { max-width: 80ch; }',
+        style: { messageWidthRenderer: "modules/messages/native/renderer/createMessageContent.tsx", width: 640 },
+    },
     "wider-channel-list": {
         plugin: "WiderChannelList", label: "make the channel list wider",
         css: '[class*="sidebar_"] { width: 280px !important; }',

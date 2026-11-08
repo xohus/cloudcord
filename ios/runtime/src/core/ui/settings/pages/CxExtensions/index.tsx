@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { buildCxRepeatMessage, type CxRepeatMessage } from "@lib/api/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
@@ -22,10 +22,11 @@ import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { getCxMessageGesture } from "@lib/api/cx";
+import { getCxProfileMedia } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Alert, Animated, FlatList, Linking, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Alert, Animated, FlatList, Image, Linking, PixelRatio, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const navigationControls = createCxNavigationControls();
@@ -836,7 +837,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
 
 type CxMobileMessageMenu = {
     channel?: { id: string; guild_id?: string; isThread?: () => boolean; };
-    message?: CxRepeatMessage & { author?: { id?: string; }; channel_id?: string; };
+    message?: CxRepeatMessage & Parameters<typeof getCxEmbedToggle>[0] & { pinned?: boolean; };
     chatInputRef?: { current?: { insertText?: (text: string, start: null, appendSpace: boolean, nodes: undefined, end: null) => void; }; };
 };
 
@@ -893,6 +894,63 @@ function registerQuickMention(enabled: () => boolean) {
             close();
         } }];
     });
+}
+
+function registerPinShortcut(enabled: () => boolean) {
+    const pins = findByProps("pinMessage", "unpinMessage");
+    const permissions = findByProps("Fonts", "Permissions")?.Permissions;
+    const permission = permissions?.PIN_MESSAGES ?? permissions?.MANAGE_MESSAGES;
+    const permissionStore = findByStoreName("PermissionStore");
+    if (typeof pins?.pinMessage !== "function" || typeof pins?.unpinMessage !== "function") {
+        throw new Error("Discord's pin actions are unavailable");
+    }
+    return registerMessageMenuActions(enabled, ({ message, channel }, close) => {
+        if (!message || !channel) return [];
+        const canPin = () => !channel.guild_id || permission != null && permissionStore?.can?.(permission, channel) === true;
+        const action = getCxPinAction(message, channel.id, canPin());
+        if (!action) return [];
+        return [{ label: action.label, async run() {
+            try {
+                const latest = MessageStore?.getMessage?.(channel.id, action.id);
+                const current = latest && getCxPinAction(latest, channel.id, canPin());
+                if (current?.method !== action.method) return;
+                close();
+                await pins[current.method](channel, current.id);
+            } catch {
+                showToast("Couldn’t change the message pin.");
+            }
+        } }];
+    }, false);
+}
+
+function registerEmbedToggle(enabled: () => boolean) {
+    const rest = findByProps("HTTP")?.HTTP ?? findByProps("get", "post", "patch", "del");
+    const { Permissions } = findByProps("Fonts", "Permissions") ?? {};
+    const permissionStore = findByStoreName("PermissionStore");
+    if (typeof rest?.patch !== "function") {
+        throw new Error("Discord's embed actions are unavailable");
+    }
+    return registerMessageMenuActions(enabled, ({ message, channel }, close) => {
+        if (!message || !channel) return [];
+        const getToggle = (candidate: Parameters<typeof getCxEmbedToggle>[0]) => getCxEmbedToggle(candidate, channel.id,
+            UserStore?.getCurrentUser?.()?.id, {
+                canEmbed: !channel.guild_id || Permissions?.EMBED_LINKS != null && permissionStore?.can?.(Permissions.EMBED_LINKS, channel) === true,
+                canManage: !!channel.guild_id && Permissions?.MANAGE_MESSAGES != null && permissionStore?.can?.(Permissions.MANAGE_MESSAGES, channel) === true,
+            });
+        const toggle = getToggle(message);
+        if (!toggle) return [];
+        return [{ label: toggle.label, async run() {
+            try {
+                const latest = MessageStore?.getMessage?.(channel.id, toggle.id);
+                const current = latest && getToggle(latest);
+                if (!current || current.label !== toggle.label) return;
+                close();
+                await rest.patch({ url: "/channels/" + channel.id + "/messages/" + current.id, body: { flags: current.flags } });
+            } catch {
+                showToast("Couldn’t change embed visibility.");
+            }
+        } }];
+    }, false);
 }
 
 function registerRepeatMessages(enabled: () => boolean) {
@@ -1268,7 +1326,12 @@ function registerReducedMotion() {
     };
 }
 
-const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
+type ProfileMenuItem = { label: string; action: () => void; };
+type ProfileMenuEntry = {
+    key: CxProfileMenuAction | "profile-media";
+    getItems: (id: string, guildId?: string) => ProfileMenuItem[];
+};
+const profileMenuActions = new Set<ProfileMenuEntry>();
 let stopProfileMenuHooks: (() => void) | undefined;
 
 function patchProfileMenus() {
@@ -1277,20 +1340,13 @@ function patchProfileMenus() {
         const user = React.useContext(ProfileUser);
         if (!user || settings.safeMode?.enabled) return element;
         const { id, guildId } = user;
-        const entries = new Map([...profileMenuActions].map(entry => [entry.action, entry]));
-        if (!entries.size) return element;
-        const actions = [...entries.values()].flatMap(entry => {
-            const { label, scope } = cxProfileMenuActions[entry.action];
-            if (scope === "server" && !getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId)) return [];
-            return [{ label, action: () => {
-                if (!profileMenuActions.has(entry) || settings.safeMode?.enabled) return;
-                const text = getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId);
-                if (text) {
-                    clipboard.setString(text);
-                    showToast.showCopyToClipboard?.();
-                } else showToast("No profile colors found.");
-            } }];
-        });
+        const entries = new Map([...profileMenuActions].map(entry => [entry.key, entry]));
+        const actions = [...entries.values()].flatMap(entry => entry.getItems(id, guildId).map(item => ({
+            label: item.label,
+            action: () => {
+                if (profileMenuActions.has(entry) && !settings.safeMode?.enabled) item.action();
+            },
+        })));
         return actions.length ? React.cloneElement(element, { items: [...element.props.items, actions] }) : element;
     }
     const provideUser = (_: unknown, element: JSX.Element) => {
@@ -1314,9 +1370,8 @@ function patchProfileMenus() {
     };
 }
 
-function registerProfileMenuAction(action: CxProfileMenuAction) {
+function registerProfileMenuEntry(entry: ProfileMenuEntry) {
     stopProfileMenuHooks ??= patchProfileMenus();
-    const entry = { action };
     profileMenuActions.add(entry);
     return () => {
         profileMenuActions.delete(entry);
@@ -1325,6 +1380,66 @@ function registerProfileMenuAction(action: CxProfileMenuAction) {
             stopProfileMenuHooks = undefined;
         }
     };
+}
+
+function registerProfileMenuAction(action: CxProfileMenuAction) {
+    const { label, scope } = cxProfileMenuActions[action];
+    return registerProfileMenuEntry({
+        key: action,
+        getItems(id, guildId) {
+            if (scope === "server" && !getCxProfileMenuCopy(action, id, UserProfileStore, guildId)) return [];
+            return [{ label, action: () => {
+                const text = getCxProfileMenuCopy(action, id, UserProfileStore, guildId);
+                if (text) {
+                    clipboard.setString(text);
+                    showToast.showCopyToClipboard?.();
+                } else showToast("No profile colors found.");
+            } }];
+        },
+    });
+}
+
+function registerProfileMedia() {
+    const viewer = findByFilePath("modules/media_viewer/native/components/openMediaModal.tsx");
+    const download = findByFilePath("modules/media_viewer/native/MediaSourceUtil.tsx");
+    const mediaType = findByFilePath("modules/media/MediaTypes.tsx")?.MediaType;
+    if (!viewer?.openMediaModal || !download?.downloadMediaAssetWithContentType
+        || mediaType?.IMAGE == null || mediaType.GIF == null)
+        throw new Error("Discord's profile media viewer or downloader is unavailable");
+
+    let active = true;
+    const stop = registerProfileMenuEntry({
+        key: "profile-media",
+        getItems(id) {
+            const user = UserStore?.getUser?.(id);
+            if (!user) return [];
+            return getCxProfileMedia(id, user, UserProfileStore?.getUserProfile?.(id)?.banner).flatMap(asset => [
+                { label: "View " + asset.kind, action: () => {
+                    const open = (width: number, height: number) => {
+                        if (!active || settings.safeMode?.enabled) return;
+                        try {
+                            viewer.openMediaModal({
+                                initialSources: [{ uri: asset.url, mediaIndex: 0, width, height, accessoryType: "embed" }],
+                                analyticsSource: "user_profile_avatar", openAs: "action-sheet", shareable: false,
+                                disableDownload: true, disableMediaOverlayButton: true, disableMediaOverlayFooter: true,
+                            });
+                        } catch { showToast("Couldn’t open the profile image."); }
+                    };
+                    if (asset.kind === "Avatar") open(512, 512);
+                    else Image.getSize(asset.url, open, () => open(1024, 384));
+                } },
+                { label: "Download " + asset.kind, action: async () => {
+                    try {
+                        await download.downloadMediaAssetWithContentType(asset.url,
+                            asset.animated ? mediaType.GIF : mediaType.IMAGE, asset.animated ? "image/gif" : "image/png");
+                    } catch {
+                        if (active) showToast("Couldn’t download the profile image.");
+                    }
+                } },
+            ]);
+        },
+    });
+    return () => { active = false; stop(); };
 }
 
 export default function CxExtensions() {
@@ -1538,6 +1653,30 @@ export default function CxExtensions() {
                             },
                         }, () => !settings.safeMode?.enabled);
                     }
+                    if ("centeredMessageList" in style) {
+                        const messages = findByFilePath(style.centeredMessageList)?.default;
+                        if (!messages) throw new Error("Discord's message list is unavailable");
+                        const centered = { alignSelf: "center", width: "100%", maxWidth: style.width };
+                        // The wallpaper hook may already have wrapped the original message list.
+                        return registerJsxAppearance([messages], tree => mapAppearanceElements(tree, element => element.type === messages
+                            ? React.cloneElement(element, { style: [element.props.style, centered] })
+                            : element));
+                    }
+                    if ("messageWidthRenderer" in style) {
+                        const renderer = findByFilePath(style.messageWidthRenderer);
+                        return overrideCxMethods(renderer, {
+                            default(args, invoke) {
+                                const presentation = invoke(args);
+                                const input = args[0] as { isInlineReplyPreview?: boolean; message?: { content?: string; }; } | undefined;
+                                if (!presentation || typeof presentation !== "object" || !input?.message?.content || input.isInlineReplyPreview
+                                    || !("constrainedWidth" in presentation) || typeof presentation.constrainedWidth !== "number") return presentation;
+                                // Use the native logical width for message text and keep the system font scale.
+                                const width = style.width * PixelRatio.getFontScale();
+                                return Number.isFinite(width) && width > 0 && presentation.constrainedWidth > width
+                                    ? { ...presentation, constrainedWidth: width } : presentation;
+                            },
+                        }, () => !settings.safeMode?.enabled);
+                    }
                     if ("drawerWidthDelta" in style) return registerChannelDrawerWidth(style.drawerWidthDelta);
                     if ("renderedComponents" in style) return registerRenderedChannelStyle(style);
                     if ("serverIconScale" in style) {
@@ -1612,6 +1751,8 @@ export default function CxExtensions() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "profile-media":
+                            return registerProfileMedia();
                         case "copy-text-attachment":
                             return registerTextAttachmentCopy(enabled);
                         case "image-filename":
@@ -1643,6 +1784,10 @@ export default function CxExtensions() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention(enabled);
+                        case "pin-message-shortcut":
+                            return registerPinShortcut(enabled);
+                        case "toggle-message-embeds":
+                            return registerEmbedToggle(enabled);
                         case "repeat-message":
                             return registerRepeatMessages(enabled);
                         case "attachment-image-quality":
