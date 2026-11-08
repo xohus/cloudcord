@@ -1,7 +1,7 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
-import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "@lib/api/cx";
+import { createCxVoicePing, createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "@lib/api/cx";
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
@@ -35,6 +35,7 @@ const session = createCxSession();
 const callClock = createCxCallClock();
 const voiceMemberClock = createCxVoiceMemberClock();
 const voiceCounts = createCxVoiceCount();
+const voicePing = createCxVoicePing();
 const navigationControls = createCxNavigationControls();
 const timestamps = createCxTimestampRegistry();
 const timestampFields = [
@@ -153,6 +154,13 @@ function NavigationButton({ label, text, onPress }: { label: string; text: strin
     </Pressable>;
 }
 
+function VoicePing({ channelId }: { channelId: string; }) {
+    const latency = React.useSyncExternalStore(voicePing.subscribe, () => voicePing.read(channelId));
+    if (!latency || settings.safeMode?.enabled) return null;
+    return <Text accessibilityLabel="Voice latency" style={{ textAlign: "center", fontSize: 12, fontVariant: ["tabular-nums"],
+        color: resolveSemanticColor(semanticColors.TEXT_MUTED) }}>{latency}</Text>;
+}
+
 function CallTime({ channelId }: { channelId: string; }) {
     const elapsed = React.useSyncExternalStore(callClock.subscribe, () => callClock.read(channelId));
     if (!elapsed || settings.safeMode?.enabled) return null;
@@ -222,6 +230,20 @@ function registerVoiceMemberClock(options: CxVoiceMemberOptions) {
         });
         return () => { stopRows(); stopClock(); };
     } catch (error) { stopClock(); throw error; }
+}
+
+function registerVoicePing(enabled: () => boolean) {
+    const header = findByFilePath("modules/voice_panel/native/header/VoicePanelHeader.tsx")?.default;
+    if (!header) throw new Error("Discord’s call header is unavailable");
+    const stopPing = voicePing.bind(findByStoreName("RTCConnectionStore"), FluxDispatcher, enabled);
+    try {
+        const stopHeader = registerRenderedTree(header, (tree, props: { channelId?: string; }) => {
+            if (!isCxProfileUserId(props.channelId) || !React.isValidElement<{ children?: ReactNode; }>(tree)
+                || !("children" in tree.props)) return tree;
+            return React.cloneElement(tree, { children: <>{tree.props.children}<VoicePing channelId={props.channelId} /></> });
+        });
+        return () => { stopHeader(); stopPing(); };
+    } catch (error) { stopPing(); throw error; }
 }
 
 function registerCallTimeCounter() {
@@ -2123,6 +2145,8 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "hide-role-headers":
                             return registerNoRoleHeaders();
+                        case "show-voice-ping":
+                            return registerVoicePing(enabled);
                         case "voice-channel-count":
                             if (!effectOptions || !("showEmpty" in effectOptions)) throw new Error("Missing voice count options");
                             return registerVoiceChannelCount(effectOptions, enabled);

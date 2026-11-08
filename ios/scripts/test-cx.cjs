@@ -296,7 +296,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const dispatch = event => rejectBulkAck && event.type === "BULK_ACK"
             ? Promise.reject(new Error("Could not acknowledge channels")) : acknowledged.push(event);
         const channelSelections = new Set(), rtcListeners = new Set(), voiceListeners = new Set();
-        const voiceEventListeners = new Map(["VOICE_STATE_UPDATES", "VOICE_CHANNEL_SELECT", "PASSIVE_UPDATE_V1", "PASSIVE_UPDATE_V2", "CONNECTION_OPEN", "LOGOUT"]
+        const voiceEventListeners = new Map(["VOICE_STATE_UPDATES", "VOICE_CHANNEL_SELECT", "PASSIVE_UPDATE_V1", "PASSIVE_UPDATE_V2", "CONNECTION_OPEN", "LOGOUT", "RTC_CONNECTION_PING"]
             .map(name => [name, new Set()]));
         const listenersFor = name => {
             if (name === "RTC_CONNECTION_STATE") return rtcListeners;
@@ -345,7 +345,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             get useReducedMotion() { return motionPreference; }
             emitChange() { motionUpdates++; }
         }
+        let voicePingMs, voicePingChannel, voicePingConnected;
         const stores = {
+            RTCConnectionStore: {
+                getLastPing: () => voicePingMs,
+                getChannelId: () => voicePingChannel,
+                isConnected: () => voicePingConnected,
+            },
             DraftStore: draftStore,
             AccessibilityStore: new AccessibilityStore(),
             PresenceStore: { getStatus: () => pingDnd ? "dnd" : "online" },
@@ -2321,10 +2327,6 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         {
             if (desktop) {
                 const patch = desktopPlugin.patches.find(patch => patch.find === "renderConnectionStatus(){");
-                assert.equal(patch.predicate(), true);
-                mocks["@api/Settings"].Settings.plugins.CallTimer.enabled = true;
-                assert.equal(patch.predicate(), false);
-                mocks["@api/Settings"].Settings.plugins.CallTimer.enabled = false;
                 const targets = [
                     'renderConnectionStatus(){return f(0,{lineClamp:1,children:text});}',
                     '"RTCConnectionMenu",f(0,{lineClamp:1,children:text});',
@@ -2332,7 +2334,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 patch.replacement.forEach(({ match, replace }, index) => {
                     const regex = new RegExp(match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"));
                     const patched = targets[index].replace(regex, replace);
-                    assert.ok(patched.includes('children:[text,$self.renderCallTime(this?.props?.channel?.id)]'));
+                    assert.ok(patched.includes('children:[text,$self.renderCallTime(this?.props?.channel?.id),$self.renderVoicePing(this?.props?.channel?.id)]'));
+                    const legacy = targets[index].replace("children:text", "children:[text,legacyTimer()]");
+                    assert.ok(legacy.replace(regex, replace).includes("children:[[text,legacyTimer()],$self.renderCallTime("));
                 });
             }
             const port = cxCatalog.plugins.find(entry => entry.name === "CallTimeCounter").source;
@@ -2367,6 +2371,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(renderTime(voiceTarget), "Time elapsed: 00:00:00");
             assert.equal(renderTime(secondVoice), null);
             if (desktop) assert.equal(renderTime(undefined), "Time elapsed: 00:00:00");
+            if (desktop) {
+                mocks["@api/Settings"].Settings.plugins.CallTimer.enabled = true;
+                assert.equal(renderTime(voiceTarget), null);
+                mocks["@api/Settings"].Settings.plugins.CallTimer.enabled = false;
+            }
             clockTime += 3661_000;
             clockTimers.forEach(tick => tick());
             assert.equal(renderTime(voiceTarget), "Time elapsed: 01:01:01");
@@ -2389,6 +2398,50 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             else assert.equal(appearanceHooks.has(VoicePanelHeader), false);
             currentVoice = savedVoice;
             clockTime = undefined;
+        }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "ShowPing").source;
+            assert.throws(() => activateCx(port, host, ["voice.calltime"]), /approval/);
+            selectCatalog("ShowPing");
+            click(render(), "Allow for this session");
+            const pingListeners = voiceEventListeners.get("RTC_CONNECTION_PING");
+            const renderPing = channelId => {
+                let ping;
+                if (desktop) {
+                    ping = desktopPlugin.renderVoicePing(channelId);
+                } else {
+                    const output = jsx("View", { children: jsx("VoiceControls", {}) });
+                    const hook = appearanceHooks.get(VoicePanelHeader);
+                    const wrapped = hook(null, jsx(VoicePanelHeader, { channelId, output }));
+                    const header = wrapped.type(wrapped.props);
+                    const result = header.type(header.props);
+                    assert.ok(find(result, item => item.type === "VoiceControls"));
+                    ping = find(result, item => item.type?.name === "VoicePing");
+                }
+                return ping?.type(ping.props)?.props.children ?? null;
+            };
+            assert.equal(pingListeners.size, 1);
+            assert.equal(rtcListeners.size, 1);
+            assert.equal(renderPing(voiceTarget), null);
+            voicePingConnected = true;
+            voicePingChannel = voiceTarget;
+            voicePingMs = NaN;
+            assert.equal(renderPing(voiceTarget), null);
+            voicePingMs = 24.8;
+            pingListeners.forEach(listener => listener());
+            assert.equal(renderPing(voiceTarget), "25 ms");
+            assert.equal(renderPing(secondVoice), null);
+            if (!desktop) {
+                settings.safeMode = { enabled: true };
+                assert.equal(renderPing(voiceTarget), null);
+                settings.safeMode = undefined;
+            }
+            voicePingConnected = false;
+            rtcListeners.forEach(listener => listener());
+            assert.equal(renderPing(voiceTarget), null);
+            click(render(), "Disable ShowPing");
+            assert.equal(pingListeners.size + rtcListeners.size, 0);
+            if (!desktop) assert.equal(appearanceHooks.has(VoicePanelHeader), false);
         }
         {
             const port = cxCatalog.plugins.find(entry => entry.name === "AllCallTimeCounter").source;

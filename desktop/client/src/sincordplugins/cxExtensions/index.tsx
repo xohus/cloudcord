@@ -11,7 +11,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, getCxSpotifySongName, sortCxReactions, type CxSpotifyActivity } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
-import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel } from "@utils/cx";
+import { createCxVoicePing, createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel } from "@utils/cx";
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "@utils/cx";
 import { escapeRegExp } from "@utils/text";
 import { copyToClipboard } from "@utils/clipboard";
@@ -28,7 +28,7 @@ import { cxCatalog } from "@utils/cxCatalog";
 import type { Channel, Message } from "@vencord/discord-types";
 import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, VoiceStateStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, RTCConnectionStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, VoiceStateStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 import { Alerts } from "@webpack/common";
 
@@ -36,6 +36,12 @@ const session = createCxSession();
 const callClock = createCxCallClock();
 const voiceMemberClock = createCxVoiceMemberClock();
 const voiceCounts = createCxVoiceCount();
+const voicePing = createCxVoicePing();
+
+function VoicePing({ channelId }: { channelId?: string; }) {
+    const latency = React.useSyncExternalStore(voicePing.subscribe, () => voicePing.read(channelId));
+    return latency ? <span aria-label="Voice latency" style={{ marginInlineStart: 4, fontVariantNumeric: "tabular-nums" }}>{latency}</span> : null;
+}
 
 function VoiceChannelCount({ channel }: { channel: CxVoiceCountChannel; }) {
     const count = React.useSyncExternalStore(voiceCounts.subscribe, () => voiceCounts.read(channel));
@@ -733,6 +739,8 @@ export function CxSettings() {
                 },
                 registerNativeEffect(effect, avatarResolution = 256, effectOptions) {
                     switch (effect) {
+                        case "show-voice-ping":
+                            return voicePing.bind(RTCConnectionStore, FluxDispatcher);
                         case "voice-channel-count":
                             if (!effectOptions || !("showEmpty" in effectOptions)) throw new Error("Missing voice count options");
                             return voiceCounts.bind(VoiceStateStore, effectOptions);
@@ -1250,15 +1258,14 @@ export default definePlugin({
         },
     }, {
         find: "renderConnectionStatus(){",
-        predicate: () => !Settings.plugins.CallTimer.enabled,
         replacement: [
             {
-                match: /(renderConnectionStatus\(\).{0,1000}?lineClamp:1,children:)(\i)(?=,|}\))/,
-                replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id)]",
+                match: /(renderConnectionStatus\(\).{0,1000}?lineClamp:1,children:)(\i|\[\i,[^\]]+\])(?=,|}\))/,
+                replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id),$self.renderVoicePing(this?.props?.channel?.id)]",
             },
             {
-                match: /("RTCConnectionMenu".{0,200}?lineClamp:1,children:)(\i)(?=,|}\))/,
-                replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id)]",
+                match: /("RTCConnectionMenu".{0,200}?lineClamp:1,children:)(\i|\[\i,[^\]]+\])(?=,|}\))/,
+                replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id),$self.renderVoicePing(this?.props?.channel?.id)]",
             },
         ],
     }, {
@@ -1450,7 +1457,10 @@ export default definePlugin({
         return <VoiceMemberTime userId={userId} channelId={isCxProfileUserId(channelId) ? channelId : undefined} />;
     },
     renderCallTime(channelId?: string) {
-        return <CallTime channelId={channelId} />;
+        return Settings.plugins.CallTimer?.enabled ? null : <CallTime channelId={channelId} />;
+    },
+    renderVoicePing(channelId?: string) {
+        return <VoicePing channelId={channelId} />;
     },
     showOwnerCrown(props: { user?: { id?: string; }; guildId?: string; channel?: { guild_id?: string; type?: number; }; } | undefined, original: boolean) {
         if (original || ownerCrownUsers === 0 || props?.channel?.type === 3) return original;

@@ -139,11 +139,11 @@ export default definePlugin({
             find: "renderConnectionStatus(){",
             replacement: [
                 {
-                    match: /(renderConnectionStatus\(\).{0,1000}?lineClamp:1,children:)(\i)(?=,|}\))/,
+                    match: /(renderConnectionStatus\(\).{0,1000}?lineClamp:1,children:)(\i|\[\i,[^\]]+\])(?=,|}\))/,
                     replace: "$1[$2,$self.renderConnectionTimer({ channelId: this?.props?.channel?.id })]"
                 },
                 {
-                    match: /("RTCConnectionMenu".{0,200}?lineClamp:1,children:)(\i)(?=,|}\))/,
+                    match: /("RTCConnectionMenu".{0,200}?lineClamp:1,children:)(\i|\[\i,[^\]]+\])(?=,|}\))/,
                     replace: "$1[$2,$self.renderConnectionTimer({ channelId: this?.props?.channel?.id })]"
                 }
             ]

@@ -169,6 +169,7 @@ import plugin_catalog_scroll_to_latest from "../../../../examples/cx/catalog/plu
 import plugin_catalog_sed_enhanced from "../../../../examples/cx/catalog/plugins/sed-enhanced.cx";
 import plugin_catalog_send_timestamps from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
 import plugin_catalog_ship_calc from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
+import plugin_catalog_show_ping from "../../../../examples/cx/catalog/plugins/show-ping.cx";
 import plugin_catalog_show_song_name from "../../../../examples/cx/catalog/plugins/show-song-name.cx";
 import plugin_catalog_signature from "../../../../examples/cx/catalog/plugins/signature.cx";
 import plugin_catalog_silence_users from "../../../../examples/cx/catalog/plugins/silence-users.cx";
@@ -472,6 +473,7 @@ export const cxCatalog = {
         { name: "SedEnhanced", source: plugin_catalog_sed_enhanced },
         { name: "SendTimestamps", source: plugin_catalog_send_timestamps },
         { name: "ShipCalc", source: plugin_catalog_ship_calc },
+        { name: "ShowPing", source: plugin_catalog_show_ping },
         { name: "ShowSongName", source: plugin_catalog_show_song_name },
         { name: "Signature", source: plugin_catalog_signature },
         { name: "SilenceUsers", source: plugin_catalog_silence_users },

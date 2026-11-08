@@ -153,5 +153,13 @@
         "recipe": "native-effect",
         "effect": "pin-message-shortcut",
         "basis": "independent behavior implementation"
+    },
+    "a1fd1faaf73df95a32ae1abbe1063f1e681dcfb186550520b8072c2843e1004e": {
+        "name": "ShowPing",
+        "author": "nicola02nb",
+        "source": "https://github.com/nicola02nb/BetterDiscord-Stuff/blob/c1aa9b90499277e585b41205d5e84843e59e1c33/Plugins/ShowPing/ShowPing.plugin.js",
+        "recipe": "native-effect",
+        "effect": "show-voice-ping",
+        "basis": "independent behavior implementation"
     }
 }

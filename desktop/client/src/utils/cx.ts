@@ -33,6 +33,7 @@ export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxImageSearchOptions, type CxSearchMediaSource } from "./cxMediaSearch";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
+export { createCxVoicePing } from "./cxVoicePing";
 export { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "./cxVoiceCount";
 export { bindCxCameraTone, type CxCameraToneOptions } from "./cxCameraTone";
 export { createCxVoiceQueue, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "./cxVoiceQueue";
@@ -97,6 +98,7 @@ const permissionLabels = {
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+    "voice.latency": "Read your current voice connection latency",
     "voice.channelcount": "Show the number of connected users next to visible voice and stage channels",
     "voice.cameratone": "Play local sounds when camera state changes in your current voice call",
     "voice.waitslot": "Watch a voice channel you queue for and join when you confirm or enable auto-join",

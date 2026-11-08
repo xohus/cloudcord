@@ -43,6 +43,7 @@ export const cxNativeEffects = {
     "toggle-message-embeds": { permission: "messages.toggleembeds", label: "Suppress or unsuppress embeds in the selected message" },
     "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
+    "show-voice-ping": { permission: "voice.latency", label: "Show your live call latency in milliseconds" },
     "voice-channel-count": { permission: "voice.channelcount", label: "Show occupancy and capacity in the channel list" },
     "webcam-start-notifier": { permission: "voice.cameratone", label: "Play different tones when someone turns their camera on or off" },
     "wait-for-slot": { permission: "voice.waitslot", label: "Queue for a full voice channel and respond when a slot opens" },

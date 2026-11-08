@@ -1,0 +1,3 @@
+plugin "ShowPing":
+  needs voice.latency
+  use show-voice-ping
