@@ -243,6 +243,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const documentListeners = new Map();
         function NativeMessages(props) { return props.output; }
         function MessagesRenderer(props) { return props.output; }
+        function FavoritesGuildSuggestedChannels(props) { return props.children; }
+        const suggestedMarkers = new Set();
+        const section = { querySelector: () => ({}), setAttribute: key => suggestedMarkers.add(key),
+            removeAttribute: key => suggestedMarkers.delete(key) };
+        const suggestedHeading = { textContent: "Suggested", closest: () => section };
+        const suggestedList = { querySelectorAll: () => [suggestedHeading] };
+        let suggestedObserver;
+        let suggestedFrame;
         class GestureElement {
             constructor(id, interactive = false) { this.id = id; this.interactive = interactive; }
             closest(selector) {
@@ -628,6 +636,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/MarkupParsers.tsx") ? markupParser
                 : path === "modules/messages/native/Messages.tsx" ? { default: NativeMessages }
                 : path.endsWith("/MessagesRenderer.tsx") ? { default: MessagesRenderer }
+                : path.endsWith("/FavoritesGuildSuggestedChannels.tsx") ? { default: FavoritesGuildSuggestedChannels }
                 : path.endsWith("/UserProfileAboutMeCard.tsx") ? { default: AboutMeCard }
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
@@ -686,6 +695,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             module,
             IS_WEB: false,
             Element: GestureElement,
+            MutationObserver: class {
+                constructor(callback) { this.callback = callback; }
+                observe() { suggestedObserver = this.callback; }
+                disconnect() { suggestedObserver = undefined; }
+            },
+            requestAnimationFrame: callback => { suggestedFrame = callback; return 1; },
+            cancelAnimationFrame: () => { suggestedFrame = undefined; },
             VencordNative: { native: { openExternal } },
             setTimeout: (callback, delay) => delay === 10000 ? setTimeout(callback, delay) : pendingNotifications.push(callback),
             clearTimeout,
@@ -693,6 +709,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             File,
             fetch: (...args) => fetchAttachment(...args),
             document: {
+                body: {},
+                querySelectorAll: selector => selector === 'ul[aria-label="Channels"]' ? [suggestedList] : [],
                 createElement: () => ({ remove() { stylesheet = undefined; } }),
                 head: { append: value => { stylesheet = value; } },
                 addEventListener: (name, handler) => documentListeners.set(name, handler),
@@ -892,6 +910,29 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             selectedChannel = "test-channel";
             embedMessage = undefined;
         }
+        selectCatalog("HideSuggestedChannels");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            assert.equal(suggestedMarkers.size, 1);
+            suggestedHeading.textContent = "Other";
+            suggestedObserver([{ target: new GestureElement("channels", true), addedNodes: [] }]);
+            suggestedFrame();
+            assert.equal(suggestedMarkers.size, 0);
+            suggestedHeading.textContent = "Suggested";
+            suggestedObserver([{ target: new GestureElement("channels", true), addedNodes: [] }]);
+            suggestedFrame();
+            assert.equal(suggestedMarkers.size, 1);
+        } else {
+            const element = jsx(FavoritesGuildSuggestedChannels, { children: "Suggested channels" });
+            const wrapped = appearanceHooks.get(FavoritesGuildSuggestedChannels)(null, element);
+            assert.equal(wrapped.type(wrapped.props), null);
+            settings.safeMode = { enabled: true };
+            assert.equal(wrapped.type(wrapped.props), element);
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable HideSuggestedChannels");
+        assert.equal(suggestedMarkers.size + appearanceHooks.size, 0);
+        assert.equal(suggestedObserver, undefined);
         for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
             const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;
             assert.throws(() => activateCx(appearancePort, host, []), /approval/);

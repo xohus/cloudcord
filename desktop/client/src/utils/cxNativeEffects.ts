@@ -19,6 +19,7 @@ export const cxNativeEffects = {
     "copy-emoji-markdown": { permission: "emoji.clipboard", label: "Add a Copy Emoji Markdown action to the emoji menu" },
     "copy-media-link": { permission: "media.clipboard", label: "Add a clipboard action to media and link menus" },
     "profile-media": { permission: "profilemenu.media", label: "Add View and Download actions for Discord avatars and banners" },
+    "hide-suggested-channels": { permission: "appearance.hide", label: "Hide the suggested channels section" },
     "copy-text-attachment": { permission: "attachments.clipboard", label: "Copy the contents of the selected text attachment" },
     "attachment-image-quality": { permission: "media.imagequality", label: "Improve attachment previews and load originals in the media viewer" },
     "original-attachment-images": { permission: "media.imagequality", label: "Load original attachment images in chat and the media viewer" },

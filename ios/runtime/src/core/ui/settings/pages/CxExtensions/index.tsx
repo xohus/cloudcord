@@ -1753,6 +1753,11 @@ export default function CxExtensions() {
                             return registerMediaLinkCopy();
                         case "profile-media":
                             return registerProfileMedia();
+                        case "hide-suggested-channels": {
+                            const suggested = findByFilePath("modules/favorites/native/FavoritesGuildSuggestedChannels.tsx")?.default;
+                            if (!suggested) throw new Error("Discord's suggested channels section is unavailable");
+                            return registerJsxAppearance([suggested], () => null);
+                        }
                         case "copy-text-attachment":
                             return registerTextAttachmentCopy(enabled);
                         case "image-filename":

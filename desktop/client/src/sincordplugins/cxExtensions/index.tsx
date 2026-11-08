@@ -391,6 +391,45 @@ function applyAppearanceCss(target: keyof typeof cxAppearanceTargets) {
     return () => style.remove();
 }
 
+function registerHideSuggestedChannels() {
+    const listSelector = 'ul[aria-label="Channels"]';
+    const marker = "data-cloudcord-cx-hide-suggested";
+    const style = document.createElement("style");
+    style.textContent = "[" + marker + "]{display:none!important}";
+    document.head.append(style);
+
+    let hidden = new Set<Element>();
+    const scan = () => {
+        const next = new Set<Element>();
+        for (const list of document.querySelectorAll(listSelector)) {
+            for (const heading of list.querySelectorAll("h3")) {
+                if (heading.textContent?.trim() !== "Suggested") continue;
+                const section = heading.closest("li");
+                if (section?.querySelector('[role="button"],button')) next.add(section);
+            }
+        }
+        for (const section of hidden) if (!next.has(section)) section.removeAttribute(marker);
+        for (const section of next) if (!hidden.has(section)) section.setAttribute(marker, "");
+        hidden = next;
+    };
+    let frame: number | undefined;
+    const observer = new MutationObserver(records => {
+        if (frame !== undefined || !records.some(record =>
+            !!(record.target instanceof Element ? record.target : record.target.parentElement)?.closest(listSelector)
+            || Array.from(record.addedNodes).some(node => node instanceof Element
+                && (node.matches(listSelector) || !!node.querySelector(listSelector))))) return;
+        frame = requestAnimationFrame(() => { frame = undefined; scan(); });
+    });
+    scan();
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+    return () => {
+        observer.disconnect();
+        if (frame !== undefined) cancelAnimationFrame(frame);
+        style.remove();
+        for (const section of hidden) section.removeAttribute(marker);
+    };
+}
+
 function AnonymousUploadButton({ upload }: { upload: Parameters<CxUploadAnonymiser["isAnonymous"]>[0]; }) {
     const [selected, setSelected] = useState(() => uploadAnonymiser?.isAnonymous(upload) ?? false);
     if (!uploadAnonymiser) return null;
@@ -567,6 +606,8 @@ export function CxSettings() {
                             return registerMediaLinkCopy();
                         case "profile-media":
                             return registerProfileMedia();
+                        case "hide-suggested-channels":
+                            return registerHideSuggestedChannels();
                         case "copy-text-attachment":
                             fileCopyUsers++;
                             return () => { fileCopyUsers--; };

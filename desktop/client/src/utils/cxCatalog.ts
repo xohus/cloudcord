@@ -94,6 +94,7 @@ import plugin_catalog_hide_status_emojis from "../../../../examples/cx/catalog/p
 import plugin_catalog_hide_sticker_button from "../../../../examples/cx/catalog/plugins/hide-sticker-button.cx";
 import plugin_catalog_hide_stickers from "../../../../examples/cx/catalog/plugins/hide-stickers.cx";
 import plugin_catalog_hide_stream_previews from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
+import plugin_catalog_hide_suggested_channels from "../../../../examples/cx/catalog/plugins/hide-suggested-channels.cx";
 import plugin_catalog_hide_system_messages from "../../../../examples/cx/catalog/plugins/hide-system-messages.cx";
 import plugin_catalog_hide_threads_button from "../../../../examples/cx/catalog/plugins/hide-threads-button.cx";
 import plugin_catalog_hide_timestamps from "../../../../examples/cx/catalog/plugins/hide-timestamps.cx";
@@ -375,6 +376,7 @@ export const cxCatalog = {
         { name: "HideStickerButton", source: plugin_catalog_hide_sticker_button },
         { name: "HideStickers", source: plugin_catalog_hide_stickers },
         { name: "HideStreamPreviews", source: plugin_catalog_hide_stream_previews },
+        { name: "HideSuggestedChannels", source: plugin_catalog_hide_suggested_channels },
         { name: "HideSystemMessages", source: plugin_catalog_hide_system_messages },
         { name: "HideThreadsButton", source: plugin_catalog_hide_threads_button },
         { name: "HideTimestamps", source: plugin_catalog_hide_timestamps },

@@ -1,0 +1,3 @@
+plugin "HideSuggestedChannels":
+  needs appearance.hide
+  use hide-suggested-channels
