@@ -5,7 +5,7 @@ import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxV
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, sortCxReactions, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxCallClock, createCxJumpActions, createCxVoiceMemberClock, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel, type CxVoiceMemberOptions } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
@@ -2210,6 +2210,14 @@ export default function CxExtensions() {
                         }
                         case "quick-mention":
                             return registerQuickMention(enabled);
+                        case "sort-reactions-by-count":
+                            return overrideCxMethods(findByFilePath("modules/messages/native/renderer/transformReactions.tsx"), {
+                                default(args, invoke) {
+                                    const options = args[0] as { reactions?: readonly { count: number; }[]; } | undefined;
+                                    if (!Array.isArray(options?.reactions) || options.reactions.length < 2) return invoke(args);
+                                    return invoke([{ ...options, reactions: sortCxReactions(options.reactions) }, ...args.slice(1)]);
+                                },
+                            }, enabled);
                         case "pin-message-shortcut":
                             return registerPinShortcut(enabled);
                         case "toggle-message-embeds":

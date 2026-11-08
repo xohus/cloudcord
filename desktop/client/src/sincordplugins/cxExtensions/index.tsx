@@ -9,7 +9,7 @@ import { addServerListElement, removeServerListElement, ServerListRenderPosition
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
-import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
+import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, sortCxReactions } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel } from "@utils/cx";
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "@utils/cx";
@@ -328,6 +328,7 @@ let imageFullUrlUsers = 0;
 let descriptiveGifAltUsers = 0;
 let imageLinkUsers = 0;
 let roleHeaderUsers = 0;
+let reactionSortUsers = 0;
 let fileCopyUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
@@ -888,6 +889,9 @@ export function CxSettings() {
                             });
                         case "pending-friend-count":
                             return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 });
+                        case "sort-reactions-by-count":
+                            reactionSortUsers++;
+                            return () => { reactionSortUsers--; };
                         case "hide-role-headers":
                             roleHeaderUsers++;
                             return () => { roleHeaderUsers--; };
@@ -1242,6 +1246,13 @@ export default definePlugin({
             },
         ],
     }, {
+        find: "visibleReactionsCount:",
+        predicate: () => !Settings.plugins.SortReactions?.enabled,
+        replacement: {
+            match: /\{reactions:(\i),(?=message:\i,readOnly:)/,
+            replace: "{reactions:$self.sortMessageReactions($1),",
+        },
+    }, {
         find: "#{intl::UNIGNORE_TO_JUMP_BODY}",
         predicate: () => !Settings.plugins.NoUnblockToJump?.enabled,
         replacement: {
@@ -1396,6 +1407,9 @@ export default definePlugin({
     },
     renderCallTime(channelId?: string) {
         return <CallTime channelId={channelId} />;
+    },
+    sortMessageReactions<T extends { count: number; }>(reactions: readonly T[]) {
+        return reactionSortUsers > 0 ? sortCxReactions(reactions) : reactions;
     },
     canJumpWithoutUnblocking() { return navigationControls.has("jump-without-unblocking"); },
     renderJumpToFirst(channel: CxNavigationChannel | undefined) {

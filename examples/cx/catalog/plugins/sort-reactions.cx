@@ -1,0 +1,3 @@
+plugin "SortReactions":
+  needs appearance.style
+  use sort-reactions-by-count

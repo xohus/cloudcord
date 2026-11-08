@@ -4,6 +4,7 @@ export const cxNativeEffects = {
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "static-typing-dots": { permission: "appearance.style", label: "Keep Discord's typing dots still" },
     "code-block-gap": { permission: "appearance.style", label: "Remove the extra blank line after fenced code blocks" },
+    "sort-reactions-by-count": { permission: "appearance.style", label: "Show the most-used reactions first under each message" },
     "plus-reactions": { permission: "messages.reactshortcut", label: "React to the matching previous message when you send a plus shortcut" },
     "fix-file-extensions": { permission: "uploads.rename", label: "Use supported filename extensions for listed attachment formats" },
     "pending-friend-count": { permission: "appearance.hide", label: "Hide the pending friend request count" },
@@ -55,6 +56,11 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+// SortReactions by rootpoi, kraethis, and ewlle (GPL-3.0-or-later).
+export function sortCxReactions<T extends { count: number; }>(reactions: readonly T[]) {
+    return reactions.length < 2 ? reactions : [...reactions].sort((a, b) => b.count - a.count);
+}
 
 export function getCxPinAction(message: { id?: string; channel_id?: string; pinned?: boolean; }, channel: string, canPin: boolean) {
     if (!canPin || !isCxProfileUserId(channel) || message.channel_id !== channel

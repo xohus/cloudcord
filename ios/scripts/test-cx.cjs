@@ -515,6 +515,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const settings = {};
         const validateJumpWithAlert = message => !message.blocked;
         const jumpValidator = { default: validateJumpWithAlert };
+        const transformReactions = options => options;
+        const reactionRenderer = { default: transformReactions };
         let profileUser;
         let expressionSelection;
         const expressionSheets = { MessageEmojiActionSheet: () => null, StickerDetailActionSheet: () => null,
@@ -709,6 +711,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "modules/messages/native/renderer/transformReactions.tsx" ? reactionRenderer
                 : path === "modules/messages/validateJumpWithAlert.tsx" ? jumpValidator
                 : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
                 : path.endsWith("/GuildsBarFooterWrapper.tsx") ? { default: GuildsBarFooterWrapper }
@@ -2681,6 +2684,30 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(appearanceHooks.size, 0);
             assert.equal(stylesheet, undefined);
         }
+        {
+            const reactions = Object.freeze([
+                { count: 1, emoji: "low" }, { count: 5, emoji: "first" }, { count: 5, emoji: "second" },
+            ]);
+            const options = Object.freeze({ reactions, animateEmoji: true });
+            const read = () => desktop
+                ? desktopPlugin.sortMessageReactions(reactions)
+                : reactionRenderer.default(options).reactions;
+            assert.equal(read(), reactions);
+            selectCatalog("SortReactions");
+            click(render(), "Allow for this session");
+            assert.deepEqual(Array.from(read(), reaction => reaction.emoji), ["first", "second", "low"]);
+            assert.equal(reactions[0].emoji, "low");
+            if (!desktop) {
+                assert.equal(reactionRenderer.default(options).animateEmoji, true);
+                settings.safeMode = { enabled: true };
+                assert.equal(reactionRenderer.default(options), options);
+                settings.safeMode = undefined;
+            }
+            click(render(), "Disable SortReactions");
+            assert.equal(read(), reactions);
+            assert.equal(reactionRenderer.default, transformReactions);
+        }
+
         {
             const jumpPort = cxCatalog.plugins.find(entry => entry.name === "NoUnblockToJump").source;
             const message = { blocked: true };

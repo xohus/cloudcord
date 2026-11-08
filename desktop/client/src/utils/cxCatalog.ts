@@ -171,6 +171,7 @@ import plugin_catalog_silence_users from "../../../../examples/cx/catalog/plugin
 import plugin_catalog_silent_message_toggle from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
 import plugin_catalog_silent_typing from "../../../../examples/cx/catalog/plugins/silent-typing.cx";
 import plugin_catalog_sollux_typing_quirk from "../../../../examples/cx/catalog/plugins/sollux-typing-quirk.cx";
+import plugin_catalog_sort_reactions from "../../../../examples/cx/catalog/plugins/sort-reactions.cx";
 import plugin_catalog_space_out from "../../../../examples/cx/catalog/plugins/space-out.cx";
 import plugin_catalog_split_large_messages from "../../../../examples/cx/catalog/plugins/split-large-messages.cx";
 import plugin_catalog_spotify_share_commands from "../../../../examples/cx/catalog/plugins/spotify-share-commands.cx";
@@ -469,6 +470,7 @@ export const cxCatalog = {
         { name: "SilentMessageToggle", source: plugin_catalog_silent_message_toggle },
         { name: "SilentTyping", source: plugin_catalog_silent_typing },
         { name: "SolluxTypingQuirk", source: plugin_catalog_sollux_typing_quirk },
+        { name: "SortReactions", source: plugin_catalog_sort_reactions },
         { name: "SpaceOut", source: plugin_catalog_space_out },
         { name: "SplitLargeMessages", source: plugin_catalog_split_large_messages },
         { name: "SpotifyShareCommands", source: plugin_catalog_spotify_share_commands },

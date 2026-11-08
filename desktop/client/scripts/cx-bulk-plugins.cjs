@@ -959,6 +959,10 @@ const desktopEffectRecipes = {
         effect: "jump-to-message-menu",
         sha256: "50002ef6e62591654d9fca64bf4c61c7a99a8fb76e7b82a3b202dfce8c625d5a",
     },
+    SortReactions: {
+        effect: "sort-reactions-by-count",
+        sha256: "65a6bc1b83fcaf80b335a3eb397e7e7f0fcac51fe5d35793c2474aa2e7628bdb",
+    },
     NoUnblockToJump: {
         effect: "jump-without-unblocking",
         find: "#{intl::UNIGNORE_TO_JUMP_BODY}",
