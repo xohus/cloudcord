@@ -35,6 +35,7 @@ export const cxNativeEffects = {
     "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
     "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
     "quick-mention": { permission: "messages.insertmention", label: "Insert the selected message author's mention into the current draft" },
+    "bypass-pin-prompt": { permission: "messages.pin", label: "Use Discord’s Pin and Unpin actions without a confirmation prompt" },
     "pin-message-shortcut": { permission: "messages.pin", label: "Pin or unpin the selected message with one menu action" },
     "toggle-message-embeds": { permission: "messages.toggleembeds", label: "Suppress or unsuppress embeds in the selected message" },
     "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },

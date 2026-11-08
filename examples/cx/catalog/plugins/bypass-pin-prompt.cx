@@ -1,0 +1,3 @@
+plugin "BypassPinPrompt":
+  needs messages.pin
+  use bypass-pin-prompt

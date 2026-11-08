@@ -16,6 +16,7 @@ import plugin_catalog_block_keywords from "../../../../examples/cx/catalog/plugi
 import plugin_catalog_blur_images_until_hover from "../../../../examples/cx/catalog/plugins/blur-images-until-hover.cx";
 import plugin_catalog_blur_nsfw from "../../../../examples/cx/catalog/plugins/blur-nsfw.cx";
 import plugin_catalog_bold_text from "../../../../examples/cx/catalog/plugins/bold-text.cx";
+import plugin_catalog_bypass_pin_prompt from "../../../../examples/cx/catalog/plugins/bypass-pin-prompt.cx";
 import plugin_catalog_calculator from "../../../../examples/cx/catalog/plugins/calculator.cx";
 import plugin_catalog_call_time_counter from "../../../../examples/cx/catalog/plugins/call-time-counter.cx";
 import plugin_catalog_centered_chat from "../../../../examples/cx/catalog/plugins/centered-chat.cx";
@@ -315,6 +316,7 @@ export const cxCatalog = {
         { name: "BlurImagesUntilHover", source: plugin_catalog_blur_images_until_hover },
         { name: "BlurNSFW", source: plugin_catalog_blur_nsfw },
         { name: "BoldText", source: plugin_catalog_bold_text },
+        { name: "BypassPinPrompt", source: plugin_catalog_bypass_pin_prompt },
         { name: "Calculator", source: plugin_catalog_calculator },
         { name: "CallTimeCounter", source: plugin_catalog_call_time_counter },
         { name: "CenteredChat", source: plugin_catalog_centered_chat },

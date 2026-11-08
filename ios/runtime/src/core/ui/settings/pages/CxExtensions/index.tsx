@@ -1205,6 +1205,31 @@ function registerCopyChannelName(enabled: () => boolean) {
     return () => { active = false; stop(); };
 }
 
+function registerBypassPinPrompt(enabled: () => boolean) {
+    const alerts = findByFilePath("actions/native/AlertActionCreators.tsx")?.default;
+    const translations = findByProps("intl", "t");
+    if (typeof translations?.intl?.string !== "function") throw new Error("Discord’s pin prompt translations are unavailable");
+    // Message menu pin, message menu unpin, and pinned messages screen unpin.
+    const promptKeys = [["CvQ18w", "p89ACt"], ["Bse+F/", "p89ACt"], ["xFjByk", "ETE/oC"]];
+    function translated(key: string) {
+        const message = translations.t[key];
+        return message && translations.intl.string(message);
+    }
+    return overrideCxMethods(alerts, {
+        show(args, invoke) {
+            const alert = args[0] as { title?: unknown; confirmText?: unknown; onConfirm?: () => unknown; } | undefined;
+            if (typeof alert?.title !== "string" || !alert.title || typeof alert.confirmText !== "string"
+                || !alert.confirmText || typeof alert.onConfirm !== "function"
+                || !promptKeys.some(([title, confirm]) => alert.title === translated(title) && alert.confirmText === translated(confirm))) {
+                return invoke(args);
+            }
+            const failed = () => showToast("Couldn’t change the message pin.");
+            try { void Promise.resolve(alert.onConfirm()).catch(failed); }
+            catch { failed(); }
+        },
+    }, enabled);
+}
+
 function registerPinShortcut(enabled: () => boolean) {
     const pins = findByProps("pinMessage", "unpinMessage");
     const permissions = findByProps("Fonts", "Permissions")?.Permissions;
@@ -2218,6 +2243,8 @@ export default function CxExtensions() {
                                     return invoke([{ ...options, reactions: sortCxReactions(options.reactions) }, ...args.slice(1)]);
                                 },
                             }, enabled);
+                        case "bypass-pin-prompt":
+                            return registerBypassPinPrompt(enabled);
                         case "pin-message-shortcut":
                             return registerPinShortcut(enabled);
                         case "toggle-message-embeds":

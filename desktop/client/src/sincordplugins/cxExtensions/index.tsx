@@ -329,6 +329,7 @@ let descriptiveGifAltUsers = 0;
 let imageLinkUsers = 0;
 let roleHeaderUsers = 0;
 let reactionSortUsers = 0;
+let bypassPinPromptUsers = 0;
 let fileCopyUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
@@ -834,6 +835,9 @@ export function CxSettings() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention();
+                        case "bypass-pin-prompt":
+                            bypassPinPromptUsers++;
+                            return () => { bypassPinPromptUsers--; };
                         case "pin-message-shortcut":
                             return registerPinShortcut();
                         case "toggle-message-embeds":
@@ -1245,7 +1249,14 @@ export default definePlugin({
                 replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id)]",
             },
         ],
-    }, {
+    }, ...['source:"message-actions"', 'id:"pin",action', '"Channel Pins"'].map(find => ({
+        find,
+        predicate: () => !Settings.plugins.BypassPinPrompt?.enabled,
+        replacement: {
+            match: /(\i\.\i\.(?:unpin|pin)Message\(\i,\i\.id\)):(\i\.\i\.confirm(?:Unpin|Pin)\(\i,\i\))/g,
+            replace: "$1:$self.shouldSkipPinPrompt()?$1:$2",
+        },
+    })), {
         find: "visibleReactionsCount:",
         predicate: () => !Settings.plugins.SortReactions?.enabled,
         replacement: {
@@ -1408,6 +1419,7 @@ export default definePlugin({
     renderCallTime(channelId?: string) {
         return <CallTime channelId={channelId} />;
     },
+    shouldSkipPinPrompt() { return bypassPinPromptUsers > 0; },
     sortMessageReactions<T extends { count: number; }>(reactions: readonly T[]) {
         return reactionSortUsers > 0 ? sortCxReactions(reactions) : reactions;
     },

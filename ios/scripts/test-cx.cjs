@@ -514,6 +514,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const diagnosticCache = { 42: { exports: diagnosticExports } };
         const settings = {};
+        Object.assign(headerMessages.t, { "CvQ18w": "Épingler le message", "Bse+F/": "Désépingler le message",
+            p89ACt: "Confirmer", xFjByk: "Retirer des épingles", "ETE/oC": "Retirer" });
+        const pinPrompts = [];
+        const showPinAlert = alert => pinPrompts.push(alert);
+        const nativePinAlerts = { show: showPinAlert };
         const validateJumpWithAlert = message => !message.blocked;
         const jumpValidator = { default: validateJumpWithAlert };
         const transformReactions = options => options;
@@ -712,6 +717,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "actions/native/AlertActionCreators.tsx" ? { default: nativePinAlerts }
                 : path === "modules/messages/native/renderer/transformReactions.tsx" ? reactionRenderer
                 : path === "modules/messages/validateJumpWithAlert.tsx" ? jumpValidator
                 : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
@@ -2685,6 +2691,37 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(appearanceHooks.size, 0);
             assert.equal(stylesheet, undefined);
         }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "BypassPinPrompt").source;
+            assert.throws(() => activateCx(port, host, ["appearance.style"]), /approval/);
+            const confirmations = [];
+            const prompt = (title, confirmText) => ({ title, confirmText, onConfirm: () => confirmations.push(title) });
+            const valid = prompt("Épingler le message", "Confirmer");
+            if (desktop) assert.equal(desktopPlugin.shouldSkipPinPrompt(), false);
+            else nativePinAlerts.show(valid);
+            selectCatalog("BypassPinPrompt");
+            click(render(), "Allow for this session");
+            if (desktop) assert.equal(desktopPlugin.shouldSkipPinPrompt(), true);
+            else {
+                const unpin = prompt("Désépingler le message", "Confirmer");
+                const fromPins = prompt("Retirer des épingles", "Retirer");
+                for (const alert of [valid, unpin, fromPins]) nativePinAlerts.show(alert);
+                assert.deepEqual(confirmations, [valid.title, unpin.title, fromPins.title]);
+                const otherTitle = prompt("Supprimer le message", "Confirmer");
+                const otherAction = prompt(valid.title, "Supprimer");
+                nativePinAlerts.show(otherTitle);
+                nativePinAlerts.show(otherAction);
+                settings.safeMode = { enabled: true };
+                nativePinAlerts.show(valid);
+                settings.safeMode = undefined;
+                assert.deepEqual(pinPrompts, [valid, otherTitle, otherAction, valid]);
+                assert.equal(confirmations.length, 3);
+            }
+            click(render(), "Disable BypassPinPrompt");
+            assert.equal(nativePinAlerts.show, showPinAlert);
+            if (desktop) assert.equal(desktopPlugin.shouldSkipPinPrompt(), false);
+        }
+
         {
             const reactions = Object.freeze([
                 { count: 1, emoji: "low" }, { count: 5, emoji: "first" }, { count: 5, emoji: "second" },

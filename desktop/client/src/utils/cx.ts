@@ -68,7 +68,7 @@ const permissionLabels = {
     "messages.openeditor": "Open Discord’s editor for your own message when you double-click or double-tap it",
     "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user’s message",
     "messages.insertmention": "Insert a mention into your current draft when you choose Quick Mention",
-    "messages.pin": "Pin or unpin a message immediately when you choose its shortcut.",
+    "messages.pin": "Pin or unpin a message immediately when you choose a pin action.",
     "messages.toggleembeds": "Change embed visibility on the selected message when you choose its menu action.",
     "messages.repeat": "Send a copy of the selected message when you choose Repeat or Repeat and Reply. Mentions are suppressed.",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
