@@ -1,39 +1,61 @@
 <div align="center">
-  <img src="assets/logo-full.png" alt="CloudCord" width="720" />
 
-  <h1>CloudCord</h1>
-  <p><strong>A modern, privacy-minded Discord client experience for mobile and desktop.</strong></p>
-  <p>600+ plugins · 100 instant tweaks · a built-in theme store · Fake Profile · BotCord</p>
+<img src="https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/assets/cloudcord-logo.png" width="300" alt="CloudCord logo">
 
-  <p>
-    <img alt="iOS" src="https://img.shields.io/badge/iOS-supported-111111?style=for-the-badge&logo=apple" />
-    <img alt="Android" src="https://img.shields.io/badge/Android-supported-111111?style=for-the-badge&logo=android" />
-    <img alt="Windows" src="https://img.shields.io/badge/Windows-supported-111111?style=for-the-badge" />
-    <img alt="Open Source" src="https://img.shields.io/badge/source-visible-111111?style=for-the-badge&logo=github" />
-    <img alt="Local First" src="https://img.shields.io/badge/local--first-settings-111111?style=for-the-badge&logo=databricks" />
-  </p>
+# CloudCord
+
+**Your Discord, your way.**
+
+Customize your profile, make Discord look the way you want, and add tools to the client you already use.
+
+[**Download**](https://getcloudcord.com/#download) · [**Releases**](https://github.com/cloudcord-mod/release-hub/releases) · [**Status**](https://getcloudcord.com/status) · [**Report a bug**](https://github.com/cloudcord-mod/release-hub/issues)
+
+Windows · macOS · Android · iOS / iPadOS · Browser
+
 </div>
 
 ---
 
-## What CloudCord is
+## What you get
 
-CloudCord is an actively maintained **client-side Discord modification framework** focused on iOS, iPadOS, and Android, with Windows desktop support. It extends the Discord client through runtime/framework injection, plugins, fake profile badges, profile customization, UI overrides, themes, and cross-device profile synchronization.
+- **Fake Profile** lets you customize your name, avatar, banner, bio, badges, and profile effects. Keep your changes on your device or publish a profile that other compatible CloudCord clients can display. Nitro and badge previews are cosmetic.
+- **Add-ons** brings plugins, themes, fonts, and interface tweaks into Discord settings. On desktop, you can also use compatible BetterDiscord themes.
+- **CX** is CloudCord’s `.cx` format for permission-reviewed plugins and themes. Supported CX add-ons can run on desktop and mobile, including themes with chat backgrounds. The catalog is still growing. [CX catalog](https://github.com/cloudcord-mod/release-hub/tree/main/examples/cx/catalog)
+- **BotCord** gives desktop users a separate interface for Discord bot accounts they manage.
+- **CloudSync** backs up and syncs supported CloudCord settings through StoreCloud.
 
-CloudCord is **not** a Discord bot hosting service, server-hosting provider, chatbot SaaS, or Discord automation host. The canonical website is [cloudcord.xohus.lol](https://cloudcord.xohus.lol/), this repository integrates the platform sources and publishes CloudCord releases, and the project is maintained by [Xohus](https://github.com/xohus).
+<div align="center">
+  <img src="https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/assets/readme/desktop/plugins.webp" width="48%" alt="CloudCord plugin browser">
+  <img src="https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/assets/readme/desktop/themes.webp" width="48%" alt="CloudCord desktop theme store">
+</div>
 
-For machine-readable project guidance and entity disambiguation, see [CloudCord Entity & Citation Guide](ENTITY.md).
+## Install
 
-## Platform repositories
+| Platform | Get CloudCord | Setup |
+| --- | --- | --- |
+| **Windows** | [Installer](https://getcloudcord.com/download/windows) | Open the installer, choose Discord Stable, PTB, or Canary, and install CloudCord. The installer can also repair or uninstall it. |
+| **macOS** | [Apple Silicon](https://getcloudcord.com/download/mac/arm64) · [Intel](https://getcloudcord.com/download/mac/x64) | Check **About This Mac** for your chip or processor, then choose the matching preview DMG. |
+| **Android** | [CloudCord Manager](https://getcloudcord.com/download/android) | Install and open Manager, then follow its prompts to patch and install Discord. |
+| **iOS / iPadOS** | [IPA](https://getcloudcord.com/download/ios) | Sign and sideload the IPA with a compatible tool. |
+| **Browser** | [Chrome / Brave](https://getcloudcord.com/download/browser/chrome) · [Firefox](https://getcloudcord.com/download/browser/firefox) · [Userscript](https://getcloudcord.com/download/browser/userscript) | Follow the browser instructions on the download page. |
 
-| Repository | Source |
+After installing, open **Discord Settings → CloudCord**. Start with **Profile** to change how your profile looks or **Add-ons** to browse extensions.
+
+Features and build availability vary by platform. If something breaks, include your platform, Discord version, CloudCord build, and the exact error or steps to reproduce it. [Status page](https://getcloudcord.com/status) · [GitHub issues](https://github.com/cloudcord-mod/release-hub/issues)
+
+## Source and builds
+
+| Repository | What lives there |
 | --- | --- |
-| [Desktop](https://github.com/cloudcord-mod/desktop) | Windows installer, desktop runtime, browser extensions, and userscript |
-| [Android](https://github.com/cloudcord-mod/android) | Android Manager, patcher, and loader |
-| [iOS](https://github.com/cloudcord-mod/ios) | iOS and iPadOS loader and shared mobile runtime |
-| [macOS](https://github.com/cloudcord-mod/macos) | Native installer and DMG packaging for Apple Silicon and Intel |
+| [Release Hub](https://github.com/cloudcord-mod/release-hub) | Official downloads, release workflows, and shared build inputs |
+| [Desktop](https://github.com/cloudcord-mod/desktop) | Windows installer, desktop client, browser extensions, and userscript |
+| [macOS](https://github.com/cloudcord-mod/macos) | Apple Silicon and Intel DMG packaging |
+| [Android](https://github.com/cloudcord-mod/android) | CloudCord Manager, patcher, and Android loader integration |
+| [iOS](https://github.com/cloudcord-mod/ios) | Native iOS and iPadOS loader and shared mobile runtime |
 
-This repository keeps release history, the official download files, and the shared inputs used by the platform builds. Make platform changes in the corresponding repository. To include a reviewed Desktop, Android, or iOS source update in an official release, create an integration branch here, fetch the platform repository, and import its tracked directory. For example, to import Android:
+## Contributing
+
+Make platform changes in the corresponding repository. To integrate a reviewed change into an official release, create a branch in Release Hub, import the reviewed platform directory, and open a pull request. The following commands import Android from its platform repository.
 
 ```sh
 git fetch https://github.com/cloudcord-mod/android.git main
@@ -41,205 +63,21 @@ git restore --source=FETCH_HEAD --staged --worktree -- android
 git diff --cached --stat
 ```
 
-Commit the reviewed changes and open an integration pull request. The macOS repository uses the source of the published Mac preview and builds its own DMGs.
+For shared runtime and build information, see the [workflow directory](.github/workflows). [Project and citation guide](ENTITY.md)
 
-## Install
+## Credits
 
-<div align="center">
-<table>
-<tr>
-<td align="center" width="33%">
-  <img src="assets/readme/platforms/ios.svg" width="88" height="88" alt="iOS / iPadOS" />
-  <h3>iOS / iPadOS</h3>
-  <br /><br />
-  <a href="https://github.com/cloudcord-mod/release-hub/releases/download/new_beta/cloudcord0.ipa"><strong>Download CloudCord IPA</strong></a>
-  <br />
-  <sub><a href="https://github.com/cloudcord-mod/release-hub/releases/tag/new_beta">View iOS / iPadOS release</a></sub>
-</td>
-<td align="center" width="33%">
-  <img src="assets/readme/platforms/android.svg" width="88" height="88" alt="Android" />
-  <h3>Android</h3>
-  <br /><br />
-  <a href="https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_android/cloudcord.apk"><strong>Download CloudCord APK</strong></a>
-  <br />
-  <sub><a href="https://github.com/cloudcord-mod/release-hub/releases/tag/new_beta_android">View Android release</a></sub>
-</td>
-<td align="center" width="33%">
-  <img src="assets/readme/platforms/windows.svg" width="88" height="88" alt="Windows desktop" />
-  <h3>Windows</h3>
-  <br /><br />
-  <a href="https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_t_desktop/CloudCordInstaller.exe"><strong>Download CloudCord Installer</strong></a>
-  <br />
-  <sub><a href="https://github.com/cloudcord-mod/release-hub/releases/download/new_beta_t_desktop/cloudcord.exe">Classic installer</a> · <a href="https://github.com/cloudcord-mod/release-hub/releases/tag/new_beta_t_desktop">View release</a></sub>
-</td>
-</tr>
-</table>
-</div>
+**CloudCord is maintained by [Xohus](https://xohus.lol/)**, with contributions from the people who build, test, translate, and support it.
 
-> Download CloudCord only from this repository's releases. iOS uses an `.ipa`, Android uses an `.apk`, and Windows uses `CloudCordInstaller.exe`. On Windows, run the installer, pick your Discord (Stable, PTB or Canary) and click **Install CloudCord**. It closes Discord for you, always installs the newest build, and can repair or uninstall later.
+- **Desktop foundations and plugins** come from [Sincord](https://github.com/sincord/sincord), [Vencord](https://github.com/Vendicated/Vencord), [Equicord](https://github.com/Equicord/Equicord), and [Endcord](https://github.com/Endcord/Endcord) and their contributors. Sincord contributors also helped lay the groundwork for Fake Profile. [Desktop credits](https://github.com/cloudcord-mod/release-hub/blob/main/desktop/client/CREDITS.md)
+- **Mobile runtime and loaders** build on Vendetta, Bunny, [Kettu](https://codeberg.org/cocobo1/Kettu), and [RainTweak](https://codeberg.org/raincord/RainTweak). The Android Manager builds on work from Aliucord, Vendetta, and Raincord Manager, with [KettuXposed](https://github.com/C0C0B01/KettuXposed) used in the Android build. [Mobile credits](https://github.com/cloudcord-mod/release-hub/blob/main/ios/docs/CREDITS.md) · [RainTweak notice](https://github.com/cloudcord-mod/release-hub/blob/main/ios/native-ios/RAIN-NOTICE.md)
+- **Community add-ons** credit their original plugin and theme authors. Thanks to [BetterDiscord](https://github.com/BetterDiscord/BetterDiscord) and its community for add-ons, theme compatibility, and inspiration for the add-on cards and theme store. [CX author notices](https://github.com/cloudcord-mod/release-hub/tree/main/examples/cx/catalog)
+- **README layout** takes inspiration from [Foldcord](https://github.com/ffolded/Foldcord) by folded and Xohus.
 
-## New on desktop
+## License
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 600+ plugins
-
-Every plugin in one fast list with search, sorting and list or grid view. Cards load as you scroll, so the page opens instantly even with hundreds of plugins.
-
-<img src="assets/readme/desktop/plugins.webp" alt="Plugins" />
-
-</td>
-<td width="50%" valign="top">
-
-### 100 instant tweaks
-
-Hide the Nitro, Shop and gift buttons, go AMOLED black, center the chat, enlarge text and more. Each tweak is one switch and applies without a restart.
-
-<img src="assets/readme/desktop/tweaks.webp" alt="Tweaks" />
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### Theme store
-
-Browse 100+ community themes with previews and install one in a click. BetterDiscord `.theme.css` files work too, and CloudCord asks once before a theme may load styles from its author's site.
-
-<img src="assets/readme/desktop/themes.webp" alt="Theme store" />
-
-</td>
-<td width="50%" valign="top">
-
-### A better installer
-
-A 100 KB animated installer for Windows. It closes Discord safely, downloads the latest CloudCord, swaps files without ever leaving a half-written install, and falls back to plain Discord if anything goes wrong.
-
-<img src="assets/readme/desktop/installer.webp" alt="Installer" />
-
-</td>
-</tr>
-</table>
-
-## Live CloudCord numbers
+CloudCord’s original branding, artwork, and other covered original work are governed by the [CloudCord license](https://github.com/cloudcord-mod/release-hub/blob/main/license). Upstream-derived components retain their applicable licenses. See the [desktop GPL license](https://github.com/cloudcord-mod/release-hub/blob/main/desktop/client/LICENSE), [Android OSL license](https://github.com/cloudcord-mod/release-hub/blob/main/android/LICENSE), [Rain loader OSL license](https://github.com/cloudcord-mod/release-hub/blob/main/ios/native-ios/RAIN-LICENSE), and [mobile runtime BSD license](https://github.com/cloudcord-mod/release-hub/blob/main/ios/runtime/LICENSE).
 
 <div align="center">
-  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/installs-badge.svg?v=20260816-2" alt="Lifetime CloudCord installs" />
+  <sub>An independent community project for Discord.</sub>
 </div>
-
-The number is how many times CloudCord has been obtained from the official releases across iOS, Android, and Windows. It is calculated from lifetime IPA, APK, and EXE downloads and does not use Fake Profile, Discord account IDs, or online-presence tracking. Reinstalling or downloading on another device can increase the number again.
-
-## Platform support
-
-| Platform | Package | Support |
-| :---: | :---: | --- |
-| <img src="assets/readme/platforms/ios.svg" width="28" height="28" alt="iOS" /> **iOS / iPadOS** | `.ipa` | Mobile runtime, CloudSync with StoreCloud, Fake Profile, plugins, themes and fonts |
-| <img src="assets/readme/platforms/android.svg" width="28" height="28" alt="Android" /> **Android** | `.apk` | Mobile runtime, CloudSync with StoreCloud, Fake Profile, plugins, themes and fonts |
-| <img src="assets/readme/platforms/windows.svg" width="28" height="28" alt="Windows" /> **Windows desktop** | `.exe` | Installer, automatic updates, BotCord, shared Fake Profile, CloudSync with StoreCloud, plugins, themes and fonts |
-
-## CloudCord at a glance
-
-CloudCord extends Discord with a focused set of client features while keeping the experience familiar. Mobile features are integrated directly into the Discord settings and navigation surfaces, with local configuration and an automatically refreshed runtime.
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### BotCord
-
-A full Discord-style bot-account client built directly into CloudCord Desktop.
-
-- Multiple locally saved bot accounts
-- Server rail, categorized channels and direct-message home
-- Message history pagination with automatic conversation refresh
-- Text, image and file attachments, embeds and poll rendering
-- Replies, reactions, inline editing and message deletion
-- Searchable member list with one-click bot DMs
-- New DM picker limited to members of servers the selected bot belongs to
-- Local multi-bot switching without exposing tokens after setup
-
-</td>
-<td width="50%" valign="top">
-
-### Fake Profile
-
-Build a complete custom profile locally and optionally share it with other CloudCord users.
-
-- Username, display name, avatar, banner, bio and pronouns
-- Profile gradients, badges, Nitro and boost-duration previews
-- Account and signup dates
-- Built-in decorations, Discord catalog discovery and custom asset IDs
-- Automatic full-editor profile saving and CloudCord desktop/mobile sharing by Discord user ID
-- No hidden marker or symbol is added to the real Discord About Me
-- Local persistence that automatically reapplies at startup
-
-</td>
-</tr>
-</table>
-
-## Built-in tabs
-
-CloudCord keeps its main features directly inside the client settings. Each tab has a dedicated purpose and visual identity.
-
-| Icon | Tab | What it does |
-| :---: | --- | --- |
-| <img src="assets/cloudcord-favicon.png" width="28" height="28" alt="General" /> | **General** | Core CloudCord controls, client options and runtime controls |
-| <img src="assets/readme/tabs/botcord.svg" width="28" height="28" alt="BotCord" /> | **BotCord** | Bot accounts, DMs, servers, channels, members, messaging and media |
-| <img src="ios/assets/fakeprofile-icon.png" width="28" height="28" alt="Fake Profile" /> | **Fake Profile** | Complete local and opt-in shared profiles, badges, media and decorations |
-| <img src="assets/readme/tabs/cloud-sync.svg" width="28" height="28" alt="CloudSync" /> | **CloudSync** | Sync supported CloudCord settings and backups through StoreCloud |
-| <img src="assets/readme/tabs/plugins.svg" width="28" height="28" alt="Plugins" /> | **Plugins** | Enable or disable all plugins, configure them, and add trusted outside plugins from repository links |
-| <img src="assets/readme/tabs/plugin-browser.svg" width="28" height="28" alt="Plugin Browser" /> | **Plugin Browser** | Browse and manage available plugins |
-| <img src="assets/readme/tabs/themes.svg" width="28" height="28" alt="Themes" /> | **Themes** | Install and manage client themes |
-| <img src="assets/readme/tabs/fonts.svg" width="28" height="28" alt="Fonts" /> | **Fonts** | Customize client typography |
-| <img src="assets/readme/tabs/developer.svg" width="28" height="28" alt="Developer" /> | **Developer** | Loader controls, diagnostics and development options |
-
-## Why CloudCord
-
-### Local-first configuration
-
-CloudCord keeps feature configuration on-device where possible. BotCord tokens always remain local. When Fake Profile is enabled, editor changes save locally and publish automatically so CloudCord desktop and mobile clients can discover them by public Discord user ID. CloudCord does not put hidden symbols in the real About Me. The public service stores only the Discord user ID and visible editor fields; it never receives Discord credentials, email addresses or phone numbers. Unmodified Discord clients cannot render CloudCord-only profile fields.
-
-### Familiar interface
-
-CloudCord integrates with the client rather than building a separate app around it. Settings, themes, typography and navigation are designed to follow the host client closely.
-
-### Fast runtime updates
-
-The CloudCord runtime can refresh independently of a full native rebuild. On Windows, `cloudcord.exe` also checks the official desktop release and replaces itself automatically when a newer installer is published.
-
-### Plugin ecosystem
-
-CloudCord Desktop ships 600+ plugins: Vencord's, the Sincord and Equicord collection, extra plugins from Endcord, and 100 original CloudCord tweaks. Each plugin keeps its authors' credit on its card and in its source. The Add-ons page brings Plugins, Tweaks, Themes, Sync and Extras together behind one tab bar.
-
-Credits: [Vencord](https://github.com/Vendicated/Vencord), [Equicord](https://github.com/Equicord/Equicord), [Endcord](https://github.com/Endcord/Endcord) and Sincord contributors (GPL-3.0), and [BetterDiscord](https://github.com/BetterDiscord/BetterDiscord) for the addon card style and theme store (Apache-2.0).
-
-## Platform layout
-
-```text
-cloudcord/
-|-- ios/                 iOS assets, runtime and native loader
-|-- android/             Android manager and packaged assets
-|-- desktop/             Desktop client codebase and profile service
-|-- dist/                Generated shared runtime
-|-- assets/              CloudCord logos and visual assets
-`-- .github/workflows/   Runtime and platform build automation
-```
-
-## Safety and privacy
-
-CloudCord is built with a safety-minded, transparent approach: local settings where practical, source-visible client code, explicit account controls and no requirement to expose BotCord tokens in the UI after setup. As with any modified client, users should review the source, understand Discord's rules, and only install builds they trust.
-
-## Development
-
-The mobile runtime is generated by the CloudCord workflow and published to `dist/cc.js`. Source changes for mobile features live under `ios/runtime/src`, while native loader code lives under `ios/native-ios`. Android consumes the shared runtime through the CloudCord manager path.
-
-## Visual identity
-
-<div align="center">
-  <img src="assets/cloudcord-logo.png" alt="CloudCord logo" width="160" />
-  <br />
-  <sub>CloudCord</sub>
-</div>
-
