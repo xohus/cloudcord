@@ -38908,6 +38908,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "messages.insertmention",
           label: "Insert the selected message author's mention into the current draft"
         },
+        "bypass-pin-prompt": {
+          permission: "messages.pin",
+          label: "Use Discord\u2019s Pin and Unpin actions without a confirmation prompt"
+        },
         "pin-message-shortcut": {
           permission: "messages.pin",
           label: "Pin or unpin the selected message with one menu action"
@@ -45577,7 +45581,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.openeditor": "Open Discord\u2019s editor for your own message when you double-click or double-tap it",
         "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user\u2019s message",
         "messages.insertmention": "Insert a mention into your current draft when you choose Quick Mention",
-        "messages.pin": "Pin or unpin a message immediately when you choose its shortcut.",
+        "messages.pin": "Pin or unpin a message immediately when you choose a pin action.",
         "messages.toggleembeds": "Change embed visibility on the selected message when you choose its menu action.",
         "messages.repeat": "Send a copy of the selected message when you choose Repeat or Repeat and Reply. Mentions are suppressed.",
         "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
@@ -45823,6 +45827,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_bold_text = __esm({
     "../examples/cx/catalog/plugins/bold-text.cx"() {
       bold_text_default = 'plugin "BoldText":\n  needs commands.register\n  needs messages.send\n  on command "bold" with text:\n    send "${bold(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/bypass-pin-prompt.cx
+  var bypass_pin_prompt_default;
+  var init_bypass_pin_prompt = __esm({
+    "../examples/cx/catalog/plugins/bypass-pin-prompt.cx"() {
+      bypass_pin_prompt_default = 'plugin "BypassPinPrompt":\n  needs messages.pin\n  use bypass-pin-prompt\n';
     }
   });
 
@@ -48478,6 +48490,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_blur_images_until_hover();
       init_blur_nsfw();
       init_bold_text();
+      init_bypass_pin_prompt();
       init_calculator();
       init_call_time_counter();
       init_centered_chat();
@@ -48826,6 +48839,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "BoldText",
             source: bold_text_default
+          },
+          {
+            name: "BypassPinPrompt",
+            source: bypass_pin_prompt_default
           },
           {
             name: "Calculator",
@@ -51552,6 +51569,44 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       stop();
     };
   }
+  function registerBypassPinPrompt(enabled) {
+    var alerts = findByFilePath("actions/native/AlertActionCreators.tsx")?.default;
+    var translations = findByProps("intl", "t");
+    if (typeof translations?.intl?.string !== "function")
+      throw new Error("Discord\u2019s pin prompt translations are unavailable");
+    var promptKeys = [
+      [
+        "CvQ18w",
+        "p89ACt"
+      ],
+      [
+        "Bse+F/",
+        "p89ACt"
+      ],
+      [
+        "xFjByk",
+        "ETE/oC"
+      ]
+    ];
+    function translated(key) {
+      var message = translations.t[key];
+      return message && translations.intl.string(message);
+    }
+    return overrideCxMethods(alerts, {
+      show(args, invoke) {
+        var alert2 = args[0];
+        if (typeof alert2?.title !== "string" || !alert2.title || typeof alert2.confirmText !== "string" || !alert2.confirmText || typeof alert2.onConfirm !== "function" || !promptKeys.some(([title, confirm]) => alert2.title === translated(title) && alert2.confirmText === translated(confirm))) {
+          return invoke(args);
+        }
+        var failed = () => showToast("Couldn\u2019t change the message pin.");
+        try {
+          void Promise.resolve(alert2.onConfirm()).catch(failed);
+        } catch (e) {
+          failed();
+        }
+      }
+    }, enabled);
+  }
   function registerPinShortcut(enabled) {
     var pins = findByProps("pinMessage", "unpinMessage");
     var permissions = findByProps("Fonts", "Permissions")?.Permissions;
@@ -52901,6 +52956,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     ]);
                   }
                 }, enabled);
+              case "bypass-pin-prompt":
+                return registerBypassPinPrompt(enabled);
               case "pin-message-shortcut":
                 return registerPinShortcut(enabled);
               case "toggle-message-embeds":
@@ -54554,7 +54611,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "533a78b0c001eca7602e46e482fcc682dcced80b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a5be300816b236f40302d2c6e838fe1b8102be6d";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
