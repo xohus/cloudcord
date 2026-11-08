@@ -1,3 +1,5 @@
 plugin "ShowPing":
   needs voice.latency
+  needs appearance.hide
+  option hide voice-krisp-button default-on
   use show-voice-ping

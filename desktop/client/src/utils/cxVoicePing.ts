@@ -25,7 +25,7 @@ export function createCxVoicePing() {
             read = channelId => {
                 if (!enabled() || !store.isConnected() || channelId && store.getChannelId() !== channelId) return;
                 const ping = store.getLastPing();
-                return typeof ping === "number" && Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + " ms" : undefined;
+                return typeof ping === "number" && Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + " ms" : "N/A";
             };
             const subscribed: PingEvent[] = [];
             function stop() {

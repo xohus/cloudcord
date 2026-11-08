@@ -1,6 +1,12 @@
 // CloudCord appearance tweaks. CX sources select a target and never supply
 // a CSS selector or a Discord component name.
 export const cxAppearanceTargets = {
+    "voice-krisp-button": {
+        plugin: "ShowPing", label: "the desktop Krisp button beside the voice connection controls",
+        css: '[class*="voiceButtonsContainer_"] > button[aria-label$="Krisp" i] { display: none !important; }',
+        desktopOnly: true,
+        mobile: [],
+    },
     "bot-tags": {
         plugin: "HideBotTags", label: "APP and BOT tags",
         css: '[class*="botTag"] { display: none !important; }',

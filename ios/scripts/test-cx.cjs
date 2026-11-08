@@ -1057,6 +1057,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(suggestedMarkers.size + appearanceHooks.size, 0);
         assert.equal(suggestedObserver, undefined);
         for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
+            if (rule.desktopOnly) continue;
             const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;
             assert.throws(() => activateCx(appearancePort, host, []), /approval/);
             const action = rule.style ? "style" : "hide";
@@ -2492,9 +2493,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         }
         {
             const port = cxCatalog.plugins.find(entry => entry.name === "ShowPing").source;
-            assert.throws(() => activateCx(port, host, ["voice.calltime"]), /approval/);
+            assert.throws(() => activateCx(port, host, ["voice.latency"]), /approval/);
             selectCatalog("ShowPing");
+            const label = "Hide the desktop Krisp button beside the voice connection controls";
+            const krisp = (prefix = "") => find(render(), item => (desktop ? item.props["aria-label"] : item.props.label) === prefix + label);
+            if (desktop) assert.equal(krisp().props.checked, true);
+            else assert.equal(krisp(), undefined);
             click(render(), "Allow for this session");
+            if (desktop) {
+                const active = "ShowPing · ";
+                assert.match(stylesheet.textContent, /voiceButtonsContainer_.*Krisp/);
+                krisp(active).props.onChange({ currentTarget: { checked: false } });
+                assert.equal(stylesheet, undefined);
+                krisp(active).props.onChange({ currentTarget: { checked: true } });
+                assert.match(stylesheet.textContent, /voiceButtonsContainer_.*Krisp/);
+            } else assert.equal(krisp("ShowPing · "), undefined);
             const pingListeners = voiceEventListeners.get("RTC_CONNECTION_PING");
             const renderPing = channelId => {
                 let ping;
@@ -2517,7 +2530,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             voicePingConnected = true;
             voicePingChannel = voiceTarget;
             voicePingMs = NaN;
-            assert.equal(renderPing(voiceTarget), null);
+            assert.equal(renderPing(voiceTarget), "N/A");
             voicePingMs = 24.8;
             pingListeners.forEach(listener => listener());
             assert.equal(renderPing(voiceTarget), "25 ms");
@@ -2531,6 +2544,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             rtcListeners.forEach(listener => listener());
             assert.equal(renderPing(voiceTarget), null);
             click(render(), "Disable ShowPing");
+            assert.equal(stylesheet, undefined);
             assert.equal(pingListeners.size + rtcListeners.size, 0);
             if (!desktop) assert.equal(appearanceHooks.has(VoicePanelHeader), false);
         }

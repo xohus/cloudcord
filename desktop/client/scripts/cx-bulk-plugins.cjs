@@ -346,7 +346,7 @@ function matchAppearanceStyles(stylesheet, appearance) {
     if (!stylesheet) return;
     let rules = appearanceMatchers.get(appearance);
     if (!rules) {
-        rules = Object.entries(appearance).map(target => {
+        rules = Object.entries(appearance).filter(([, rule]) => !rule.desktopOnly).map(target => {
             const css = normalizeAppearanceStyles(target[1].css);
             return { target, css, hides: css && "mobile" in target[1] && hideSelectors(css) };
         }).filter(rule => rule.css).sort((a, b) => b.css.length - a.css.length);
@@ -448,9 +448,11 @@ function inspectBetterDiscord(file, code, appearance, nativeEffects) {
         : createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
     const review = reviewedBetterDiscordSources[sha256];
     if (review?.name === name && review.recipe === "native-effect" && !source.parseDiagnostics.length
-        && nativeEffects && Object.hasOwn(nativeEffects, review.effect)) {
+        && nativeEffects && Object.hasOwn(nativeEffects, review.effect)
+        && (!review.defaultHide || Object.hasOwn(appearance, review.defaultHide) && "mobile" in appearance[review.defaultHide])) {
         return { ...record, review: { ...review, sha256 }, capability: "native-effect",
             cx: ["plugin " + JSON.stringify(name) + ":", "  needs " + nativeEffects[review.effect].permission,
+                ...(review.defaultHide ? ["  needs appearance.hide", "  option hide " + review.defaultHide + " default-on"] : []),
                 "  use " + review.effect, ""].join("\n") };
     }
     if (review?.name === name && review.recipe === "send-confirmation" && !source.parseDiagnostics.length) {

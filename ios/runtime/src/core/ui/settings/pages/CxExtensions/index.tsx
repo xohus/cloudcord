@@ -1838,6 +1838,10 @@ function registerProfileMedia() {
     return () => { active = false; stop(); };
 }
 
+function supportsMobileHide({ target }: { target: keyof typeof cxAppearanceTargets; }) {
+    return !("desktopOnly" in cxAppearanceTargets[target]);
+}
+
 export default function CxExtensions() {
     const [source, setSource] = React.useState("");
     const [showCatalog, setShowCatalog] = React.useState(false);
@@ -1852,7 +1856,8 @@ export default function CxExtensions() {
         setCandidate(undefined);
         try {
             const preview = reviewCx(next);
-            setCandidate({ source: next, review: preview, selected: preview.appearanceOptions.filter(option => option.defaultOn).map(option => option.target) });
+            setCandidate({ source: next, review: preview, selected: preview.appearanceOptions
+                .filter(option => option.defaultOn && supportsMobileHide(option)).map(option => option.target) });
             setStatus("");
         } catch (error) {
             setStatus(String(error instanceof Error ? error.message : error));
@@ -1945,6 +1950,7 @@ export default function CxExtensions() {
                 registerSendConfirmation,
                 registerTimestampFormats,
                 hideAppearanceTarget(target) {
+                    if (!supportsMobileHide({ target })) return () => {};
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
                     if ("tableRow" in mobile) {
@@ -2628,14 +2634,14 @@ export default function CxExtensions() {
                     label={candidate.review.name}
                     subLabel={[...candidate.review.effects, ...(candidate.review.commands ?? [])].join("\n")}
                 />}
-                {candidate?.review.appearanceOptions.map(({ target, label }) => <TableSwitchRow key={target}
+                {candidate?.review.appearanceOptions.filter(supportsMobileHide).map(({ target, label }) => <TableSwitchRow key={target}
                     label={label} value={candidate.selected.includes(target)} onValueChange={(checked: boolean) => {
                         setCandidate({ ...candidate, selected: selectCxAppearanceOption(candidate.selected, target, checked) });
                     }} />)}
                 {candidate && <TableRow label="Allow for this session" onPress={enable} />}
                 {candidate && !source && <TableRow label="Edit CX source" onPress={() => setSource(candidate.source)} />}
                 {session.list().flatMap(({ id, name }) => [
-                    ...session.appearanceOptions(id).map(({ target, label, enabled }) => <TableSwitchRow key={`${id}:${target}`}
+                    ...session.appearanceOptions(id).filter(supportsMobileHide).map(({ target, label, enabled }) => <TableSwitchRow key={`${id}:${target}`}
                         label={`${name} · ${label}`} value={enabled} onValueChange={(checked: boolean) => {
                             try {
                                 session.setAppearanceOption(id, target, checked);
