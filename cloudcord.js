@@ -38819,6 +38819,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "profile.localnotes",
           label: "Add a local user note editor to profile menus"
         },
+        "user-tags": {
+          permission: "profile.localtags",
+          label: "Tag users in profile menus and search those tags on this device"
+        },
         "silent-typing": {
           permission: "typing.suppress",
           label: "Stop sending your typing indicator"
@@ -43858,7 +43862,37 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/api/cxUserNotes.ts
-  function createCxUserNotes(account, read, update, enabled = () => true) {
+  function normalizeTags(value) {
+    var tags = /* @__PURE__ */ new Map();
+    for (var line of value.split(/\r?\n/)) {
+      var tag = line.trim();
+      if (!tag)
+        continue;
+      if (!tagPattern.test(tag))
+        throw new Error("Use one tag per line, with up to 32 letters, numbers, or underscores.");
+      tags.set(tag.toLowerCase(), tag);
+    }
+    if (tags.size > 20)
+      throw new Error("Use up to 20 tags per user.");
+    return [
+      ...tags.values()
+    ].join("\n");
+  }
+  function findTaggedUsers(query, entries) {
+    var terms = query.trim().replace(/^&/, "").trim().toLowerCase().split(/\s+/);
+    if (terms.length > 16 || terms.some((term) => !tagPattern.test(term.replace(/^!/, ""))))
+      return "Enter tag words such as friends or !muted. A leading ! matches users without that tag.";
+    var matches = Object.entries(entries ?? {}).filter(([id, value]) => {
+      if (!isCxProfileUserId(id) || typeof value !== "string" || !value.trim())
+        return false;
+      var tags = value.toLowerCase().split("\n");
+      return terms.some((term) => term.startsWith("!") ? !tags.some((tag) => tag.includes(term.slice(1))) : tags.some((tag) => tag.includes(term)));
+    });
+    if (!matches.length)
+      return "No tagged users match.";
+    return "Matching users\n" + matches.slice(0, 25).map(([id]) => "<@" + id + ">").join("\n") + (matches.length > 25 ? "\n\u2026and " + (matches.length - 25) + " more." : "");
+  }
+  function createCxUserNotes(account, read, update, enabled = () => true, kind = "notes") {
     var active = true;
     var current = (id) => active && enabled() && account() === id;
     return {
@@ -43875,21 +43909,32 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               return;
             if (value.length > CX_USER_NOTE_LIMIT)
               throw new Error("User notes can have up to 2,000 characters.");
+            var text = kind === "tags" ? normalizeTags(value) : value;
             yield update(owner, (notes) => {
               if (!current(owner))
                 return notes ?? {};
               var next = {
                 ...notes
               };
-              if (value.trim()) {
+              if (text.trim()) {
                 if (!Object.hasOwn(next, user) && Object.keys(next).length >= 500)
-                  throw new Error("Clear a note before adding another.");
-                next[user] = value;
+                  throw new Error("Clear an entry before adding another.");
+                next[user] = text;
               } else
                 delete next[user];
               return next;
             });
           })());
+        })();
+      },
+      search(query) {
+        return _async_to_generator(function* () {
+          var owner = account();
+          if (kind !== "tags" || !isCxProfileUserId(owner) || !current(owner))
+            return;
+          var entries = yield read(owner);
+          if (current(owner))
+            return findTaggedUsers(query, entries);
         })();
       },
       clear(confirm) {
@@ -43905,7 +43950,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
-  var CX_USER_NOTE_LIMIT;
+  var CX_USER_NOTE_LIMIT, tagPattern;
   var init_cxUserNotes = __esm({
     "src/lib/api/cxUserNotes.ts"() {
       "use strict";
@@ -43914,6 +43959,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_async_to_generator();
       init_cxProfileMenu();
       CX_USER_NOTE_LIMIT = 2e3;
+      tagPattern = /^[a-z0-9_]{1,32}$/i;
     }
   });
 
@@ -45019,6 +45065,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
+      var tagged = /^    find users tagged "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
+      if (tagged && nativeEffects.has("user-tags") && current && !current.actions.length && !current.text && current.inputs.length === 1 && current.inputs[0].name === tagged[1] && current.inputs[0].type === "text" && current.inputs[0].required) {
+        current.actions.push({
+          kind: "find-user-tags",
+          input: tagged[1]
+        });
+        current = void 0;
+        return "continue";
+      }
       var spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
       if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1 && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
         current.actions.push({
@@ -45559,6 +45614,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               });
               return "continue";
             }
+            if (action3.kind === "find-user-tags") {
+              var channel2 = invocation?.prepareChannel?.();
+              var search = invocation?.findUserTags;
+              if (channel2 && search) {
+                void search(inputs.get(action3.input)).then((result) => {
+                  if (active && result)
+                    channel2.reply(result);
+                }, () => {
+                  if (active)
+                    channel2.reply("Couldn\u2019t search local user tags.");
+                });
+              }
+              return "continue";
+            }
             if (action3.kind === "lookup") {
               var reply1 = invocation?.reply;
               if (!reply1 || activeLookups.has(action3.service))
@@ -45954,6 +46023,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
         "lookup.translate": "Send the text and language you enter to Google Translate when you run the translate command",
         "profile.localnotes": "Read and edit your private user notes stored on this device",
+        "profile.localtags": "Read and edit private tags assigned to users on this device",
         "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command"
       };
       leetCharacters = {
@@ -46017,6 +46087,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "reply.local",
         "lookup.translate",
         "messages.send"
+      ] : action.kind === "find-user-tags" ? [
+        "reply.local",
+        "profile.localtags"
       ] : action.kind === "copy-diagnostics" ? [
         "reply.local",
         "diagnostics.copy"
@@ -47946,6 +48019,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/user-tags.cx
+  var user_tags_default;
+  var init_user_tags = __esm({
+    "../examples/cx/catalog/plugins/user-tags.cx"() {
+      user_tags_default = 'plugin "UserTags":\n  needs profile.localtags\n  needs commands.register\n  needs reply.local\n  use user-tags\n  on command "find-user-tags":\n    input "query" text\n    find users tagged "query"\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/vibe-check.cx
   var vibe_check_default;
   var init_vibe_check = __esm({
@@ -49069,6 +49150,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_unit_converter();
       init_unsuppress_embeds();
       init_user_notes();
+      init_user_tags();
       init_vibe_check();
       init_voice_count();
       init_voice_join_messages();
@@ -49960,6 +50042,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "UserNotes",
             source: user_notes_default
+          },
+          {
+            name: "UserTags",
+            source: user_tags_default
           },
           {
             name: "VibeCheck",
@@ -52741,36 +52827,40 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     });
   }
-  function registerUserNotes() {
-    if (clearLocalUserNotes)
-      throw new Error("Local user notes are already enabled");
+  function registerLocalUserText(kind) {
+    var tags = kind === "tags";
+    var label2 = tags ? "Local User Tags" : "Local User Note";
+    if (tags ? findLocalUserTags : clearLocalUserNotes)
+      throw new Error(label2 + " is already enabled");
     var { AlertModal: AlertModal5, AlertActions: AlertActions3, AlertActionButton: AlertActionButton5 } = findByProps("AlertModal", "AlertActions") ?? {};
     if (!AlertModal5 || !AlertActions3 || !AlertActionButton5)
       throw new Error("Discord's note editor is unavailable");
     var getStorage = () => localUserNotesStorage ??= createStorageAsync("plugins/storage/cloudcord.cx-user-notes.json");
+    var key = (account) => tags ? "tags:" + account : account;
     var notes = createCxUserNotes(() => UserStore2.getCurrentUser()?.id, (account) => _async_to_generator(function* () {
-      return (yield getStorage())[account];
+      return (yield getStorage())[key(account)];
     })(), (account, mutate) => _async_to_generator(function* () {
       var storage = yield getStorage();
-      storage[account] = mutate(storage[account]);
-    })(), () => !settings.safeMode?.enabled);
-    var failed = () => showToast("Couldn\u2019t update local user notes.");
-    var alertKey = "cloudcord-cx-user-note";
+      storage[key(account)] = mutate(storage[key(account)]);
+    })(), () => !settings.safeMode?.enabled, kind);
+    var failed = (error) => showToast(error instanceof Error ? error.message : "Couldn\u2019t update " + label2.toLowerCase() + ".");
+    var alertKey = tags ? "cloudcord-cx-user-tags" : "cloudcord-cx-user-note";
     var stopMenu = registerProfileMenuEntry({
-      key: "user-notes",
+      key: tags ? "user-tags" : "user-notes",
       getItems: (id) => [
         {
-          label: "Local User Note",
+          label: label2,
           action: () => {
             void notes.open(id, (initial, save) => {
               var draft = initial;
               openAlert(alertKey, /* @__PURE__ */ jsx(AlertModal5, {
-                title: "Local User Note",
+                title: label2,
                 extraContent: /* @__PURE__ */ jsx(import_react_native41.TextInput, {
-                  accessibilityLabel: "Private note",
+                  accessibilityLabel: tags ? "Private tags" : "Private note",
                   defaultValue: initial,
                   multiline: true,
                   maxLength: CX_USER_NOTE_LIMIT,
+                  placeholder: tags ? "One tag per line" : void 0,
                   style: {
                     minHeight: 100,
                     padding: 10,
@@ -52802,26 +52892,32 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         }
       ]
     });
-    clearLocalUserNotes = () => {
-      void notes.clear(() => new Promise((resolve) => import_react_native41.Alert.alert("Clear local user notes?", "This removes every local note for this account on this device.", [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => resolve(false)
-        },
-        {
-          text: "Clear notes",
-          style: "destructive",
-          onPress: () => resolve(true)
-        }
-      ], {
-        cancelable: true,
-        onDismiss: () => resolve(false)
-      }))).catch(failed);
-    };
+    if (tags)
+      findLocalUserTags = notes.search;
+    else
+      clearLocalUserNotes = () => {
+        void notes.clear(() => new Promise((resolve) => import_react_native41.Alert.alert("Clear local user notes?", "This removes every local note for this account on this device.", [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => resolve(false)
+          },
+          {
+            text: "Clear notes",
+            style: "destructive",
+            onPress: () => resolve(true)
+          }
+        ], {
+          cancelable: true,
+          onDismiss: () => resolve(false)
+        }))).catch(failed);
+      };
     return () => {
       notes.stop();
-      clearLocalUserNotes = void 0;
+      if (tags)
+        findLocalUserTags = void 0;
+      else
+        clearLocalUserNotes = void 0;
       stopMenu();
     };
   }
@@ -53438,7 +53534,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               case "profile-media":
                 return registerProfileMedia();
               case "user-notes":
-                return registerUserNotes();
+                return registerLocalUserText("notes");
+              case "user-tags":
+                return registerLocalUserText("tags");
               case "copy-channel-name":
                 return registerCopyChannelName(enabled);
               case "hide-suggested-channels": {
@@ -53910,6 +54008,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   },
                   markServersRead: () => markCxServersRead(getReadStores(), acknowledgeServers),
                   friendInvites: (operation) => runCxFriendInvites(operation, findByProps("createFriendInvite")),
+                  findUserTags: findLocalUserTags,
                   copyDiagnostics: () => _async_to_generator(function* () {
                     return describeCcpReport(yield copyCcpReport());
                   })()
@@ -54167,7 +54266,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, callClock, voiceMemberClock, voiceCounts, voicePing, navigationControls, timestamps, timestampFields, timestampUsers, stopTimestamps, channelNames, stopChannelNames, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, getReadStores, acknowledgeServers, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, renderedTreeOriginals, textAttachmentUrl, maxTextAttachmentBytes, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks, clearLocalUserNotes, localUserNotesStorage;
+  var import_react_native41, session, callClock, voiceMemberClock, voiceCounts, voicePing, navigationControls, timestamps, timestampFields, timestampUsers, stopTimestamps, channelNames, stopChannelNames, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, getReadStores, acknowledgeServers, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, renderedTreeOriginals, textAttachmentUrl, maxTextAttachmentBytes, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks, clearLocalUserNotes, findLocalUserTags, localUserNotesStorage;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -55296,7 +55395,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "927165a26a81e0133e5301220a915a07d6c1b33d";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6163b22ea4e2062800ce9581f061541590a9b473";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
