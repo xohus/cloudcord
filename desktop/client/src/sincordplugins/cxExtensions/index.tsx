@@ -6,7 +6,8 @@ import { showNotification } from "@api/Notifications";
 import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
-import { UpArrowIcon } from "@components/Icons";
+import { CopyIcon, UpArrowIcon } from "@components/Icons";
+import { buildCxRepeatMessage } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
@@ -16,6 +17,7 @@ import { selectCxAppearanceOption } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
+import type { Message } from "@vencord/discord-types";
 import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
@@ -48,6 +50,48 @@ function registerQuickMention() {
         };
     }, MentionIcon);
     return () => { active = false; removeMessagePopoverButton(id); };
+}
+
+function registerRepeatMessages() {
+    const id = "CxRepeatMessages";
+    let active = true;
+    const canRepeat = (message: Message) => {
+        const channel = ChannelStore.getChannel(message.channel_id);
+        return active && channel && (!channel.guild_id
+            || PermissionStore.can(channel.isThread?.() ? PermissionsBits.SEND_MESSAGES_IN_THREADS : PermissionsBits.SEND_MESSAGES, channel))
+            ? channel : undefined;
+    };
+    const repeat = async (message: Message, reply: boolean) => {
+        const channel = canRepeat(message);
+        if (!channel || SelectedChannelStore.getChannelId() !== channel.id) return;
+        try {
+            const draft = buildCxRepeatMessage(message, channel.id, reply);
+            if (draft) await MessageActions.sendMessage(channel.id,
+                { content: draft.content, invalidEmojis: [], validNonShortcutEmojis: [], tts: false }, true, draft.options);
+        } catch {
+            showToast("Couldn’t repeat the message.");
+        }
+    };
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        const message = props.message ?? props.msg;
+        if (!message || !canRepeat(message)) return;
+        children.push(<Menu.MenuItem id="cx-repeat" label="Repeat" action={() => repeat(message, false)} />,
+            <Menu.MenuItem id="cx-repeat-reply" label="Repeat and Reply" action={() => repeat(message, true)} />);
+    };
+    addContextMenuPatch("message", patch);
+    addMessagePopoverButton(id, message => {
+        const channel = canRepeat(message);
+        if (!channel) return null;
+        return {
+            label: "Repeat (Click) / Repeat and Reply (Shift + Click)", icon: CopyIcon, message, channel,
+            onClick: event => { void repeat(message, event.shiftKey); },
+        };
+    }, CopyIcon);
+    return () => {
+        active = false;
+        removeMessagePopoverButton(id);
+        removeContextMenuPatch("message", patch);
+    };
 }
 const timestamps = createCxTimestampRegistry();
 const navigationControls = createCxNavigationControls();
@@ -453,6 +497,8 @@ export function CxSettings() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention();
+                        case "repeat-message":
+                            return registerRepeatMessages();
                         case "scroll-to-latest":
                             return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
                                 selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,

@@ -183,6 +183,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let canSend = true;
         let dismissedMentionSheets = 0;
         const mentionActions = [];
+        const repeated = [];
+        const repeatChannel = "100000000000000011";
         const messagePopover = new Map();
         function NativeActionSheet() {}
         function LongPressMessageActionSheet() {
@@ -220,7 +222,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const composerActions = [];
         const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]),
             jumpToMessage: target => jumps.push(target),
-            startEditMessage: (channel, id, content) => composerActions.push(["edit", id, content]) };
+            startEditMessage: (channel, id, content) => composerActions.push(["edit", id, content]),
+            sendMessage: (...args) => repeated.push(args) };
         const gestureChannel = "129876543219876543";
         const gestureMessages = new Map([
             [me, { id: me, author: { id: me }, content: "my message", type: 0, channel_id: gestureChannel, state: "SENT" }],
@@ -289,7 +292,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: id => ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" ? guildId : undefined,
+            ChannelStore: { getChannel: id => ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" || id === repeatChannel ? guildId : undefined,
                 rateLimitPerUser: id === "slow-channel" ? 10 : 0 }) },
             PermissionStore: { can: () => canSend },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
@@ -476,7 +479,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { delete registered[command.name]; };
             },
             unregisterCommand(name) { delete registered[name]; },
-            sendMessage() { return "sent normally"; },
+            sendMessage(...args) {
+                if (args[0] === repeatChannel) repeated.push(args);
+                return "sent normally";
+            },
             sendBotMessage: (channel, message) => delivered.push([channel, typeof message === "string" ? message : message.content]),
         };
         const module = { exports: {} };
@@ -491,7 +497,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/Commands": commandApi,
             "@api/ContextMenu": {
-                addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
+                addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context", "message"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
                 findGroupChildrenByChildId: (id, children) => children.some(item => item?.props?.id === id) ? children : null,
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
@@ -618,7 +624,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.includes("/defs/native/") ? { default: settingsEntrys.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
-                name === "ActionSheetRow" ? { ActionSheetRow: "ActionSheetRow" }
+                name === "ActionSheetRow" ? { ActionSheetRow: Object.assign(() => null, { Group: "ActionSheetRowGroup" }) }
                     : name === "openLazy" ? { hideActionSheet() { dismissedMentionSheets++; } }
                     : name === "Fonts" ? { Permissions: { SEND_MESSAGES: 2048n } }
                     : name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
@@ -744,6 +750,54 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(mentionActions.length, 1);
         assert.equal(messagePopover.size, 0);
         selectedChannel = "test-channel";
+        {
+            selectCatalog("RepeatMessages");
+            click(render(), "Allow for this session");
+            selectedChannel = repeatChannel;
+            const attachment = "https://cdn.discordapp.com/attachments/1/2/test.txt";
+            const message = { id: sender, channel_id: repeatChannel, content: "hello <@" + other + ">",
+                message_snapshots: [{ message: { attachments: [{ filename: "test.txt", url: attachment }] } }],
+                sticker_items: [{ id: other }] };
+            let reply;
+            if (desktop) {
+                const entries = [];
+                [...menuPatches].at(-1)(entries, { message });
+                assert.equal(button(entries, "Repeat").props.id, "cx-repeat");
+                const action = messagePopover.get("CxRepeatMessages")(message);
+                reply = () => action.onClick({ shiftKey: true });
+            } else {
+                const hook = appearanceHooks.get(LongPressMessageActionSheet);
+                const props = { message, channel: stores.ChannelStore.getChannel(repeatChannel) };
+                const wrapper = hook(null, jsx(LongPressMessageActionSheet, props));
+                const sheet = wrapper.type(wrapper.props);
+                const menu = sheet.type(sheet.props);
+                assert.ok(button(menu, "Repeat"));
+                reply = button(menu, "Repeat and Reply").props.onPress;
+            }
+            assert.equal(repeated.length, 0);
+            canSend = false;
+            reply();
+            assert.equal(repeated.length, 0);
+            canSend = true;
+            reply();
+            assert.equal(repeated.length, 1);
+            const [destination, data, waitForChannel, options] = repeated[0];
+            assert.equal(destination, repeatChannel);
+            assert.equal(data.content, message.content + "\nAttachments:\n - test.txt (" + attachment + ")");
+            assert.equal(waitForChannel, true);
+            assert.deepEqual(JSON.parse(JSON.stringify(options)), {
+                allowedMentions: { parse: [], replied_user: false },
+                messageReference: { channel_id: repeatChannel, message_id: sender }, stickerIds: [other],
+            });
+            selectedChannel = "test-channel";
+            reply();
+            click(render(), "Disable RepeatMessages");
+            selectedChannel = repeatChannel;
+            reply();
+            assert.equal(repeated.length, 1);
+            assert.equal(messagePopover.size, 0);
+            selectedChannel = "test-channel";
+        }
         for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
             const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;
             assert.throws(() => activateCx(appearancePort, host, []), /approval/);

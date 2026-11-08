@@ -3,6 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
+import { buildCxRepeatMessage, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
@@ -833,48 +834,85 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
     });
 }
 
-function registerQuickMention(enabled: () => boolean) {
+type CxMobileMessageMenu = {
+    channel?: { id: string; guild_id?: string; isThread?: () => boolean; };
+    message?: CxRepeatMessage & { author?: { id?: string; }; channel_id?: string; };
+    chatInputRef?: { current?: { insertText?: (text: string, start: null, appendSpace: boolean, nodes: undefined, end: null) => void; }; };
+};
+
+function registerMessageMenuActions(
+    enabled: () => boolean,
+    createActions: (props: CxMobileMessageMenu, close: () => void) => readonly { label: string; run: () => void; }[],
+) {
     const menu = findByFilePath("modules/messages/native/long_press/LongPressMessageActionSheet.tsx")?.default;
     const sheet = findByProps("ActionSheet")?.ActionSheet;
     const { ActionSheetRow } = findByProps("ActionSheetRow") ?? {};
+    const ActionSheetRowGroup = ActionSheetRow?.Group;
     const sheetActions = findByProps("openLazy", "hideActionSheet");
     const permissions = findByProps("Fonts", "Permissions")?.Permissions;
     const permissionStore = findByStoreName("PermissionStore");
-    if (!menu || !sheet || !ActionSheetRow || typeof sheetActions?.hideActionSheet !== "function") {
+    if (!menu || !sheet || !ActionSheetRow || !ActionSheetRowGroup || typeof sheetActions?.hideActionSheet !== "function") {
         throw new Error("Discord's message actions are unavailable");
     }
-    type Props = {
-        channel?: { id: string; guild_id?: string; };
-        message?: { author?: { id?: string; }; channel_id?: string; };
-        chatInputRef?: { current?: { insertText?: (text: string, start: null, appendSpace: boolean, nodes: undefined, end: null) => void; }; };
-    };
     let active = true;
-    const stop = registerRenderedTree(menu, (tree, props: Props) => {
-        const { channel, message, chatInputRef } = props;
-        const author = message?.author?.id;
-        if (!active || !enabled() || !channel || message?.channel_id !== channel.id || !isCxProfileUserId(author)) return tree;
+    const stop = registerRenderedTree(menu, (tree, props: CxMobileMessageMenu) => {
+        const { channel, message } = props;
+        if (!channel || message?.channel_id !== channel.id) return tree;
         const { id: channelId, guild_id: guildId } = channel;
-        function canInsert() {
+        function canUseAction() {
+            const permission = channel?.isThread?.() ? permissions?.SEND_MESSAGES_IN_THREADS : permissions?.SEND_MESSAGES;
             return active && enabled() && SelectedChannelStore?.getChannelId?.() === channelId
-                && (!guildId || permissions?.SEND_MESSAGES != null
-                    && permissionStore?.can?.(permissions.SEND_MESSAGES, channel) === true);
+                && (!guildId || permission != null && permissionStore?.can?.(permission, channel) === true);
         }
-        if (!canInsert() || typeof chatInputRef?.current?.insertText !== "function") return tree;
+        if (!canUseAction()) return tree;
+        const actions = createActions(props, () => sheetActions.hideActionSheet());
+        if (!actions.length) return tree;
         return mapAppearanceElements(tree, element => {
             if (element.type !== sheet) return element;
-            const insert = () => {
-                const composer = chatInputRef.current;
-                if (!canInsert() || typeof composer?.insertText !== "function") return;
-                composer.insertText("<@" + author + "> ", null, false, undefined, null);
-                sheetActions.hideActionSheet();
-            };
-            return React.cloneElement(element, { children: <>
-                {element.props.children}
-                <ActionSheetRow key="cx-quick-mention" label="Quick Mention" onPress={insert} />
-            </> });
+            return React.cloneElement(element, { children: [
+                ...React.Children.toArray(element.props.children),
+                <ActionSheetRowGroup key={actions[0].label}>
+                    {actions.map(({ label, run }) => <ActionSheetRow key={label} label={label}
+                        onPress={() => { if (canUseAction()) run(); }} />)}
+                </ActionSheetRowGroup>,
+            ] });
         });
     });
     return () => { active = false; stop(); };
+}
+
+function registerQuickMention(enabled: () => boolean) {
+    return registerMessageMenuActions(enabled, ({ message, chatInputRef }, close) => {
+        const author = message?.author?.id;
+        if (!isCxProfileUserId(author) || typeof chatInputRef?.current?.insertText !== "function") return [];
+        return [{ label: "Quick Mention", run() {
+            const composer = chatInputRef.current;
+            if (typeof composer?.insertText !== "function") return;
+            composer.insertText("<@" + author + "> ", null, false, undefined, null);
+            close();
+        } }];
+    });
+}
+
+function registerRepeatMessages(enabled: () => boolean) {
+    if (typeof messageUtil?.sendMessage !== "function") throw new Error("Discord message sending is unavailable");
+    return registerMessageMenuActions(enabled, ({ message, channel }, close) => {
+        if (!channel || !message || !isCxProfileUserId(message.id) || !isCxProfileUserId(channel.id)) return [];
+        return [false, true].map(reply => ({
+            label: reply ? "Repeat and Reply" : "Repeat",
+            async run() {
+                try {
+                    const draft = buildCxRepeatMessage(message, channel.id, reply);
+                    if (!draft) return;
+                    close();
+                    await messageUtil.sendMessage(channel.id,
+                        { content: draft.content, invalidEmojis: [], validNonShortcutEmojis: [], tts: false }, true, draft.options);
+                } catch {
+                    showToast("Couldn’t repeat the message.");
+                }
+            },
+        }));
+    });
 }
 
 let messageGestures: { edit: number; reply: number; stop: () => void; } | undefined;
@@ -1542,6 +1580,8 @@ export default function CxExtensions() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention(enabled);
+                        case "repeat-message":
+                            return registerRepeatMessages(enabled);
                         case "attachment-image-quality":
                         case "original-attachment-images":
                             return registerAttachmentImageQuality(effect === "original-attachment-images");

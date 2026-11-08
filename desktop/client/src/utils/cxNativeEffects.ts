@@ -1,3 +1,5 @@
+import { isCxProfileUserId } from "./cxProfileMenu";
+
 export const cxNativeEffects = {
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "static-typing-dots": { permission: "appearance.style", label: "Keep Discord's typing dots still" },
@@ -25,6 +27,7 @@ export const cxNativeEffects = {
     "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
     "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
     "quick-mention": { permission: "messages.insertmention", label: "Insert the selected message author's mention into the current draft" },
+    "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },
     "read-all-servers-button": { permission: "servers.markread", label: "Add a server list button to mark loaded server channels as read" },
@@ -36,6 +39,41 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+type RepeatAttachment = { filename?: string; url?: string; };
+export type CxRepeatMessage = {
+    id?: string;
+    content?: string;
+    attachments?: readonly RepeatAttachment[];
+    messageSnapshots?: readonly { message?: { attachments?: readonly RepeatAttachment[]; }; }[];
+    message_snapshots?: CxRepeatMessage["messageSnapshots"];
+    stickerItems?: readonly { id?: string; }[];
+    sticker_items?: CxRepeatMessage["stickerItems"];
+};
+
+export function buildCxRepeatMessage(message: CxRepeatMessage, channelId: string, reply: boolean) {
+    if (!isCxProfileUserId(message.id) || !isCxProfileUserId(channelId)) return;
+    const attachments = [
+        ...(message.attachments ?? []),
+        ...(message.messageSnapshots ?? message.message_snapshots ?? []).flatMap(snapshot => snapshot.message?.attachments ?? []),
+    ].flatMap(({ filename, url }) => {
+        if (typeof filename !== "string" || typeof url !== "string"
+            || !/^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/attachments\/[^\s<>]+$/i.test(url)) return [];
+        return [" - " + filename.replace(/[\r\n]+/g, " ") + " (" + url + ")"];
+    });
+    const text = typeof message.content === "string" ? message.content : "";
+    const content = attachments.length ? text + "\nAttachments:\n" + attachments.join("\n") : text;
+    const stickerIds = (message.stickerItems ?? message.sticker_items ?? []).map(sticker => sticker.id).filter(isCxProfileUserId);
+    if (!content.trim() && !stickerIds.length) return;
+    return {
+        content,
+        options: {
+            allowedMentions: { parse: [] as string[], replied_user: false },
+            messageReference: reply ? { channel_id: channelId, message_id: message.id } : undefined,
+            stickerIds,
+        },
+    };
+}
 
 export function getCxMessageGesture(message: {
     author?: { id?: string; }; content?: string; type?: number; flags?: number; deleted?: boolean; state?: string;

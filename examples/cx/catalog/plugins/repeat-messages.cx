@@ -1,0 +1,3 @@
+plugin "RepeatMessages":
+  needs messages.repeat
+  use repeat-message
