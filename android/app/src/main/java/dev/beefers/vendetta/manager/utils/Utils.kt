@@ -25,14 +25,25 @@ import java.io.InputStreamReader
 
 val mainThread = Handler(Looper.getMainLooper())
 
+private const val MAX_CLIPBOARD_TEXT_CHARS = 256 * 1024
+private const val CLIPBOARD_TRUNCATION_NOTICE = "[Earlier content omitted]\n"
+
 fun mainThread(block: () -> Unit) {
     mainThread.post(block)
 }
 
-fun Context.copyText(text: String) {
+fun Context.copyText(text: String): Boolean {
     val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val truncated = text.length > MAX_CLIPBOARD_TEXT_CHARS
+    val clipboardText = if (truncated) {
+        CLIPBOARD_TRUNCATION_NOTICE +
+            text.takeLast(MAX_CLIPBOARD_TEXT_CHARS - CLIPBOARD_TRUNCATION_NOTICE.length)
+    } else {
+        text
+    }
 
-    clipboardManager.setPrimaryClip(ClipData.newPlainText(BuildConfig.APPLICATION_ID, text))
+    clipboardManager.setPrimaryClip(ClipData.newPlainText(BuildConfig.APPLICATION_ID, clipboardText))
+    return !truncated
 }
 
 fun Context.showToast(@StringRes res: Int, vararg params: Any, short: Boolean = true) {

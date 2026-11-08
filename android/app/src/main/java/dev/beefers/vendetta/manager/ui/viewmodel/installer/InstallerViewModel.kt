@@ -157,8 +157,10 @@ class InstallerViewModel(
 
     fun copyLogs() {
         val logText = if (runner.logFile.exists()) runner.logFile.readText() else logsString
-        context.copyText(logText)
-        context.showToast(R.string.msg_copied)
+        val copiedFully = context.copyText(logText)
+        context.showToast(
+            if (copiedFully) R.string.msg_copied else R.string.msg_copied_logs_truncated
+        )
     }
 
     private fun startInstall() {

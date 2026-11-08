@@ -33,8 +33,10 @@ class LogViewerViewModel(
     }
 
     fun copyLogs() {
-        context.copyText(logsString)
-        context.showToast(R.string.msg_copied)
+        val copiedFully = context.copyText(logsString)
+        context.showToast(
+            if (copiedFully) R.string.msg_copied else R.string.msg_copied_logs_truncated
+        )
     }
 
     private fun saveToAppStorage(): File {

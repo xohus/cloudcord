@@ -14,6 +14,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
 import java.math.BigInteger
+import java.security.MessageDigest
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -129,7 +130,7 @@ object Signer : KoinComponent {
         verifyApk(output)
     }
 
-    fun verifyApk(apk: File) {
+    fun verifyApk(apk: File): Set<String> {
         val result = ApkVerifier.Builder(apk)
             .setMinCheckedPlatformVersion(MIN_SUPPORTED_SDK)
             .build().verify()
@@ -140,7 +141,17 @@ object Signer : KoinComponent {
             "APK signature verification failed: ${apk.name}. " +
                 listOf(errors, v2Errors, v3Errors).filter { it.isNotBlank() }.joinToString("; ")
         }
+
+        val certificates = result.v3SchemeSigners.map { it.certificate }
+            .ifEmpty { result.v2SchemeSigners.map { it.certificate } }
+            .ifEmpty { result.v1SchemeSigners.map { it.certificate } }
+        check(certificates.isNotEmpty()) { "APK signing certificate is missing: ${apk.name}" }
+        return certificates.map { certificateFingerprint(it.encoded) }.toSet()
     }
+
+    fun certificateFingerprint(certificate: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(certificate)
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
     private fun migrate(oldDir: File, newDir: File) {
         oldDir.resolve("ks.keystore").also {

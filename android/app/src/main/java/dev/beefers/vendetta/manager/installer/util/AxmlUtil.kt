@@ -8,12 +8,36 @@ import com.google.devrel.gmscore.tools.apk.arsc.*
 import java.io.File
 
 object AxmlUtil {
+    data class ManifestInfo(
+        val packageName: String,
+        val longVersionCode: Long,
+        val splitName: String?,
+    )
+
     fun isBaseApk(apk: File): Boolean {
         val manifest = readAxml(apk, "AndroidManifest.xml").getMainAxmlChunk()
         val root = manifest.getStartElementChunk("manifest") ?: error("Missing manifest root")
         val splitIdx = manifest.stringPool.indexOf("split")
         return root.attributes.none { it.nameIndex() == splitIdx }
     }
+
+    fun readManifestInfo(apk: File): ManifestInfo {
+        val manifest = readAxml(apk, "AndroidManifest.xml").getMainAxmlChunk()
+        val root = manifest.getStartElementChunk("manifest") ?: error("Missing manifest root")
+        val packageName = root.attributes.firstOrNull { it.name() == "package" }?.rawValue()
+            ?: error("Missing package name in ${apk.name}")
+        val versionCode = root.attributes.firstOrNull { it.name() == "versionCode" }
+            ?.typedValue()?.data()
+            ?: error("Missing version code in ${apk.name}")
+        val versionCodeMajor = root.attributes.firstOrNull { it.name() == "versionCodeMajor" }
+            ?.typedValue()?.data() ?: 0
+        val splitName = root.attributes.firstOrNull { it.name() == "split" }?.rawValue()
+        val longVersionCode = (versionCodeMajor.toLong() shl 32) or
+            (versionCode.toLong() and 0xffffffffL)
+
+        return ManifestInfo(packageName, longVersionCode, splitName)
+    }
+
     /**
      * Read and parse a specific axml resource inside an APK
      * @param apk The source apk

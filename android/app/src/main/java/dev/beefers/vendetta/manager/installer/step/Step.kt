@@ -69,8 +69,11 @@ abstract class Step: KoinComponent {
                 status = StepStatus.SUCCESSFUL
                 null
             } catch (t: Throwable) {
+                if (t is CancellationException) {
+                    status = StepStatus.QUEUED
+                    throw t
+                }
                 status = StepStatus.UNSUCCESSFUL
-                if (t is CancellationException) throw t
                 t
             }
         }
