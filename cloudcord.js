@@ -2618,7 +2618,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       DISCORD_SERVER = "https://discord.gg/6cN7wKa8gp";
       CODEBERG = "";
-      GITHUB = "https://github.com/cloudcord-mod/cloudcord";
+      GITHUB = "https://github.com/cloudcord-mod/release-hub";
       HTTP_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
       HTTP_REGEX_MULTI = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
       BUNNY_PROXY_PREFIX = "https://bn-plugins.github.io/vd-proxy";
@@ -9470,7 +9470,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         UH_OH: "Uh Oh",
         UNINSTALL: "Uninstall",
         UNINSTALL_TITLE: "Uninstall {title}",
-        URL_PLACEHOLDER: "https://github.com/cloudcord-mod/cloudcord",
+        URL_PLACEHOLDER: "https://github.com/cloudcord-mod/release-hub",
         VERSION: "Version",
         VERSIONS: "Versions"
       };
@@ -11616,7 +11616,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var [versions, setVersions] = (0, import_react3.useState)([]);
     (0, import_react3.useEffect)(() => initializeDiagnosticsCapture(), []);
     (0, import_react3.useEffect)(() => {
-      fetch("https://api.github.com/repos/cloudcord-mod/cloudcord/commits?path=dist/cc.js&per_page=10").then((response) => response.ok ? response.json() : []).then((items) => setVersions(items.slice(0, 10).map((item) => ({
+      fetch("https://api.github.com/repos/cloudcord-mod/release-hub/commits?path=dist/cc.js&per_page=10").then((response) => response.ok ? response.json() : []).then((items) => setVersions(items.slice(0, 10).map((item) => ({
         sha: String(item.sha),
         date: String(item.commit?.committer?.date ?? ""),
         title: String(item.commit?.message ?? "CloudCord runtime").split("\n")[0]
@@ -11797,7 +11797,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                       return;
                     }
                     loaderConfig.customLoadUrl.enabled = true;
-                    loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/cloudcord-mod/cloudcord/${version.sha}/dist/cc.js`;
+                    loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/cloudcord-mod/release-hub/${version.sha}/dist/cc.js`;
                     showToast("Version selected. Apply and reload when ready.", findAssetId("Check"));
                   }
                 })
@@ -31028,7 +31028,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           icon: "https://cdn.discordapp.com/badge-icons/7fe346cfc5da1340087d8759a9e7a395.png"
         }
       ];
-      CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png";
+      CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/cloudcord-favicon.png";
       CLOUDCORD_STAFF_ROLES = {
         "463515440606609419": "Founder",
         "1417880742502994042": "Chief of staff",
@@ -32114,7 +32114,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       import_react10 = __toESM(require_react());
       import_react_native28 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-      STORECLOUD_ICON = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png";
+      STORECLOUD_ICON = "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/cloudcord-favicon.png";
     }
   });
 
@@ -35586,7 +35586,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_Search();
       init_toasts();
       import_react_native38 = __toESM(require_react_native());
-      CLOUDCORD_INDEX = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/themes/mobile/index.json";
+      CLOUDCORD_INDEX = "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/themes/mobile/index.json";
       MARKETPLACE = "https://raw.githubusercontent.com/kmmiio99o/theme-marketplace/refs/heads/main/themes.json";
     }
   });
@@ -53713,7 +53713,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         key: "STORE_CLOUD",
         title: () => "Cloudsync",
         icon: {
-          uri: "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png"
+          uri: "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/cloudcord-favicon.png"
         },
         render: () => Promise.resolve().then(() => (init_StoreCloud(), StoreCloud_exports))
       },
@@ -54554,7 +54554,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "4513c7a6aacf6c1dcc40b69ebd34e1887a490458";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "533a78b0c001eca7602e46e482fcc682dcced80b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
