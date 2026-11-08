@@ -1,0 +1,3 @@
+plugin "JumpTo":
+  needs channels.searchjump
+  use jump-to-message-menu

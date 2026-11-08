@@ -28,7 +28,7 @@ export { formatCxEmojiMarkdown, formatCxStickerLink, getCxSteamLink, validateCxM
 export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
-export { createCxNavigationControls, getCxFirstMessageTarget, type CxNavigationChannel } from "./cxNavigation";
+export { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, type CxNavigationChannel } from "./cxNavigation";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
 
 export const MAX_CX_SOURCE = 512 * 1024;
@@ -72,6 +72,7 @@ const permissionLabels = {
     "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
     "servers.markread": "Mark unread server channels as read when you run the listed command",
     "channels.markonopen": "Mark the channel you open as read through its newest known message",
+    "channels.searchjump": "Look up the first or last matching Discord message in the selected channel when you choose a jump action",
     "channels.jump": "Jump within the current channel when you choose the navigation control",
     "channels.clipboard": "Copy the selected channel or category name when you choose its menu action",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",

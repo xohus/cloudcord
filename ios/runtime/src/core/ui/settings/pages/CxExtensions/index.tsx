@@ -6,7 +6,7 @@ import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
-import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
+import { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
@@ -926,7 +926,7 @@ function registerMessageMenuActions(
                 ...React.Children.toArray(element.props.children),
                 <ActionSheetRowGroup key={actions[0].label}>
                     {actions.map(({ label, run }, index) => <ActionSheetRow key={label + index} label={label}
-                        onPress={() => { if (canUseAction()) run(); }} />)}
+                        onPress={() => { if (canUseAction()) return run(); }} />)}
                 </ActionSheetRowGroup>,
             ] });
         });
@@ -945,6 +945,55 @@ function registerQuickMention(enabled: () => boolean) {
             close();
         } }];
     });
+}
+
+function registerJumpToMessageMenu(enabled: () => boolean) {
+    const rest = findByProps("HTTP")?.HTTP ?? findByProps("get", "post", "patch", "del");
+    const navigation = findByProps("transitionToChannel", "transitionToMessage");
+    const sheet = findByProps("ActionSheet")?.ActionSheet;
+    const ActionSheetRow = findByProps("ActionSheetRow")?.ActionSheetRow;
+    if (typeof rest?.get !== "function" || typeof navigation?.transitionToMessage !== "function" || !sheet || !ActionSheetRow?.Group) {
+        throw new Error("Discord's message navigation is unavailable");
+    }
+    let active = true;
+    const jumpActions = createCxJumpActions(request => rest.get(request),
+        (id, message) => navigation.transitionToMessage(id, message), showToast);
+    const stopMessage = registerMessageMenuActions(enabled, ({ channel, message }, close, stillActive) => {
+        if (!channel) return [];
+        const author = message?.author?.id;
+        if (channel.guild_id && !isCxProfileUserId(author)) return [];
+        const current = ChannelStore.getChannel(channel.id);
+        return jumpActions(current, stillActive, channel.guild_id ? author : undefined).map(({ label, run }) => ({
+            label, run: () => { close(); return run(); },
+        }));
+    }, false);
+    type JumpChannel = Parameters<typeof jumpActions>[0];
+    function addChannelActions(tree: ReactNode, props: { channel?: JumpChannel; thread?: JumpChannel; onClose?: () => void; }) {
+        const actions = jumpActions(props.thread ?? props.channel, () => active && enabled());
+        if (!actions.length) return tree;
+        return mapAppearanceElements(tree, element => element.type === sheet
+            ? React.cloneElement(element, { children: [
+                ...React.Children.toArray(element.props.children),
+                <ActionSheetRow.Group key="cx-jump-to-message">
+                    {actions.map(({ label, run }) => <ActionSheetRow key={label} label={label} onPress={() => {
+                        if (!active || !enabled()) return;
+                        props.onClose?.();
+                        return run();
+                    }} />)}
+                </ActionSheetRow.Group>,
+            ] }) : element);
+    }
+    const cleanups = [stopMessage];
+    function stop() {
+        active = false;
+        for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+    }
+    try {
+        for (const target of ["ChannelLongPressActionSheetConnected", "ThreadLongPressActionSheetConnected", "ForumPostLongPressActionSheet"]) {
+            cleanups.push(registerRenderedTree(target, addChannelActions));
+        }
+        return stop;
+    } catch (error) { stop(); throw error; }
 }
 
 function registerCopyChannelName(enabled: () => boolean) {
@@ -1831,6 +1880,8 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "hide-role-headers":
                             return registerNoRoleHeaders();
+                        case "jump-to-message-menu":
+                            return registerJumpToMessageMenu(enabled);
                         case "jump-to-first-message":
                             return navigationControls.register(effect, () => registerJumpToFirst(enabled));
                         case "read-all-servers-button":

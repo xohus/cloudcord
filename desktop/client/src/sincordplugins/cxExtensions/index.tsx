@@ -17,7 +17,7 @@ import { openImageModal } from "@utils/discord";
 import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
-import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
+import { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
 import { selectCxAppearanceOption } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
@@ -30,6 +30,37 @@ import type { ReactNode } from "react";
 import { Alerts } from "@webpack/common";
 
 const session = createCxSession();
+
+function registerJumpToMessageMenu() {
+    let active = true;
+    const jumpActions = createCxJumpActions(request => RestAPI.get(request),
+        (id, message, guild) => NavigationRouter.transitionTo(`/channels/${guild ?? "@me"}/${id}/${message}`), showToast);
+    const channelMenus = ["channel-context", "thread-context", "user-context", "gdm-context"];
+    function append(children: ReactNode[], actions: ReturnType<typeof jumpActions>) {
+        for (const { label, run } of actions) {
+            children.push(<Menu.MenuItem id={"cx-" + label.toLowerCase().replaceAll(" ", "-")} label={label} action={run} />);
+        }
+    }
+    const channelPatch: NavContextMenuPatchCallback = (children, { channel, thread, user }) => {
+        if (!active || user && channel?.guild_id) return;
+        const selected = ChannelStore.getChannel(SelectedChannelStore.getChannelId());
+        const forumThread = channel?.isForumLikeChannel?.() && selected?.isThread?.() && selected.parent_id === channel.id;
+        append(children, jumpActions(thread ?? (forumThread ? selected : channel), () => active));
+    };
+    const messagePatch: NavContextMenuPatchCallback = (children, { message }) => {
+        const id = SelectedChannelStore.getChannelId();
+        const channel = ChannelStore.getChannel(id);
+        if (!active || !channel?.guild_id || message?.channel_id !== id || !isCxProfileUserId(message?.author?.id)) return;
+        append(children, jumpActions(channel, () => active && SelectedChannelStore.getChannelId() === id, message.author.id));
+    };
+    addContextMenuPatch(channelMenus, channelPatch);
+    addContextMenuPatch("message", messagePatch);
+    return () => {
+        active = false;
+        removeContextMenuPatch(channelMenus, channelPatch);
+        removeContextMenuPatch("message", messagePatch);
+    };
+}
 
 function registerCopyChannelName() {
     let active = true;
@@ -608,6 +639,8 @@ export function CxSettings() {
                 },
                 registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
+                        case "jump-to-message-menu":
+                            return registerJumpToMessageMenu();
                         case "jump-to-first-message":
                             return navigationControls.register(effect);
                         case "read-all-servers-button":

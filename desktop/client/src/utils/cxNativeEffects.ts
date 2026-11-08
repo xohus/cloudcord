@@ -37,6 +37,7 @@ export const cxNativeEffects = {
     "toggle-message-embeds": { permission: "messages.toggleembeds", label: "Suppress or unsuppress embeds in the selected message" },
     "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
+    "jump-to-message-menu": { permission: "channels.searchjump", label: "Jump to the first or last message from channel and message menus" },
     "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },
     "read-all-servers-button": { permission: "servers.markread", label: "Add a server list button to mark loaded server channels as read" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },

@@ -120,6 +120,7 @@ import plugin_catalog_image_link from "../../../../examples/cx/catalog/plugins/i
 import plugin_catalog_in_role from "../../../../examples/cx/catalog/plugins/in-role.cx";
 import plugin_catalog_ingtoninator from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
 import plugin_catalog_jump_to_top from "../../../../examples/cx/catalog/plugins/jump-to-top.cx";
+import plugin_catalog_jump_to from "../../../../examples/cx/catalog/plugins/jump-to.cx";
 import plugin_catalog_keyword_notify from "../../../../examples/cx/catalog/plugins/keyword-notify.cx";
 import plugin_catalog_leet_text from "../../../../examples/cx/catalog/plugins/leet-text.cx";
 import plugin_catalog_link_converter from "../../../../examples/cx/catalog/plugins/link-converter.cx";
@@ -410,6 +411,7 @@ export const cxCatalog = {
         { name: "InRole", source: plugin_catalog_in_role },
         { name: "Ingtoninator", source: plugin_catalog_ingtoninator },
         { name: "JumpToTop", source: plugin_catalog_jump_to_top },
+        { name: "JumpTo", source: plugin_catalog_jump_to },
         { name: "KeywordNotify", source: plugin_catalog_keyword_notify },
         { name: "LeetText", source: plugin_catalog_leet_text },
         { name: "LinkConverter", source: plugin_catalog_link_converter },

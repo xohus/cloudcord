@@ -206,6 +206,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
         const guildId = "100000000000000004";
         const roleId = "100000000000000005";
+        const jumpChannel = { id: "100000000000000016", type: 0, guild_id: guildId };
+        const jumpRequests = [], jumpRoutes = [];
+        let resolveJump;
+        function getJump(request) {
+            jumpRequests.push(JSON.parse(JSON.stringify(request)));
+            return new Promise(resolve => { resolveJump = resolve; });
+        }
         const voiceTarget = "100000000000000006", secondVoice = "100000000000000007";
         let currentVoice = null;
         const voiceJoins = [];
@@ -320,7 +327,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]), banner: "a_" + "a".repeat(32) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: id => ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" || id === repeatChannel ? guildId : undefined,
+            ChannelStore: { getChannel: id => id === jumpChannel.id ? jumpChannel : ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" || id === repeatChannel ? guildId : undefined,
                 rateLimitPerUser: id === "slow-channel" ? 10 : 0 }) },
             PermissionStore: { can: () => canSend },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
@@ -531,7 +538,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/Commands": commandApi,
             "@api/ContextMenu": {
-                addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context", "message"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
+                addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context", "message", "channel-context"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
                 findGroupChildrenByChildId: (id, children) => children.some(item => item?.props?.id === id) ? children : null,
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
@@ -588,7 +595,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 addInterceptor: callback => incomingHooks.push(callback),
                 ...channelDispatcher,
             }, Constants: { Endpoints: { ...embedEndpoints, REACTION: (channel, message, emoji) => [channel, message, emoji] } },
-                RestAPI: { patch: request => embedPatches.push(request), put: ({ url: [channel, message, emoji] }) => addReaction(channel, message, { name: emoji }) },
+                RestAPI: { get: getJump, patch: request => embedPatches.push(request), put: ({ url: [channel, message, emoji] }) => addReaction(channel, message, { name: emoji }) },
             },
             "@lib/api/cx": moduleBox.exports,
             "@lib/api/ccpInspect": reportModule.exports,
@@ -673,7 +680,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "ActionSheetRow" ? { ActionSheetRow: Object.assign(() => null, { Group: "ActionSheetRowGroup" }) }
                     : name === "openLazy" ? { hideActionSheet() { dismissedMentionSheets++; } }
-                    : name === "HTTP" ? { HTTP: { patch: request => embedPatches.push(request) } }
+                    : name === "HTTP" ? { HTTP: { get: getJump, patch: request => embedPatches.push(request) } }
+                    : name === "transitionToChannel" ? { transitionToMessage: (channel, message) => jumpRoutes.push([channel, message]) }
                     : name === "pinMessage" ? pinActions
                     : name === "Fonts" ? { Permissions: embedPermissions }
                     : name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
@@ -2351,6 +2359,78 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             await clickJump();
             assert.equal(jumps.length, 0);
             assert.equal(jumpButton(), undefined);
+            selectedChannel = originalSelection;
+
+            const initialRoutes = alertRoutes.length;
+            const message = { channel_id: jumpChannel.id, author: { id: sender } };
+            const jumpPort = cxCatalog.plugins.find(entry => entry.name === "JumpTo").source;
+            assert.throws(() => activateCx(jumpPort, host, ["channels.jump"]), /approval/);
+            selectCatalog("JumpTo");
+            click(render(), "Allow for this session");
+            const getAction = (first, byAuthor = false) => {
+                const label = first ? "Jump to First Message" : "Jump to Last Message";
+                const props = byAuthor ? { channel: jumpChannel, message } : { channel: jumpChannel };
+                if (desktop) {
+                    const children = [];
+                    [...menuPatches][byAuthor ? 1 : 0](children, props);
+                    return children.find(child => child.props.label === label)?.props.action;
+                }
+                const type = byAuthor ? LongPressMessageActionSheet : ChannelLongPressActionSheetConnected;
+                const hook = appearanceHooks.get(byAuthor ? type : type.name);
+                const wrapped = hook(null, jsx(type, props));
+                const renderer = wrapped.type(wrapped.props);
+                const tree = renderer.type(renderer.props);
+                assert.ok(find(tree, item => item.type === "OriginalAction"));
+                return find(tree, item => item.props.label === label)?.props.onPress;
+            };
+            const expectJump = id => {
+                if (desktop) assert.equal(alertRoutes.pop(), "/channels/" + guildId + "/" + jumpChannel.id + "/" + id);
+                else assert.deepEqual(jumpRoutes.pop(), [jumpChannel.id, id]);
+            };
+            selectedChannel = jumpChannel.id;
+            await getAction(true)();
+            expectJump(jumpChannel.id);
+            assert.equal(jumpRequests.length, 0);
+            if (!desktop) {
+                const thread = { id: other, type: 11, guild_id: guildId, isForumPost: () => true };
+                function ForumPostLongPressActionSheet() {
+                    return jsx(NativeActionSheet, { children: jsx("OriginalAction", {}) });
+                }
+                const hook = appearanceHooks.get("ForumPostLongPressActionSheet");
+                const wrapped = hook(null, jsx(ForumPostLongPressActionSheet, { thread }));
+                const renderer = wrapped.type(wrapped.props);
+                await find(renderer.type(renderer.props), item => item.props.label === "Jump to First Message").props.onPress();
+                assert.deepEqual(jumpRoutes.pop(), [other, other]);
+            }
+            const latest = getAction(false)();
+            assert.deepEqual(jumpRequests.pop(), { url: "/channels/" + jumpChannel.id + "/messages", query: { limit: 1 } });
+            resolveJump({ body: [{ id: other, channel_id: jumpChannel.id }] });
+            await latest;
+            expectJump(other);
+            const earliestByAuthor = getAction(true, true)();
+            assert.deepEqual(jumpRequests.pop(), { url: "/guilds/" + guildId + "/messages/search", query: {
+                author_id: sender, channel_id: jumpChannel.id, sort_by: "timestamp", sort_order: "asc",
+            } });
+            resolveJump({ body: { messages: [[
+                { id: other, channel_id: me, author: { id: sender }, hit: true },
+                { id: sender, channel_id: jumpChannel.id, author: { id: sender }, hit: true },
+            ]] } });
+            await earliestByAuthor;
+            expectJump(sender);
+            const lastByAuthor = getAction(false, true)();
+            assert.equal(jumpRequests.pop().query.sort_order, "desc");
+            selectedChannel = sender;
+            resolveJump({ body: { messages: [[{ id: sender, channel_id: jumpChannel.id, author: { id: sender } }]] } });
+            await lastByAuthor;
+            assert.equal(alertRoutes.length, initialRoutes);
+            assert.equal(jumpRoutes.length, 0);
+            const pending = getAction(false)();
+            assert.equal(jumpRequests.length, 1);
+            click(render(), "Disable JumpTo");
+            resolveJump({ body: [{ id: other, channel_id: jumpChannel.id }] });
+            await pending;
+            assert.equal(alertRoutes.length, initialRoutes);
+            assert.equal(jumpRoutes.length, 0);
             selectedChannel = originalSelection;
 
             const previousAcks = acknowledged.length;
