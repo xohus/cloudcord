@@ -29,6 +29,7 @@ export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxImageSearchOptions, type CxSearchMediaSource } from "./cxMediaSearch";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
+export { createCxCallClock } from "./cxCallClock";
 export { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, type CxNavigationChannel } from "./cxNavigation";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
 
@@ -86,6 +87,7 @@ const permissionLabels = {
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+    "voice.calltime": "Read the current voice channel and show its elapsed call time on this device",
     "voice.notifyfriends": "Show local notifications when friends join or move between voice channels",
     "voice.followfriend": "Move you to the listed friend’s voice channel while you are already connected to voice",
     "friends.notifyremoval": "Show a local notification when a friend removes you",

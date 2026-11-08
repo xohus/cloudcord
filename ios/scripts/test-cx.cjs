@@ -13,8 +13,13 @@ const code = buildSync({
     bundle: true, write: false, format: "cjs", minify: true,
 }).outputFiles[0].text;
 let wikiRequest;
+let clockTime;
+const clockTimers = new Set();
 vm.runInNewContext(code, {
     module: moduleBox, AbortController, setTimeout, clearTimeout,
+    Date: class extends Date { static now() { return clockTime ?? Date.now(); } },
+    setInterval: callback => { clockTimers.add(callback); return callback; },
+    clearInterval: callback => clockTimers.delete(callback),
     fetch: (url, options) => new Promise((resolve, reject) => {
         wikiRequest = { url, options, resolve };
         options.signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true });
@@ -285,11 +290,15 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let rejectBulkAck = false;
         const dispatch = event => rejectBulkAck && event.type === "BULK_ACK"
             ? Promise.reject(new Error("Could not acknowledge channels")) : acknowledged.push(event);
-        const channelSelections = new Set();
+        const channelSelections = new Set(), rtcListeners = new Set(), voiceListeners = new Set();
+        const listenersFor = name => {
+            assert.ok(["CHANNEL_SELECT", "RTC_CONNECTION_STATE"].includes(name));
+            return name === "RTC_CONNECTION_STATE" ? rtcListeners : channelSelections;
+        };
         const channelDispatcher = {
             dispatch,
-            subscribe: (name, listener) => { assert.equal(name, "CHANNEL_SELECT"); channelSelections.add(listener); },
-            unsubscribe: (name, listener) => { assert.equal(name, "CHANNEL_SELECT"); channelSelections.delete(listener); },
+            subscribe: (name, listener) => { listenersFor(name).add(listener); },
+            unsubscribe: (name, listener) => { listenersFor(name).delete(listener); },
         };
         let typingStarts = 0, typingStops = 0;
         const typing = { startTyping() { typingStarts++; }, stopTyping() { typingStops++; } };
@@ -364,7 +373,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 isFriend: id => id === sender,
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
             },
-            SelectedChannelStore: { getVoiceChannelId: () => currentVoice, getChannelId: () => selectedChannel },
+            SelectedChannelStore: {
+                getVoiceChannelId: () => currentVoice, getChannelId: () => selectedChannel,
+                addChangeListener: listener => voiceListeners.add(listener),
+                removeChangeListener: listener => voiceListeners.delete(listener),
+            },
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
@@ -438,6 +451,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const forwardedRefs = [];
         function ActivityStatus(props) { return props.output; }
         nativeHeaders.set("ActivityStatus", ActivityStatus);
+        function VoicePanelHeader(props) { return props.output; }
+        nativeHeaders.set("VoicePanelHeader", VoicePanelHeader);
         const chatInputActions = {
             $$typeof: Symbol.for("react.memo"), type: {
                 $$typeof: Symbol.for("react.forward_ref"), displayName: "ChatInputActions",
@@ -541,6 +556,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/Commands": commandApi,
+            "@api/Settings": { Settings: { plugins: { CallTimer: { enabled: false } } } },
             "@api/ContextMenu": {
                 addContextMenuPatch: (menus, patch) => { assert.ok(["user-context", "expression-picker", "image-context", "message", "channel-context"].some(menu => menus.includes(menu))); menuPatches.add(patch); },
                 findGroupChildrenByChildId: (id, children) => children.some(item => item?.props?.id === id) ? children : null,
@@ -592,7 +608,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 React: { isValidElement: element => !!element?.type && !!element?.props,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
                 useSyncExternalStore: (subscribe, read) => {
-                subscribe(() => typingSubscribers.add(read()));
+                if (typeof read() === "boolean") subscribe(() => typingSubscribers.add(read()));
                 return read();
             } }, useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, NavigationRouter: { transitionTo: path => alertRoutes.push(path) }, FluxDispatcher: {
                 _interceptors: incomingHooks,
@@ -2249,6 +2265,78 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
+        {
+            if (desktop) {
+                const patch = desktopPlugin.patches.find(patch => patch.find === "renderConnectionStatus(){");
+                assert.equal(patch.predicate(), true);
+                mocks["@api/Settings"].Settings.plugins.CallTimer.enabled = true;
+                assert.equal(patch.predicate(), false);
+                mocks["@api/Settings"].Settings.plugins.CallTimer.enabled = false;
+                const targets = [
+                    'renderConnectionStatus(){return f(0,{lineClamp:1,children:text});}',
+                    '"RTCConnectionMenu",f(0,{lineClamp:1,children:text});',
+                ];
+                patch.replacement.forEach(({ match, replace }, index) => {
+                    const regex = new RegExp(match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"));
+                    const patched = targets[index].replace(regex, replace);
+                    assert.ok(patched.includes('children:[text,$self.renderCallTime(this?.props?.channel?.id)]'));
+                });
+            }
+            const port = cxCatalog.plugins.find(entry => entry.name === "CallTimeCounter").source;
+            assert.throws(() => activateCx(port, host, ["voice.followfriend"]), /approval/);
+            selectCatalog("CallTimeCounter");
+            click(render(), "Allow for this session");
+            const renderTime = channelId => {
+                let timer;
+                if (desktop) {
+                    timer = desktopPlugin.renderCallTime(channelId);
+                } else {
+                    const output = jsx("View", { children: jsx("VoiceControls", {}) });
+                    const hook = appearanceHooks.get(VoicePanelHeader);
+                    const wrapped = hook(null, jsx(VoicePanelHeader, { channelId, output }));
+                    const header = wrapped.type(wrapped.props);
+                    const result = header.type(header.props);
+                    assert.ok(find(result, item => item.type === "VoiceControls"));
+                    timer = find(result, item => item.type?.name === "CallTime");
+                }
+                return timer?.type(timer.props)?.props.children?.join("") ?? null;
+            };
+            const changeVoice = id => {
+                currentVoice = id;
+                voiceListeners.forEach(listener => listener());
+            };
+            const savedVoice = currentVoice;
+            changeVoice(null);
+            assert.equal(renderTime(voiceTarget), null);
+            assert.equal(clockTimers.size, 0);
+            clockTime = 1_000_000;
+            changeVoice(voiceTarget);
+            assert.equal(renderTime(voiceTarget), "Time elapsed: 00:00:00");
+            assert.equal(renderTime(secondVoice), null);
+            if (desktop) assert.equal(renderTime(undefined), "Time elapsed: 00:00:00");
+            clockTime += 3661_000;
+            clockTimers.forEach(tick => tick());
+            assert.equal(renderTime(voiceTarget), "Time elapsed: 01:01:01");
+            rtcListeners.forEach(listener => listener({ state: "RTC_DISCONNECTED", streamKey: "stream" }));
+            assert.equal(renderTime(voiceTarget), "Time elapsed: 01:01:01");
+            changeVoice(secondVoice);
+            assert.equal(renderTime(voiceTarget), null);
+            assert.equal(renderTime(secondVoice), "Time elapsed: 00:00:00");
+            clockTime += 2000;
+            clockTimers.forEach(tick => tick());
+            assert.equal(renderTime(secondVoice), "Time elapsed: 00:00:02");
+            rtcListeners.forEach(listener => listener({ state: "RTC_DISCONNECTED" }));
+            assert.equal(renderTime(secondVoice), "Time elapsed: 00:00:00");
+            changeVoice(null);
+            assert.equal(clockTimers.size, 0);
+            changeVoice(secondVoice);
+            click(render(), "Disable CallTimeCounter");
+            assert.equal(clockTimers.size + rtcListeners.size + voiceListeners.size, 0);
+            if (desktop) assert.equal(renderTime(secondVoice), null);
+            else assert.equal(appearanceHooks.has(VoicePanelHeader), false);
+            currentVoice = savedVoice;
+            clockTime = undefined;
+        }
         {
             selectCatalog("NoRoleHeaders");
             if (desktop) assert.equal(desktopPlugin.hideRoleHeaders(), false);

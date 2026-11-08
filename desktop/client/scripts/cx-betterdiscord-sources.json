@@ -129,6 +129,14 @@
         "source": "https://github.com/BleedingBD/plugin-NoReplyPing/blob/c0376dc67966587d3ed256a828a311c62b91585e/NoReplyPing.plugin.js",
         "recipe": "reply-ping-default"
     },
+    "e168ad36d72bca544a49134d0e224ebe00dcc6b32d602bc4c6716a2c976c34ee": {
+        "name": "CallTimeCounter",
+        "author": "QWERT and KingGamingYT",
+        "source": "https://github.com/KingGamingYT/CallTimeCounter/blob/204b6a3dbec25d227c0f47f13cb85be9c8612ff1/CallTimeCounter.plugin.js",
+        "recipe": "native-effect",
+        "effect": "call-time-counter",
+        "basis": "independent behavior implementation"
+    },
     "3a062e933a6ad664a4a759e7d0ee06b3ba6f45fa5bb7478e73a3497ced2af668": {
         "name": "NoConfirmPin",
         "author": "Skamt",

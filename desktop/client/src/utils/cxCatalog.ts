@@ -16,6 +16,7 @@ import plugin_catalog_blur_images_until_hover from "../../../../examples/cx/cata
 import plugin_catalog_blur_nsfw from "../../../../examples/cx/catalog/plugins/blur-nsfw.cx";
 import plugin_catalog_bold_text from "../../../../examples/cx/catalog/plugins/bold-text.cx";
 import plugin_catalog_calculator from "../../../../examples/cx/catalog/plugins/calculator.cx";
+import plugin_catalog_call_time_counter from "../../../../examples/cx/catalog/plugins/call-time-counter.cx";
 import plugin_catalog_centered_chat from "../../../../examples/cx/catalog/plugins/centered-chat.cx";
 import plugin_catalog_chat_buttons_begone from "../../../../examples/cx/catalog/plugins/chat-buttons-begone.cx";
 import plugin_catalog_clap_text from "../../../../examples/cx/catalog/plugins/clap-text.cx";
@@ -308,6 +309,7 @@ export const cxCatalog = {
         { name: "BlurNSFW", source: plugin_catalog_blur_nsfw },
         { name: "BoldText", source: plugin_catalog_bold_text },
         { name: "Calculator", source: plugin_catalog_calculator },
+        { name: "CallTimeCounter", source: plugin_catalog_call_time_counter },
         { name: "CenteredChat", source: plugin_catalog_centered_chat },
         { name: "ChatButtonsBegone", source: plugin_catalog_chat_buttons_begone },
         { name: "ClapText", source: plugin_catalog_clap_text },

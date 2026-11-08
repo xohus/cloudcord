@@ -1,0 +1,3 @@
+plugin "CallTimeCounter":
+  needs voice.calltime
+  use call-time-counter

@@ -3,6 +3,7 @@ import { addContextMenuPatch, findGroupChildrenByChildId, removeContextMenuPatch
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { addMessagePopoverButton, removeMessagePopoverButton } from "@api/MessagePopover";
 import { showNotification } from "@api/Notifications";
+import { Settings } from "@api/Settings";
 import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
@@ -17,7 +18,7 @@ import { openImageModal } from "@utils/discord";
 import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
-import { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
+import { createCxCallClock, createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
 import { selectCxAppearanceOption } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
@@ -30,6 +31,12 @@ import type { ReactNode } from "react";
 import { Alerts } from "@webpack/common";
 
 const session = createCxSession();
+const callClock = createCxCallClock();
+
+function CallTime({ channelId }: { channelId?: string; }) {
+    const elapsed = React.useSyncExternalStore(callClock.subscribe, () => callClock.read(channelId));
+    return elapsed ? <span style={{ display: "block", fontVariantNumeric: "tabular-nums" }}>Time elapsed: {elapsed}</span> : null;
+}
 
 function registerJumpToMessageMenu() {
     let active = true;
@@ -663,6 +670,8 @@ export function CxSettings() {
                 },
                 registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
+                        case "call-time-counter":
+                            return callClock.bind(SelectedChannelStore, FluxDispatcher);
                         case "jump-to-message-menu":
                             return registerJumpToMessageMenu();
                         case "jump-to-first-message":
@@ -1120,6 +1129,19 @@ export default definePlugin({
             replace: "return $self.hideRoleHeaders()?null:",
         },
     }, {
+        find: "renderConnectionStatus(){",
+        predicate: () => !Settings.plugins.CallTimer.enabled,
+        replacement: [
+            {
+                match: /(renderConnectionStatus\(\).{0,1000}?lineClamp:1,children:)(\i)(?=,|}\))/,
+                replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id)]",
+            },
+            {
+                match: /("RTCConnectionMenu".{0,200}?lineClamp:1,children:)(\i)(?=,|}\))/,
+                replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id)]",
+            },
+        ],
+    }, {
         find: "Missing channel in Channel.renderHeaderToolbar",
         replacement: {
             match: /(?<=renderHeaderToolbar"\);let (\i)=\[\];)/,
@@ -1256,6 +1278,9 @@ export default definePlugin({
             if (fileCopyUsers && complete) void copyToClipboard(fileContents)
                 .then(() => showToast("File contents copied."), () => showToast("Couldn’t copy the file."));
         }}>{complete ? "Copy File Contents" : "File too large to copy"}</TextButton>;
+    },
+    renderCallTime(channelId?: string) {
+        return <CallTime channelId={channelId} />;
     },
     renderJumpToFirst(channel: CxNavigationChannel | undefined) {
         if (!navigationControls.has("jump-to-first-message")) return null;

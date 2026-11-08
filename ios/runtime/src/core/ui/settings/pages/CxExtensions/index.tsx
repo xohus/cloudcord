@@ -6,7 +6,7 @@ import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
-import { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
+import { createCxCallClock, createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
@@ -31,6 +31,7 @@ import type { ComponentType, Context, ReactElement, ReactNode } from "react";
 import { Alert, Animated, FlatList, Image, Linking, PixelRatio, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
+const callClock = createCxCallClock();
 const navigationControls = createCxNavigationControls();
 const timestamps = createCxTimestampRegistry();
 const timestampFields = [
@@ -147,6 +148,27 @@ function NavigationButton({ label, text, onPress }: { label: string; text: strin
         style={{ minWidth: 38, minHeight: 36, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: resolveSemanticColor(semanticColors.INTERACTIVE_TEXT_DEFAULT), fontSize: text === "↑" ? 20 : 10, fontWeight: "600" }}>{text}</Text>
     </Pressable>;
+}
+
+function CallTime({ channelId }: { channelId: string; }) {
+    const elapsed = React.useSyncExternalStore(callClock.subscribe, () => callClock.read(channelId));
+    if (!elapsed || settings.safeMode?.enabled) return null;
+    return <Text style={{ textAlign: "center", fontSize: 12, fontVariant: ["tabular-nums"],
+        color: resolveSemanticColor(semanticColors.TEXT_MUTED) }}>Time elapsed: {elapsed}</Text>;
+}
+
+function registerCallTimeCounter() {
+    const header = findByFilePath("modules/voice_panel/native/header/VoicePanelHeader.tsx")?.default;
+    if (!header) throw new Error("Discord's call header is unavailable");
+    const stopClock = callClock.bind(SelectedChannelStore, FluxDispatcher);
+    try {
+        const stopHeader = registerRenderedTree(header, (tree, props: { channelId?: string; }) => {
+            if (!isCxProfileUserId(props.channelId) || !React.isValidElement<{ children?: ReactNode; }>(tree)
+                || !("children" in tree.props)) return tree;
+            return React.cloneElement(tree, { children: <>{tree.props.children}<CallTime channelId={props.channelId} /></> });
+        });
+        return () => { stopHeader(); stopClock(); };
+    } catch (error) { stopClock(); throw error; }
 }
 
 function registerJumpToFirst(enabled: () => boolean) {
@@ -1905,6 +1927,8 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "hide-role-headers":
                             return registerNoRoleHeaders();
+                        case "call-time-counter":
+                            return registerCallTimeCounter();
                         case "jump-to-message-menu":
                             return registerJumpToMessageMenu(enabled);
                         case "jump-to-first-message":
