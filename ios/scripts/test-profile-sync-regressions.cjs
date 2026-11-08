@@ -32,7 +32,7 @@ assert.equal(ctx.fromSharedProfile(marked).replaceRealBadges, true);
 
 const layout = fs.readFileSync('desktop/client/src/api/BadgeLayout.ts', 'utf8').replace(/export /g, '');
 vm.runInContext(compile(layout), ctx);
-vm.runInContext(compile('const plugin = {' + block(desktop, '    filterNativeBadges(', '    fakeGiftCode(') + '}; this.filter = plugin.filterNativeBadges;'), ctx);
+vm.runInContext(compile('const plugin = {' + block(desktop, '    filterNativeBadges(', '    fakeCurrentUser(') + '}; this.filter = plugin.filterNativeBadges;'), ctx);
 const badges = Object.freeze([{ id: 'premium_tenure_12_month_v2', cloudcordProfileBadge: true }, { id: 'premium' }, { id: 'partner' }, { id: 'cloudcord-official-moderator' }].map(Object.freeze));
 let data = { nitro: true, nitroLevel: 4, replaceRealBadges: true };
 const plugin = { getBadgeLayout: () => data };
