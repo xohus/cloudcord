@@ -108,6 +108,7 @@ import plugin_catalog_high_contrast_text from "../../../../examples/cx/catalog/p
 import plugin_catalog_high_res_profile_images from "../../../../examples/cx/catalog/plugins/high-res-profile-images.cx";
 import plugin_catalog_highlight_links from "../../../../examples/cx/catalog/plugins/highlight-links.cx";
 import plugin_catalog_highlight_mentions from "../../../../examples/cx/catalog/plugins/highlight-mentions.cx";
+import plugin_catalog_hold_your_tongue from "../../../../examples/cx/catalog/plugins/hold-your-tongue.cx";
 import plugin_catalog_hop_on from "../../../../examples/cx/catalog/plugins/hop-on.cx";
 import plugin_catalog_ignore_calls from "../../../../examples/cx/catalog/plugins/ignore-calls.cx";
 import plugin_catalog_image_filename from "../../../../examples/cx/catalog/plugins/image-filename.cx";
@@ -392,6 +393,7 @@ export const cxCatalog = {
         { name: "High-Res Profile Images", source: plugin_catalog_high_res_profile_images },
         { name: "HighlightLinks", source: plugin_catalog_highlight_links },
         { name: "HighlightMentions", source: plugin_catalog_highlight_mentions },
+        { name: "HoldYourTongue", source: plugin_catalog_hold_your_tongue },
         { name: "HopOn", source: plugin_catalog_hop_on },
         { name: "IgnoreCalls", source: plugin_catalog_ignore_calls },
         { name: "ImageFilename", source: plugin_catalog_image_filename },

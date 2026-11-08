@@ -1,0 +1,3 @@
+plugin "HoldYourTongue":
+  needs messages.confirmsend
+  before send confirm-keywords ["lipton green tea citrus"]

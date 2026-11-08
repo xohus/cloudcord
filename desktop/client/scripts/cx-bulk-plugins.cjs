@@ -453,6 +453,12 @@ function inspectBetterDiscord(file, code, appearance, nativeEffects) {
             cx: ["plugin " + JSON.stringify(name) + ":", "  needs " + nativeEffects[review.effect].permission,
                 "  use " + review.effect, ""].join("\n") };
     }
+    if (review?.name === name && review.recipe === "send-confirmation" && !source.parseDiagnostics.length) {
+        const keyword = 'lipton green tea citrus';
+        return { ...record, review: { ...review, sha256 }, capability: "send-confirmation",
+            cx: ["plugin " + JSON.stringify(name) + ":", "  needs messages.confirmsend",
+                "  before send confirm-keywords " + JSON.stringify([keyword]), ""].join("\n") };
+    }
     if (review?.name === name && review.recipe === "formatted-upload-names" && !source.parseDiagnostics.length) {
         const defaults = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
             .find(declaration => identifier(declaration.name) === "defaultSettings")?.initializer;
@@ -1702,6 +1708,7 @@ function verifyPorts(files, runtime = require("./sync-cx-catalog.cjs").loadCxRun
                 registerNativeEffect: register,
                 registerUploadAnonymiser: register,
                 registerPreviousMessageRule: register,
+                registerSendConfirmation: register,
                 hideAppearanceTarget: register,
                 styleAppearanceTarget: register,
                 registerTimestampFormats: register,

@@ -295,7 +295,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         }, getGuildIconURL(options) { return options.canAnimate; } };
         let autoUpgrades = 0;
         const splitLimit = { getMaxMessageLength: () => 2000 };
-        const splitComposer = { chatInputValidateContentLength: ({ text }) => text.length <= splitLimit.getMaxMessageLength() ? { content: text } : undefined };
+        const composerSends = [];
+        const nativeConfirmations = [];
+        const nativeComposerSend = input => { composerSends.push(input.text); };
+        const splitComposer = { chatInputHandleSendText: nativeComposerSend,
+            chatInputValidateContentLength: ({ text }) => text.length <= splitLimit.getMaxMessageLength() ? { content: text } : undefined };
         const upgradeChannel = function (channelId) { assert.equal(this, stores.UnreadSettingNoticeStore2); autoUpgrades++; return channelId; };
         let pingDnd = false, pingMuted = false;
         let motionPreference = false;
@@ -564,6 +568,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                         : key === "startEditMessage" ? messageEditor
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
             "@webpack/common": {
+                Alerts: { show: props => nativeConfirmations.push({ props, resolve: value => value ? props.onConfirm() : props.onCancel() }) },
                 ComponentDispatch: { dispatchToLastSubscribed(event, payload) {
                     if (event === "INSERT_TEXT") mentionActions.push([event, payload.rawText, payload.plainText]);
                 } },
@@ -685,7 +690,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup", TableSwitchRow: "TableSwitchRow" },
             "react-native": {
-                Alert: { alert: (title, body) => mediaAlerts.push([title, body]) },
+                Alert: { alert: (title, body, buttons, options) => {
+                    if (title === "Confirm message") nativeConfirmations.push({ props: { title, body }, buttons, options });
+                    else mediaAlerts.push([title, body]);
+                } },
                 PixelRatio: { getFontScale: () => 1.25 },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
@@ -708,6 +716,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             VencordNative: { native: { openExternal } },
             setTimeout: (callback, delay) => delay === 10000 ? setTimeout(callback, delay) : pendingNotifications.push(callback),
             clearTimeout,
+            queueMicrotask,
             AbortController,
             File,
             fetch: (...args) => fetchAttachment(...args),
@@ -1659,6 +1668,51 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.deepEqual(clipboardWrites.slice(beforeChannelCopies), ["Team channels", "Group DM"]);
         assert.equal(menuPatches.size + appearanceHooks.size, 0);
         await new Promise(setImmediate);
+        const guarded = cxCatalog.plugins.find(entry => entry.name === "HoldYourTongue").source;
+        assert.throws(() => activateCx(guarded, host, []), /approval/);
+        assert.throws(() => parseCx(guarded.replace('"lipton green tea citrus"', '""')), /Invalid text/);
+        assert.throws(() => parseCx(guarded.replace('"lipton green tea citrus"', '"same","SAME"')), /distinct/);
+        selectCatalog("HoldYourTongue");
+        click(render(), "Allow for this session");
+        const phrase = "I have LIPTON Green Tea Citrus";
+        const guardListener = [...transformHooks][0];
+        const submitGuarded = text => desktop ? guardListener(selectedChannel, { content: text })
+            : splitComposer.chatInputHandleSendText({ text, params: { channel: { id: selectedChannel } } });
+        await submitGuarded("ordinary message");
+        assert.equal(nativeConfirmations.length, 0);
+        const denied = submitGuarded(phrase);
+        const deny = nativeConfirmations.at(-1);
+        assert.match(deny.props.body, /lipton green tea citrus/);
+        const duplicate = await submitGuarded(phrase);
+        assert.equal(nativeConfirmations.length, 1);
+        if (desktop) {
+            assert.equal(duplicate.cancel, true);
+            deny.resolve(false);
+            assert.equal((await denied).cancel, true);
+        } else deny.buttons[0].onPress();
+        const allowed = submitGuarded(phrase);
+        const allow = nativeConfirmations.at(-1);
+        if (desktop) {
+            allow.props.onCloseCallback();
+            allow.resolve(true);
+            assert.equal((await allowed).cancel, false);
+        } else {
+            allow.buttons[1].onPress();
+            allow.buttons[1].onPress();
+            assert.deepEqual(composerSends, ["ordinary message", phrase]);
+        }
+        const stale = submitGuarded(phrase);
+        const staleAlert = nativeConfirmations.at(-1);
+        click(render(), "Disable HoldYourTongue");
+        if (desktop) {
+            staleAlert.resolve(true);
+            assert.equal((await stale).cancel, true);
+            assert.equal(transformHooks.size, 0);
+        } else {
+            staleAlert.buttons[1].onPress();
+            assert.deepEqual(composerSends, ["ordinary message", phrase]);
+            assert.equal(splitComposer.chatInputHandleSendText, nativeComposerSend);
+        }
         const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
         if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
         else editor.props.onChangeText(counter);

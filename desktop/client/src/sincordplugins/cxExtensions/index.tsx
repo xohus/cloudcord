@@ -25,6 +25,7 @@ import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
+import { Alerts } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -754,6 +755,36 @@ export function CxSettings() {
                         if (typeof message.content === "string") message.content = transform(message.content);
                     });
                     return () => { removeMessagePreSendListener(listener); };
+                },
+                registerSendConfirmation(check) {
+                    if (typeof Alerts?.show !== "function") throw new Error("Discord's send confirmation is unavailable");
+                    let active = true;
+                    let cancelPending: (() => void) | undefined;
+                    const listener = addMessagePreSendListener(async (_, message) => {
+                        if (!active) return;
+                        const body = check(message.content);
+                        if (!body) return;
+                        if (cancelPending) return { cancel: true };
+                        const { content } = message;
+                        const account = UserStore.getCurrentUser()?.id;
+                        const selected = SelectedChannelStore.getChannelId();
+                        try {
+                            const confirmed = await new Promise<boolean>(resolve => {
+                                cancelPending = () => resolve(false);
+                                Alerts.show({ title: "Confirm message", body, cancelText: "Cancel", confirmText: "Send anyway",
+                                    onConfirm: () => resolve(true), onCancel: cancelPending,
+                                    onCloseCallback: () => queueMicrotask(() => resolve(false)),
+                                });
+                            });
+                            return { cancel: !confirmed || !active || !account || account !== UserStore.getCurrentUser()?.id
+                                || selected !== SelectedChannelStore.getChannelId() || message.content !== content };
+                        } catch {
+                            return { cancel: true };
+                        } finally {
+                            cancelPending = undefined;
+                        }
+                    });
+                    return () => { active = false; cancelPending?.(); removeMessagePreSendListener(listener); };
                 },
                 registerMessageEditTransform(transform) {
                     const listener = addMessagePreEditListener((_, _id, message) => {

@@ -48,6 +48,7 @@ const permissionLabels = {
     "media.labels": "Show filenames, links, or descriptive alt text for visible media on this device",
     "stickers.links": "Copy or open the selected Discord sticker’s CDN link when you choose its menu action",
     "messages.transform": "Change text before Discord sends messages you compose",
+    "messages.confirmsend": "Ask for confirmation before sending a message that contains one of the listed phrases",
     "messages.edit.transform": "Change text when you submit a message edit",
     "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
     "profile.redirectlinks": "Replace the listed link origins in profile bios displayed on this device",
@@ -167,6 +168,7 @@ type CxPlugin = {
     permissions: CxPermission[];
     commands: Command[];
     messageTransforms: MessageTransform[];
+    sendConfirmation?: { phrases: string[]; prompt: string; };
     suppressReplyPing: boolean;
     hiddenTargets: CxHideTarget[];
     optionalHides: Map<CxHideTarget, boolean>;
@@ -252,6 +254,7 @@ export function parseCx(source: string): CxDocument {
     const permissions = new Set<CxPermission>();
     const commands: Command[] = [];
     const transforms: MessageTransform[] = [];
+    let sendConfirmation: CxPlugin["sendConfirmation"];
     const hiddenTargets = new Set<CxHideTarget>();
     const optionalHides = new Map<CxHideTarget, boolean>();
     const styledTargets = new Set<CxStyleTarget>();
@@ -277,11 +280,21 @@ export function parseCx(source: string): CxDocument {
         }
         textRules = undefined;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !optionalHides.size && !styledTargets.size && !nativeEffects.size && !Object.keys(timestamps).length && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
+        if (declaration && !commands.length && !transforms.length && !sendConfirmation && !suppressReplyPing && !hiddenTargets.size && !optionalHides.size && !styledTargets.size && !nativeEffects.size && !Object.keys(timestamps).length && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
             permissions.add(permission);
+            continue;
+        }
+        const confirmation = /^  before send confirm-keywords (\["(?:[^"\\]|\\.)*"(?:,\s*"(?:[^"\\]|\\.)*")*\])(?: with ("(?:[^"\\]|\\.)*"))?$/.exec(line);
+        if (confirmation) {
+            if (sendConfirmation) throw new Error("Use one send confirmation rule");
+            const phrases = (JSON.parse(confirmation[1]) as string[]).map(phrase => quoted(JSON.stringify(phrase.trim()), 80));
+            if (phrases.length > 16 || new Set(phrases.map(phrase => phrase.toLowerCase())).size !== phrases.length)
+                throw new Error("Use at most 16 distinct confirmation phrases");
+            sendConfirmation = { phrases, prompt: confirmation[2] ? quoted(confirmation[2], 280) : "This message contains {words}." };
+            current = undefined;
             continue;
         }
         const incomingRule = /^  on incoming ([a-z-]+) ("(?:[^"\\]|\\.)*")$/.exec(line);
@@ -528,7 +541,7 @@ export function parseCx(source: string): CxDocument {
         current.actions.push({ kind, message, fallback });
     }
     if (Object.keys(timestamps).length && !hasTimestampSurface) throw new Error("Choose a timestamp surface to format");
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !optionalHides.size && !styledTargets.size && !nativeEffects.size && !hasTimestampSurface && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !sendConfirmation && !suppressReplyPing && !hiddenTargets.size && !optionalHides.size && !styledTargets.size && !nativeEffects.size && !hasTimestampSurface && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
@@ -540,6 +553,7 @@ export function parseCx(source: string): CxDocument {
     if (profileActions.size) required.add("profilemenu.copy");
     if (readsAvatar) required.add("profile.avatar");
     if (uploadNaming) required.add("uploads.rename");
+    if (sendConfirmation) required.add("messages.confirmsend");
     for (const permission of clientPermissions) required.add(permission);
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
     for (const { stage, name } of transforms) {
@@ -562,7 +576,7 @@ export function parseCx(source: string): CxDocument {
     if ([...permissions].some(permission => !required.has(permission)))
         throw new Error("Remove unused CX permissions");
     return {
-        kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
+        kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, sendConfirmation, suppressReplyPing,
         hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
@@ -582,6 +596,7 @@ export function reviewCx(source: string) {
             .concat(Object.entries(document.timestamps).map(([target, format]) => `Format ${target} timestamps as ${format}`))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
             .concat(document.uploadNaming ? ["Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")] : [])
+            .concat(document.sendConfirmation ? ["Confirm before sending text containing " + document.sendConfirmation.phrases.join(", ")] : [])
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" || rule.name === "rewriteLink"
                 ? [(rule.name === "rewriteLink" ? rule.stage + " · " : "") + rule.find + " → " + rule.replacement]
                 : rule.name === "rewriteText" ? [`Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`] : []))
@@ -620,6 +635,7 @@ type CxHost = {
     getUserAvatarUrl?: (id?: string) => unknown;
     applyTheme: (theme: CxTheme) => () => void;
     registerMessageTransform?: (transform: (text: string) => string) => () => void;
+    registerSendConfirmation?: (check: (text: string) => string | undefined) => () => void;
     registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
     registerProfileBioTransform?: (transform: (text: string) => string) => () => void;
     registerReplyPingSuppression?: () => () => void;
@@ -699,6 +715,17 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
         if (firstError !== undefined) throw firstError;
     }
     try {
+        if (document.sendConfirmation) {
+            const { phrases, prompt } = document.sendConfirmation;
+            if (!host.registerSendConfirmation) throw new Error("This client cannot confirm sends");
+            const matchers = phrases.map(phrase => ({ phrase, lower: phrase.toLowerCase() }));
+            cleanups.push(host.registerSendConfirmation(text => {
+                if (typeof text !== "string") return;
+                const lower = text.toLowerCase();
+                const found = matchers.filter(({ lower: phrase }) => lower.includes(phrase)).map(({ phrase }) => phrase);
+                if (found.length) return prompt.replace("{words}", () => found.join(", "));
+            }));
+        }
         if (uploadAnonymiser) {
             if (!host.registerUploadAnonymiser) throw new Error("This client cannot anonymise uploads");
             cleanups.push(host.registerUploadAnonymiser(uploadAnonymiser));

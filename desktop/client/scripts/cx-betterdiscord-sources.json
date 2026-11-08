@@ -1,4 +1,11 @@
 {
+    "ebad1a5c7fa9e2d09171a0be154164bedbef6c72675249bd51759d3fcf64ac9b": {
+        "name": "HoldYourTongue",
+        "author": "Kaan",
+        "license": "GPL-3.0",
+        "source": "https://github.com/zrodevkaan/BDPlugins/blob/8419ffe6f4e180fe9a755cd3bf82c5649c173b99/Plugins/HoldYourTongue/HoldYourTongue.plugin.js",
+        "recipe": "send-confirmation"
+    },
     "ad8540f2dae2cab6fd7600fc72f9da98dee2526001d200e2635b185063b58ae4": {
         "name": "foreignCopyHandler",
         "author": "foreignSeal",

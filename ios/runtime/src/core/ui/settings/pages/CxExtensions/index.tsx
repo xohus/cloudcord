@@ -254,6 +254,43 @@ function registerSplitSender() {
     return stop;
 }
 
+function registerSendConfirmation(check: (text: string) => string | undefined) {
+    const composer = findByFilePath("modules/chat_input/native/accessories/ChatInputSendUtils.tsx");
+    let active = true;
+    let pending: object | undefined;
+    const stop = overrideCxMethods(composer, {
+        chatInputHandleSendText(args, invoke) {
+            const draft = args[0] as { text?: string; params?: { channel?: { id?: string; }; }; } | undefined;
+            const text = draft?.text;
+            const channel = draft?.params?.channel?.id;
+            const body = typeof text === "string" && channel ? check(text) : undefined;
+            if (!body) return invoke(args);
+            if (pending) return;
+            const account = UserStore?.getCurrentUser?.()?.id;
+            const selected = SelectedChannelStore?.getChannelId?.();
+            const request = {};
+            pending = request;
+            const dismiss = () => { if (pending === request) pending = undefined; };
+            try {
+                Alert.alert("Confirm message", body, [
+                    { text: "Cancel", style: "cancel", onPress: dismiss },
+                    { text: "Send anyway", onPress: () => {
+                        if (pending !== request) return;
+                        dismiss();
+                        if (active && !settings.safeMode?.enabled && account && account === UserStore?.getCurrentUser?.()?.id
+                            && selected === SelectedChannelStore?.getChannelId?.() && draft?.text === text && draft?.params?.channel?.id === channel)
+                            invoke(args);
+                    } },
+                ], { cancelable: true, onDismiss: dismiss });
+            } catch {
+                dismiss();
+                showToast("Couldn’t open the send confirmation.");
+            }
+        },
+    }, () => !settings.safeMode?.enabled);
+    return () => { active = false; stop(); };
+}
+
 type AppearanceChange = (element: JSX.Element) => JSX.Element | null;
 const appearanceBindings = new Map<string | object, ReturnType<typeof bindAppearance>>();
 
@@ -1579,6 +1616,7 @@ export default function CxExtensions() {
                     return () => { active = false; stop(); social?.stop(); };
                 },
                 registerProfileMenuAction,
+                registerSendConfirmation,
                 registerTimestampFormats,
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
