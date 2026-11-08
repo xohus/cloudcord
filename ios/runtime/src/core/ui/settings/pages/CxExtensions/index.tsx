@@ -1,6 +1,7 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
+import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel, type CxVoiceCountOptions } from "@lib/api/cx";
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
@@ -33,6 +34,7 @@ import { Alert, Animated, FlatList, Image, Linking, PixelRatio, Pressable, proce
 const session = createCxSession();
 const callClock = createCxCallClock();
 const voiceMemberClock = createCxVoiceMemberClock();
+const voiceCounts = createCxVoiceCount();
 const navigationControls = createCxNavigationControls();
 const timestamps = createCxTimestampRegistry();
 const timestampFields = [
@@ -165,6 +167,35 @@ function VoiceMemberTime({ userId, channelId, color }: { userId: string; channel
         marginStart: 6, fontSize: 11, fontVariant: ["tabular-nums"],
         color: color ?? resolveSemanticColor(semanticColors.TEXT_MUTED),
     }}>{elapsed}</Text> : null;
+}
+
+function VoiceChannelCountRow({ channel, content }: { channel: CxVoiceCountChannel; content: ReactElement; }) {
+    const count = React.useSyncExternalStore(voiceCounts.subscribe, () => voiceCounts.read(channel));
+    if (!count) return content;
+    return <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flex: 1 }}>{content}</View>
+        <Text accessibilityLabel={"Voice occupancy " + count} style={{
+            marginStart: 4, paddingHorizontal: 5, fontSize: 11, fontVariant: ["tabular-nums"],
+            color: resolveSemanticColor(isCxVoiceCountFull(count) ? semanticColors.TEXT_FEEDBACK_CRITICAL : semanticColors.TEXT_MUTED),
+        }}>{count}</Text>
+    </View>;
+}
+
+function registerVoiceChannelCount(options: CxVoiceCountOptions, enabled: () => boolean) {
+    const rows = findByFilePath("modules/main_tabs_v2/native/shared_components/guild_channels/ChannelContent.tsx");
+    const voice = findByStoreName("VoiceStateStore");
+    const stopCount = voiceCounts.bind(voice, options, enabled);
+    try {
+        const stopRows = overrideCxMethods(rows, {
+            renderChannelContent(args, invoke) {
+                const content = invoke(args);
+                const props = args[0] as { channel?: CxVoiceCountChannel; locked?: boolean; } | undefined;
+                if (props?.locked || !isCxVoiceCountChannel(props?.channel) || !React.isValidElement(content)) return content;
+                return <VoiceChannelCountRow channel={props.channel} content={content} />;
+            },
+        }, enabled);
+        return () => { stopRows(); stopCount(); };
+    } catch (error) { stopCount(); throw error; }
 }
 
 function registerVoiceMemberClock(options: CxVoiceMemberOptions) {
@@ -2029,6 +2060,9 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "hide-role-headers":
                             return registerNoRoleHeaders();
+                        case "voice-channel-count":
+                            if (!effectOptions || !("showEmpty" in effectOptions)) throw new Error("Missing voice count options");
+                            return registerVoiceChannelCount(effectOptions, enabled);
                         case "webcam-start-notifier": {
                             if (!effectOptions || !("scope" in effectOptions)) throw new Error("Missing camera tone options");
                             const voice = findByStoreName("VoiceStateStore");

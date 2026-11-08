@@ -184,6 +184,7 @@ import plugin_catalog_unindent from "../../../../examples/cx/catalog/plugins/uni
 import plugin_catalog_unit_converter from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
 import plugin_catalog_unsuppress_embeds from "../../../../examples/cx/catalog/plugins/unsuppress-embeds.cx";
 import plugin_catalog_vibe_check from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin_catalog_voice_count from "../../../../examples/cx/catalog/plugins/voice-count.cx";
 import plugin_catalog_voice_join_messages from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
 import plugin_catalog_vriska_s_typing_quirk from "../../../../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx";
 import plugin_catalog_wait_for_slot from "../../../../examples/cx/catalog/plugins/wait-for-slot.cx";
@@ -480,6 +481,7 @@ export const cxCatalog = {
         { name: "UnitConverter", source: plugin_catalog_unit_converter },
         { name: "UnsuppressEmbeds", source: plugin_catalog_unsuppress_embeds },
         { name: "VibeCheck", source: plugin_catalog_vibe_check },
+        { name: "VoiceCount", source: plugin_catalog_voice_count },
         { name: "VoiceJoinMessages", source: plugin_catalog_voice_join_messages },
         { name: "Vriska'sTypingQuirk", source: plugin_catalog_vriska_s_typing_quirk },
         { name: "WaitForSlot", source: plugin_catalog_wait_for_slot },

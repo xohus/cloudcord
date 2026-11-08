@@ -223,7 +223,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let currentVoice = null;
         const voiceJoins = [];
         const queueChannel = { id: "100000000000000018", guild_id: guildId, name: "Game Room", type: 2, userLimit: 2 };
-        const queuePrompts = [], queueSounds = [];
+        const queuePrompts = [], queueSounds = [], voiceCountListeners = new Set();
         let canJoinQueue = true, canBypassQueue = false, queueOccupants = { [sender]: {}, [other]: {} };
         const voiceActions = { selectVoiceChannel: channel => voiceJoins.push(channel) };
         const removals = [];
@@ -384,7 +384,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
             },
             VoiceStateStore: { getVoiceStateForUser: () => undefined,
-                getVoiceStatesForChannel: id => id === queueChannel.id ? queueOccupants : {} },
+                getVoiceStatesForChannel: id => id === queueChannel.id ? queueOccupants : {},
+                addChangeListener: listener => voiceCountListeners.add(listener),
+                removeChangeListener: listener => voiceCountListeners.delete(listener) },
             SelectedChannelStore: {
                 getVoiceChannelId: () => currentVoice, getChannelId: () => selectedChannel,
                 addChangeListener: listener => voiceListeners.add(listener),
@@ -2544,6 +2546,58 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.ok([...voiceEventListeners.values()].every(listeners => !listeners.size));
             currentVoice = savedVoice;
             queueOccupants = savedOccupants;
+        }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "VoiceCount").source;
+            assert.throws(() => activateCx(port, host, ["voice.membertime"]), /approval/);
+            assert.throws(() => parseCx(port.replace("use voice-channel-count", "use voice-channel-count show-empty show-empty")), /count options/);
+            const normalRow = channelRowModule.renderChannelContent;
+            const content = jsx("ChannelContentComponent", { name: queueChannel.name });
+            channelRowModule.renderChannelContent = () => content;
+            const originalOccupants = queueOccupants;
+            selectCatalog("VoiceCount");
+            click(render(), "Allow for this session");
+            assert.equal(voiceCountListeners.size, 1);
+            const renderRow = (channel, locked = false) => desktop ? desktopPlugin.renderVoiceChannelCount(channel)
+                : channelRowModule.renderChannelContent({ channel, locked });
+            const getCount = row => {
+                if (!row || row === content) return null;
+                const rendered = row.type(row.props);
+                if (desktop) return rendered?.props.children ?? null;
+                if (rendered === content) return null;
+                assert.ok(find(rendered, item => item === content));
+                return find(rendered, item => item.props.accessibilityLabel?.startsWith("Voice occupancy ")).props.children;
+            };
+            queueOccupants = { [sender]: {}, [other]: {} };
+            assert.equal(getCount(renderRow(queueChannel)), "2/2");
+            if (desktop) {
+                canJoinQueue = false;
+                assert.equal(renderRow(queueChannel), null);
+                canJoinQueue = true;
+            } else {
+                assert.equal(renderRow(queueChannel, true), content);
+            }
+            assert.equal(getCount(renderRow({ ...queueChannel, type: 13, userLimit: 0 })), "2");
+            assert.equal(getCount(renderRow({ ...queueChannel, type: 0 })), null);
+            queueOccupants = {};
+            assert.equal(getCount(renderRow(queueChannel)), null);
+            click(render(), "Disable VoiceCount");
+            assert.equal(voiceCountListeners.size, 0);
+            channelRowModule.renderChannelContent = normalRow;
+            queueOccupants = originalOccupants;
+
+            const count = moduleBox.exports.createCxVoiceCount();
+            const stop = count.bind(stores.VoiceStateStore, { showEmpty: true, hideLimit: true });
+            const updates = [];
+            const unsubscribe = count.subscribe(() => updates.push(count.read(queueChannel)));
+            queueOccupants = {};
+            voiceCountListeners.forEach(listener => listener());
+            queueOccupants = { [sender]: {} };
+            voiceCountListeners.forEach(listener => listener());
+            assert.deepEqual(updates, ["0", "1"]);
+            unsubscribe();
+            stop();
+            queueOccupants = originalOccupants;
         }
         {
             selectCatalog("NoRoleHeaders");

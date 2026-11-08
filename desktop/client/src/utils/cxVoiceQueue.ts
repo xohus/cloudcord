@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 
 import { isCxProfileUserId } from "./cxProfileMenu";
+import { getCxVoiceStateCount } from "./cxVoiceCount";
 
 export type CxVoiceQueueOptions = { autoJoin: boolean; quiet: boolean; };
 type QueueRoom = { name: string; limit: number; occupants: number; };
@@ -16,8 +17,9 @@ type QueueContext = {
 
 export function getCxVoiceQueueRoom(channel: { name?: string; type?: number; userLimit?: number; user_limit?: number; }, states: unknown) {
     const limit = channel.userLimit ?? channel.user_limit;
-    if (channel.type !== 2 || typeof limit !== "number" || !states || typeof states !== "object" || Array.isArray(states)) return;
-    return { name: channel.name || "the voice channel", limit, occupants: Object.keys(states).length };
+    const occupants = getCxVoiceStateCount(states);
+    if (channel.type !== 2 || typeof limit !== "number" || occupants === undefined) return;
+    return { name: channel.name || "the voice channel", limit, occupants };
 }
 
 export function createCxVoiceQueue(context: QueueContext, options: CxVoiceQueueOptions) {

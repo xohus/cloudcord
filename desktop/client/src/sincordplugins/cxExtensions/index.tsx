@@ -11,6 +11,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
+import { createCxVoiceCount, isCxVoiceCountChannel, isCxVoiceCountFull, type CxVoiceCountChannel } from "@utils/cx";
 import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "@utils/cx";
 import { escapeRegExp } from "@utils/text";
 import { copyToClipboard } from "@utils/clipboard";
@@ -24,7 +25,7 @@ import { selectCxAppearanceOption } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
-import type { Message } from "@vencord/discord-types";
+import type { Channel, Message } from "@vencord/discord-types";
 import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, VoiceStateStore, useRef, useState } from "@webpack/common";
@@ -34,6 +35,16 @@ import { Alerts } from "@webpack/common";
 const session = createCxSession();
 const callClock = createCxCallClock();
 const voiceMemberClock = createCxVoiceMemberClock();
+const voiceCounts = createCxVoiceCount();
+
+function VoiceChannelCount({ channel }: { channel: CxVoiceCountChannel; }) {
+    const count = React.useSyncExternalStore(voiceCounts.subscribe, () => voiceCounts.read(channel));
+    return count ? <span aria-label={"Voice occupancy " + count} style={{
+        order: 2, flex: "0 0 auto", marginInlineStart: "auto", padding: "0 6px", borderRadius: 8,
+        backgroundColor: "var(--background-modifier-selected)", fontSize: 12, fontVariantNumeric: "tabular-nums",
+        color: isCxVoiceCountFull(count) ? "var(--text-danger)" : "var(--channels-default)",
+    }}>{count}</span> : null;
+}
 
 function VoiceMemberTime({ userId, channelId }: { userId: string; channelId?: string; }) {
     const subscribe = React.useCallback((listener: () => void) => voiceMemberClock.subscribe(userId, listener), [userId]);
@@ -717,6 +728,9 @@ export function CxSettings() {
                 },
                 registerNativeEffect(effect, avatarResolution = 256, effectOptions) {
                     switch (effect) {
+                        case "voice-channel-count":
+                            if (!effectOptions || !("showEmpty" in effectOptions)) throw new Error("Missing voice count options");
+                            return voiceCounts.bind(VoiceStateStore, effectOptions);
                         case "webcam-start-notifier":
                             if (!effectOptions || !("scope" in effectOptions)) throw new Error("Missing camera tone options");
                             return bindCxCameraTone({
@@ -1200,6 +1214,13 @@ export default definePlugin({
             replace: "return $self.hideRoleHeaders()?null:",
         },
     }, {
+        find: "UNREAD_IMPORTANT:",
+        predicate: () => !Settings.plugins.VoiceCount?.enabled,
+        replacement: {
+            match: /\.Children\.count.+?:null(?<=,channel:(\i).+?)/,
+            replace: "$&,$self.renderVoiceChannelCount($1)",
+        },
+    }, {
         find: "VOICE_PANEL}}",
         predicate: () => !(Settings.plugins.CallTimer.enabled && Settings.plugins.CallTimer.allCallTimers),
         replacement: {
@@ -1356,6 +1377,10 @@ export default definePlugin({
             if (fileCopyUsers && complete) void copyToClipboard(fileContents)
                 .then(() => showToast("File contents copied."), () => showToast("Couldn’t copy the file."));
         }}>{complete ? "Copy File Contents" : "File too large to copy"}</TextButton>;
+    },
+    renderVoiceChannelCount(channel: Channel) {
+        return isCxVoiceCountChannel(channel) && PermissionStore.can(PermissionsBits.VIEW_CHANNEL, channel)
+            ? <VoiceChannelCount channel={channel} /> : null;
     },
     renderVoiceMemberTime(userId: string, channelId?: string) {
         if (!isCxProfileUserId(userId)) return null;

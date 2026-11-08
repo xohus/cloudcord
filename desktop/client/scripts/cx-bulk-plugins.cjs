@@ -939,6 +939,10 @@ const desktopEffectRecipes = {
         effect: "hide-role-headers",
         sha256: "04c990206c32b0d8f0d26cb4fb4fad35c725378eb0ad7fe957de718e6eacc3dc",
     },
+    VoiceCount: {
+        effect: "voice-channel-count",
+        sha256: "46ae196b944c85a8a2be4931515f3914f16bd8ef700a870b1ede8443fd58bc2d",
+    },
     WebcamStartNotifier: {
         effect: "webcam-start-notifier",
         sha256: "c595990e071fb99db1102d865f9ce6a3a754dc51c7c36fa327742fee8b092605",
