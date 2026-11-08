@@ -1653,8 +1653,9 @@ function buildBatchPlan(records, limit = Infinity) {
 function checkAppearancePaths(appearance, indexes) {
     let checked = 0;
     const missing = [];
-    for (const { plugin, mobile } of Object.values(appearance)) {
-        const paths = mobile?.hideComponentPaths ?? [mobile?.renderTree ?? mobile?.settingsEntry].filter(Boolean);
+    for (const { plugin, mobile, style } of Object.values(appearance)) {
+        const paths = mobile?.hideComponentPaths ?? [mobile?.renderTree ?? mobile?.settingsEntry,
+            style?.centeredMessageList, style?.messageWidthRenderer].filter(Boolean);
         if (!paths.length) continue;
         checked++;
         for (const path of paths) {

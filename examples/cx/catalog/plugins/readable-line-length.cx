@@ -1,0 +1,3 @@
+plugin "ReadableLineLength":
+  needs appearance.style
+  style readable-line-length

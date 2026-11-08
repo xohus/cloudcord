@@ -25,7 +25,7 @@ import { getCxMessageGesture } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Alert, Animated, FlatList, Linking, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Alert, Animated, FlatList, Linking, PixelRatio, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const navigationControls = createCxNavigationControls();
@@ -1565,6 +1565,28 @@ export default function CxExtensions() {
                                 if (!message || typeof message !== "object" || !("mentioned" in message) || message.mentioned !== true
                                     || !("highlightColor" in message) || typeof message.highlightColor !== "number" || message.highlightColor === 0) return message;
                                 return { ...message, highlightColor };
+                            },
+                        }, () => !settings.safeMode?.enabled);
+                    }
+                    if ("centeredMessageList" in style) {
+                        const messages = findByFilePath(style.centeredMessageList)?.default;
+                        if (!messages) throw new Error("Discord's message list is unavailable");
+                        return registerJsxAppearance([messages], element => element.type === messages
+                            ? React.cloneElement(element, { style: [element.props.style, { alignSelf: "center", width: "100%", maxWidth: style.width }] })
+                            : element);
+                    }
+                    if ("messageWidthRenderer" in style) {
+                        const renderer = findByFilePath(style.messageWidthRenderer);
+                        return overrideCxMethods(renderer, {
+                            default(args, invoke) {
+                                const presentation = invoke(args);
+                                const input = args[0] as { isInlineReplyPreview?: boolean; message?: { content?: string; }; } | undefined;
+                                if (!presentation || typeof presentation !== "object" || !input?.message?.content || input.isInlineReplyPreview
+                                    || !("constrainedWidth" in presentation) || typeof presentation.constrainedWidth !== "number") return presentation;
+                                // Use the native logical width for message text and keep the system font scale.
+                                const width = style.width * PixelRatio.getFontScale();
+                                return Number.isFinite(width) && width > 0 && presentation.constrainedWidth > width
+                                    ? { ...presentation, constrainedWidth: width } : presentation;
                             },
                         }, () => !settings.safeMode?.enabled);
                     }

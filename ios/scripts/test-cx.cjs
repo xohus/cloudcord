@@ -236,6 +236,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             [other, { id: other, author: { id: sender }, type: 0, flags: 64, channel_id: gestureChannel }],
         ]);
         const documentListeners = new Map();
+        function NativeMessages(props) { return props.output; }
         function MessagesRenderer(props) { return props.output; }
         class GestureElement {
             constructor(id, interactive = false) { this.id = id; this.interactive = interactive; }
@@ -612,6 +613,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
                 : path.endsWith("/GIFPickerItemView.tsx") ? gifPicker
                 : path.endsWith("/MarkupParsers.tsx") ? markupParser
+                : path === "modules/messages/native/Messages.tsx" ? { default: NativeMessages }
                 : path.endsWith("/MessagesRenderer.tsx") ? { default: MessagesRenderer }
                 : path.endsWith("/UserProfileAboutMeCard.tsx") ? { default: AboutMeCard }
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
@@ -658,6 +660,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup", TableSwitchRow: "TableSwitchRow" },
             "react-native": {
                 Alert: { alert: (title, body) => mediaAlerts.push([title, body]) },
+                PixelRatio: { getFontScale: () => 1.25 },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
                 processColor: value => value === "#7c5cff2e" ? 0x2e7c5cff : undefined,
@@ -864,7 +867,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", style: baseStyle, styles: originalStyles }) });
             const wraps = [];
             if (desktop) assert.equal(stylesheet.textContent, rule.css);
-            else if (rule.style?.blurredMedia) {
+            else if (rule.style?.centeredMessageList) {
+                const element = jsx(NativeMessages, { style: baseStyle });
+                const hook = appearanceHooks.get(NativeMessages);
+                const wrapper = hook(null, element);
+                const centered = wrapper.type(wrapper.props);
+                assert.equal(centered.type, NativeMessages);
+                assert.equal(centered.props.style[0], baseStyle);
+                assert.deepEqual(JSON.parse(JSON.stringify(centered.props.style[1])), {
+                    alignSelf: "center", width: "100%", maxWidth: 1100,
+                });
+                settings.safeMode = { enabled: true };
+                assert.equal(wrapper.type(wrapper.props), element);
+                settings.safeMode = undefined;
+            } else if (rule.style?.messageWidthRenderer) {
+                const wide = Object.freeze({ constrainedWidth: 1000 });
+                const input = { cxTestPresentation: wide, message: { content: "A wide message" } };
+                assert.equal(messageRenderer.default(input).constrainedWidth, 800);
+                assert.equal(wide.constrainedWidth, 1000);
+                const narrow = Object.freeze({ constrainedWidth: 350 });
+                assert.equal(messageRenderer.default({ ...input, cxTestPresentation: narrow }), narrow);
+                assert.equal(messageRenderer.default({ ...input, isInlineReplyPreview: true }), wide);
+                settings.safeMode = { enabled: true };
+                assert.equal(messageRenderer.default(input), wide);
+                settings.safeMode = undefined;
+            } else if (rule.style?.blurredMedia) {
                 const all = rule.style.blurredMedia === "all";
                 const image = Object.freeze({ attachmentType: "image", url: "https://media.discordapp.net/attachments/1/2/image.png" });
                 const video = Object.freeze({ ...image, attachmentType: "video" });
