@@ -38945,6 +38945,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "channels.markonopen",
           label: "Open channels at the latest message and mark them read"
         },
+        "show-voice-ping": {
+          permission: "voice.latency",
+          label: "Show your live call latency in milliseconds"
+        },
         "voice-channel-count": {
           permission: "voice.channelcount",
           label: "Show occupancy and capacity in the channel list"
@@ -43712,6 +43716,69 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxVoicePing.ts
+  function createCxVoicePing() {
+    var listeners2 = /* @__PURE__ */ new Set();
+    var events2 = [
+      "RTC_CONNECTION_PING",
+      "RTC_CONNECTION_STATE"
+    ];
+    var read;
+    var notify2 = () => {
+      for (var listener of listeners2)
+        listener();
+    };
+    return {
+      read: (channelId) => read?.(channelId),
+      subscribe(listener) {
+        listeners2.add(listener);
+        return () => {
+          listeners2.delete(listener);
+        };
+      },
+      bind(store, dispatcher2, enabled = () => true) {
+        if (read)
+          throw new Error("Voice latency is already enabled");
+        if (typeof store?.getLastPing !== "function" || typeof store.getChannelId !== "function" || typeof store.isConnected !== "function")
+          throw new Error("Discord\u2019s voice latency is unavailable");
+        read = (channelId) => {
+          if (!enabled() || !store.isConnected() || channelId && store.getChannelId() !== channelId)
+            return;
+          var ping = store.getLastPing();
+          return typeof ping === "number" && Number.isFinite(ping) && ping >= 0 ? Math.round(ping) + " ms" : void 0;
+        };
+        var subscribed = [];
+        function stop() {
+          if (!subscribed.length)
+            return;
+          read = void 0;
+          for (var event2 of subscribed.splice(0))
+            dispatcher2.unsubscribe(event2, notify2);
+          notify2();
+        }
+        try {
+          for (var event of events2) {
+            dispatcher2.subscribe(event, notify2);
+            subscribed.push(event);
+          }
+          notify2();
+          return stop;
+        } catch (error) {
+          read = void 0;
+          stop();
+          throw error;
+        }
+      }
+    };
+  }
+  var init_cxVoicePing = __esm({
+    "src/lib/api/cxVoicePing.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
   // src/lib/api/cxVoiceCount.ts
   function getCxVoiceStateCount(states) {
     if (states && typeof states === "object" && !Array.isArray(states))
@@ -45567,6 +45634,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxMediaSearch();
       init_cxMediaLabels();
       init_cxTimestamps();
+      init_cxVoicePing();
       init_cxVoiceCount();
       init_cxCameraTone();
       init_cxVoiceQueue();
@@ -45627,6 +45695,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.silencementions": "Mute mentions from the listed senders on this device",
         "replies.controlping": "Choose whether incoming replies ping you on this device",
         "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+        "voice.latency": "Read your current voice connection latency",
         "voice.channelcount": "Show the number of connected users next to visible voice and stage channels",
         "voice.cameratone": "Play local sounds when camera state changes in your current voice call",
         "voice.waitslot": "Watch a voice channel you queue for and join when you confirm or enable auto-join",
@@ -47427,6 +47496,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/show-ping.cx
+  var show_ping_default;
+  var init_show_ping = __esm({
+    "../examples/cx/catalog/plugins/show-ping.cx"() {
+      show_ping_default = 'plugin "ShowPing":\n  needs voice.latency\n  use show-voice-ping\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/show-song-name.cx
   var show_song_name_default;
   var init_show_song_name = __esm({
@@ -48685,6 +48762,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_sed_enhanced();
       init_send_timestamps();
       init_ship_calc();
+      init_show_ping();
       init_show_song_name();
       init_signature();
       init_silence_users();
@@ -49498,6 +49576,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: ship_calc_default
           },
           {
+            name: "ShowPing",
+            source: show_ping_default
+          },
+          {
             name: "ShowSongName",
             source: show_song_name_default
           },
@@ -50157,6 +50239,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
+  function VoicePing({ channelId }) {
+    var latency = React2.useSyncExternalStore(voicePing.subscribe, () => voicePing.read(channelId));
+    if (!latency || settings.safeMode?.enabled)
+      return null;
+    return /* @__PURE__ */ jsx(import_react_native41.Text, {
+      accessibilityLabel: "Voice latency",
+      style: {
+        textAlign: "center",
+        fontSize: 12,
+        fontVariant: [
+          "tabular-nums"
+        ],
+        color: resolveSemanticColor(semanticColors.TEXT_MUTED)
+      },
+      children: latency
+    });
+  }
   function CallTime({ channelId }) {
     var elapsed = React2.useSyncExternalStore(callClock.subscribe, () => callClock.read(channelId));
     if (!elapsed || settings.safeMode?.enabled)
@@ -50291,6 +50390,35 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       };
     } catch (error) {
       stopClock();
+      throw error;
+    }
+  }
+  function registerVoicePing(enabled) {
+    var header = findByFilePath("modules/voice_panel/native/header/VoicePanelHeader.tsx")?.default;
+    if (!header)
+      throw new Error("Discord\u2019s call header is unavailable");
+    var stopPing = voicePing.bind(findByStoreName("RTCConnectionStore"), FluxDispatcher, enabled);
+    try {
+      var stopHeader = registerRenderedTree(header, (tree, props) => {
+        if (!isCxProfileUserId(props.channelId) || !React2.isValidElement(tree) || !("children" in tree.props))
+          return tree;
+        return React2.cloneElement(tree, {
+          children: /* @__PURE__ */ jsxs(Fragment, {
+            children: [
+              tree.props.children,
+              /* @__PURE__ */ jsx(VoicePing, {
+                channelId: props.channelId
+              })
+            ]
+          })
+        });
+      });
+      return () => {
+        stopHeader();
+        stopPing();
+      };
+    } catch (error) {
+      stopPing();
       throw error;
     }
   }
@@ -52843,6 +52971,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "hide-role-headers":
                 return registerNoRoleHeaders();
+              case "show-voice-ping":
+                return registerVoicePing(enabled);
               case "voice-channel-count":
                 if (!effectOptions || !("showEmpty" in effectOptions))
                   throw new Error("Missing voice count options");
@@ -53604,7 +53734,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, callClock, voiceMemberClock, voiceCounts, navigationControls, timestamps, timestampFields, timestampUsers, stopTimestamps, channelNames, stopChannelNames, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, getReadStores, acknowledgeServers, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, renderedTreeOriginals, textAttachmentUrl, maxTextAttachmentBytes, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, callClock, voiceMemberClock, voiceCounts, voicePing, navigationControls, timestamps, timestampFields, timestampUsers, stopTimestamps, channelNames, stopChannelNames, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, getReadStores, acknowledgeServers, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, renderedTreeOriginals, textAttachmentUrl, maxTextAttachmentBytes, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -53647,6 +53777,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       callClock = createCxCallClock();
       voiceMemberClock = createCxVoiceMemberClock();
       voiceCounts = createCxVoiceCount();
+      voicePing = createCxVoicePing();
       navigationControls = createCxNavigationControls();
       timestamps = createCxTimestampRegistry();
       timestampFields = [
@@ -54729,7 +54860,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "35dfcb301b536ecaa739b9c0ee3a7e180290c341";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8f93a43ee83a07ff3f46b2aee2545b46f6ecf8f8";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
