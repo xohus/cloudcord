@@ -69,6 +69,7 @@ import plugin_catalog_hide_edited_label from "../../../../examples/cx/catalog/pl
 import plugin_catalog_hide_embeds from "../../../../examples/cx/catalog/plugins/hide-embeds.cx";
 import plugin_catalog_hide_emoji_button from "../../../../examples/cx/catalog/plugins/hide-emoji-button.cx";
 import plugin_catalog_hide_empty_folders from "../../../../examples/cx/catalog/plugins/hide-empty-folders.cx";
+import plugin_catalog_hide_friend_requests_badge from "../../../../examples/cx/catalog/plugins/hide-friend-requests-badge.cx";
 import plugin_catalog_hide_gif_button from "../../../../examples/cx/catalog/plugins/hide-gif-button.cx";
 import plugin_catalog_hide_gift_button from "../../../../examples/cx/catalog/plugins/hide-gift-button.cx";
 import plugin_catalog_hide_guild_boost_tag from "../../../../examples/cx/catalog/plugins/hide-guild-boost-tag.cx";
@@ -82,6 +83,7 @@ import plugin_catalog_hide_nameplates from "../../../../examples/cx/catalog/plug
 import plugin_catalog_hide_new_messages_bar from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
 import plugin_catalog_hide_nitro_tab from "../../../../examples/cx/catalog/plugins/hide-nitro-tab.cx";
 import plugin_catalog_hide_notification_bell from "../../../../examples/cx/catalog/plugins/hide-notification-bell.cx";
+import plugin_catalog_hide_pins_button from "../../../../examples/cx/catalog/plugins/hide-pins-button.cx";
 import plugin_catalog_hide_profile_effects from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
 import plugin_catalog_hide_quests_tab from "../../../../examples/cx/catalog/plugins/hide-quests-tab.cx";
 import plugin_catalog_hide_reactions from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
@@ -355,6 +357,7 @@ export const cxCatalog = {
         { name: "HideEmbeds", source: plugin_catalog_hide_embeds },
         { name: "HideEmojiButton", source: plugin_catalog_hide_emoji_button },
         { name: "HideEmptyFolders", source: plugin_catalog_hide_empty_folders },
+        { name: "HideFriendRequestsBadge", source: plugin_catalog_hide_friend_requests_badge },
         { name: "HideGifButton", source: plugin_catalog_hide_gif_button },
         { name: "HideGiftButton", source: plugin_catalog_hide_gift_button },
         { name: "HideGuildBoostTag", source: plugin_catalog_hide_guild_boost_tag },
@@ -368,6 +371,7 @@ export const cxCatalog = {
         { name: "HideNewMessagesBar", source: plugin_catalog_hide_new_messages_bar },
         { name: "HideNitroTab", source: plugin_catalog_hide_nitro_tab },
         { name: "HideNotificationBell", source: plugin_catalog_hide_notification_bell },
+        { name: "HidePinsButton", source: plugin_catalog_hide_pins_button },
         { name: "HideProfileEffects", source: plugin_catalog_hide_profile_effects },
         { name: "HideQuestsTab", source: plugin_catalog_hide_quests_tab },
         { name: "HideReactions", source: plugin_catalog_hide_reactions },

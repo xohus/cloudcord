@@ -1622,6 +1622,18 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
+                    if ("tableRow" in mobile) {
+                        const tableRow = findByFilePath("design/components/TableRow/native/TableRow.native.tsx")?.TableRow;
+                        if (!tableRow) throw new Error("Discord's table row is unavailable");
+                        const rule = mobile.tableRow;
+                        if ("key" in rule) return registerJsxAppearance([tableRow], element => element.key === rule.key ? null : element);
+                        const translations = findByProps("intl", "t");
+                        const message = translations?.t?.[rule.subLabelFor];
+                        const label = message && translations?.intl?.string?.(message);
+                        if (typeof label !== "string" || !label) throw new Error("Discord's table row label is unavailable");
+                        return registerJsxAppearance([tableRow], element => element.props.label === label && typeof element.props.subLabel === "string"
+                            ? React.cloneElement(element, { subLabel: undefined }) : element);
+                    }
                     if ("expressionPickerTab" in mobile) return registerExpressionPickerTab(mobile.expressionPickerTab);
                     if ("settingsEntry" in mobile) return hideSettingsEntry(mobile.settingsEntry);
                     if ("hideComponentPaths" in mobile) {

@@ -1,0 +1,3 @@
+plugin "HideFriendRequestsBadge":
+  needs appearance.hide
+  hide friend-requests-badge

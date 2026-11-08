@@ -1,0 +1,3 @@
+plugin "HidePinsButton":
+  needs appearance.hide
+  hide pinned-messages-button

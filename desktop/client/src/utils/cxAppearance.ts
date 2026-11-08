@@ -238,6 +238,16 @@ export const cxAppearanceTargets = {
         css: '[aria-label="Notification Settings"] { display: none !important; }',
         mobile: ["NotificationSettingsButton"],
     },
+    "pinned-messages-button": {
+        plugin: "HidePinsButton", label: "the pinned messages shortcut",
+        css: '[aria-label="Pinned Messages"] { display: none !important; }',
+        mobile: { tableRow: { key: "rowPinnedMessages" } },
+    },
+    "friend-requests-badge": {
+        plugin: "HideFriendRequestsBadge", label: "the pending friend requests counter",
+        css: 'a[href="/channels/@me"] [class*="numberBadge"] { display: none !important; }',
+        mobile: { tableRow: { subLabelFor: "fyA115" } },
+    },
     "image-alt-text": {
         plugin: "HideImageAltText", label: "the image description control",
         css: '[class*="altText"] { display: none !important; }',

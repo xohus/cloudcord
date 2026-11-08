@@ -438,7 +438,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             },
         };
         nativeHeaders.set("ChatInputActions", chatInputActions);
-        const headerMessages = { t: { "5h0QOP": "Rechercher", "F+x38C": "Divulgâcheur" }, intl: { string: value => value } };
+        const headerMessages = { t: { "5h0QOP": "Rechercher", "F+x38C": "Divulgâcheur", fyA115: "Demandes d’amis" }, intl: { string: value => value } };
+        function TableRow() {}
         class Spoiler {
             constructor(element, revealed) { this.element = element; this.state = { revealed }; }
             render() { return this.element; }
@@ -661,6 +662,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/guild_channels/ChannelContent.tsx") ? channelRowModule
                 : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
                 : path === "design/native.tsx" ? design
+                : path === "design/components/TableRow/native/TableRow.native.tsx" ? { TableRow }
                 : path.endsWith("/SegmentedControlState.native.tsx") ? segmentedControl
                 : path.endsWith("/ExpressionPickerConstants.tsx") ? { ExpressionPickerOrder: pickerOrder }
                 : path.endsWith("/ExpressionPicker.tsx") ? { default: expressionPicker }
@@ -1294,6 +1296,30 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 click(render(), "Disable " + rule.plugin);
                 assert.equal(design.useSegmentedControlState, useSegmentedControlState);
                 assert.equal(segmentedControl.useSegmentedControlState, useSegmentedControlState);
+                assert.equal(appearanceHooks.size, 0);
+                continue;
+            } else if (rule.mobile.tableRow) {
+                const { key, subLabelFor } = rule.mobile.tableRow;
+                const onPress = () => {};
+                const row = { ...jsx(TableRow, Object.freeze({ label: headerMessages.t[subLabelFor], subLabel: "3", onPress })), key };
+                const unrelated = { ...jsx(TableRow, { label: "Notifications", subLabel: "3", onPress }), key: "rowNotifications" };
+                const hook = appearanceHooks.get(TableRow);
+                const wrapped = hook(TableRow, row);
+                const kept = hook(TableRow, unrelated);
+                assert.equal(kept.type(kept.props), unrelated);
+                const result = wrapped.type(wrapped.props);
+                if (key) assert.equal(result, null);
+                else {
+                    assert.equal(result.props.subLabel, undefined);
+                    assert.equal(result.props.label, row.props.label);
+                    assert.equal(result.props.onPress, onPress);
+                    assert.equal(row.props.subLabel, "3");
+                }
+                settings.safeMode = { enabled: true };
+                assert.equal(wrapped.type(wrapped.props), row);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(wrapped.type(wrapped.props), row);
                 assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.settingsEntry) {
