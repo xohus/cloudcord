@@ -813,7 +813,7 @@ function compileMobileFilter(name, file, plugin, source) {
 }
 
 function compileMobileClientCommands(file, plugin, source) {
-    if (!/^ios\/runtime\/src\/core\/plugins\/(?:atsomeone|friendinvites|inrole|readallnotifications|spotifysharecommands)\/index\.ts$/.test(file)
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:atsomeone|friendinvites|inrole|readallnotifications|scheduledmessages|spotifysharecommands)\/index\.ts$/.test(file)
         || !fieldsAre(plugin, ["manifest", "start", "stop"])
         || !imported(source, "registerCommand", "@lib/api/commands")) return;
     const start = handler(plugin, "start");
@@ -829,7 +829,12 @@ function compileMobileClientCommands(file, plugin, source) {
         const command = call.arguments[0].expression;
         const name = literal(value(command, "name"));
         if (!fieldsAre(command, ["name", "description", "options", "execute"])) return;
-        if (name === "inrole" && code.includes('findByStoreName("GuildMemberStore")') && code.includes("ApplicationCommandOptionType.ROLE")) {
+        if (name === "schedule" && file.endsWith("/scheduledmessages/index.ts")
+            && createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex") === "45500d6c98939c8e3f41a81d87b926b7e21db80f5c15529e445c36922509e7cc") {
+            permissions = ["messages.schedule", "reply.local"];
+            lines = ['  on command "schedule":', '    input "message" text', '    input "minutes" integer',
+                '    schedule message "message" after "minutes"'];
+        } else if (name === "inrole" && code.includes('findByStoreName("GuildMemberStore")') && code.includes("ApplicationCommandOptionType.ROLE")) {
             permissions = ["guild.members", "reply.local"];
             lines = ['  on command "inrole":', '    input "role" role', '    reply "${roleMembers(role)}"'];
         } else if (name === "readall" && code.includes("unreadChannels()") && code.includes('type: "BULK_ACK"')) {

@@ -165,6 +165,7 @@ import plugin_catalog_reverse_image_search from "../../../../examples/cx/catalog
 import plugin_catalog_reverse_text from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
 import plugin_catalog_round_server_icons from "../../../../examples/cx/catalog/plugins/round-server-icons.cx";
 import plugin_catalog_rounded_chat_bar from "../../../../examples/cx/catalog/plugins/rounded-chat-bar.cx";
+import plugin_catalog_scheduled_messages from "../../../../examples/cx/catalog/plugins/scheduled-messages.cx";
 import plugin_catalog_scroll_to_latest from "../../../../examples/cx/catalog/plugins/scroll-to-latest.cx";
 import plugin_catalog_sed_enhanced from "../../../../examples/cx/catalog/plugins/sed-enhanced.cx";
 import plugin_catalog_send_timestamps from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
@@ -469,6 +470,7 @@ export const cxCatalog = {
         { name: "ReverseText", source: plugin_catalog_reverse_text },
         { name: "RoundServerIcons", source: plugin_catalog_round_server_icons },
         { name: "RoundedChatBar", source: plugin_catalog_rounded_chat_bar },
+        { name: "ScheduledMessages", source: plugin_catalog_scheduled_messages },
         { name: "ScrollToLatest", source: plugin_catalog_scroll_to_latest },
         { name: "SedEnhanced", source: plugin_catalog_sed_enhanced },
         { name: "SendTimestamps", source: plugin_catalog_send_timestamps },

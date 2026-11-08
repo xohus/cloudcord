@@ -51,6 +51,7 @@ const permissionLabels = {
     "ui.toast": "Show local popups",
     "reply.local": "Show a command reply visible only to you",
     "messages.send": "Send the result to the current chat when you run a listed command",
+    "messages.schedule": "Send text to the same chat later when you run a listed command",
     "messages.split": "Send your long drafts as separate messages in the same channel",
     "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
     "media.search": "Share the selected image URL with the search engine you choose",
@@ -143,6 +144,7 @@ export type CxPermission = keyof typeof permissionLabels;
 type BasicAction = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
 type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction }
     | { kind: "copy-diagnostics"; }
+    | { kind: "schedule-message"; text: string; minutes: string; }
     | { kind: "upload-spoilers"; input: string; }
     | { kind: "lookup"; service: CxExternalLookup; input: string; };
 const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
@@ -156,6 +158,7 @@ const getActionPermissions = (action: Action): CxPermission[] => action.kind ===
     ? ["reply.local", `friends.invites.${action.operation}`]
     : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission]
         : action.kind === "copy-diagnostics" ? ["reply.local", "diagnostics.copy"]
+            : action.kind === "schedule-message" ? ["reply.local", "messages.schedule"]
             : action.kind === "upload-spoilers" ? ["reply.local", "uploads.rename"] : actionPermissions[action.kind];
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
@@ -533,6 +536,14 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const schedule = /^    schedule message "([a-z][a-z0-9_-]{0,31})" after "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
+        if (schedule && current && !current.actions.length && !current.text && current.inputs.length === 2
+            && current.inputs.some(input => input.name === schedule[1] && input.type === "text" && input.required)
+            && current.inputs.some(input => input.name === schedule[2] && input.type === "integer" && input.required)) {
+            current.actions.push({ kind: "schedule-message", text: schedule[1], minutes: schedule[2] });
+            current = undefined;
+            continue;
+        }
         const spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
         if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1
             && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
@@ -688,6 +699,7 @@ type Invocation = {
     markServersRead?: () => string;
     friendInvites?: (operation: CxFriendInviteAction) => Promise<string>;
     copyDiagnostics?: () => Promise<string>;
+    prepareScheduledSend?: () => ((message: string) => Promise<void>) | undefined;
 };
 type CxHost = {
     registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
@@ -745,6 +757,7 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
     const cleanups: (() => void)[] = [];
     const optionCleanups = new Map<CxHideTarget, () => void>();
     const activeLookups = new Map<CxExternalLookup, AbortController>();
+    const scheduled = new Set<ReturnType<typeof setTimeout>>();
     let active = true;
     const uploadAnonymiser = document.uploadNaming && createCxUploadAnonymiser(document.uploadNaming);
     function hideTarget(target: CxHideTarget) {
@@ -763,6 +776,8 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
     }
     function stop() {
         active = false;
+        for (const timer of scheduled) clearTimeout(timer);
+        scheduled.clear();
         for (const controller of activeLookups.values()) controller.abort();
         activeLookups.clear();
         const callbacks = [...cleanups.splice(0), ...optionCleanups.values()].reverse();
@@ -877,6 +892,34 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
                 let outgoing: string | undefined;
                 for (const action of command.actions) {
                     if (!getActionPermissions(action).every(permission => grants.has(permission))) continue;
+                    if (action.kind === "schedule-message") {
+                        const reply = invocation?.reply;
+                        if (!reply) continue;
+                        const content = inputs.get(action.text)!;
+                        const minutes = Number(inputs.get(action.minutes));
+                        if (minutes < 1 || minutes > 1440) {
+                            reply("Choose a delay from 1 to 1440 minutes.");
+                            continue;
+                        }
+                        if (scheduled.size >= 20) {
+                            reply("This plugin already has 20 pending messages.");
+                            continue;
+                        }
+                        const send = invocation.prepareScheduledSend?.();
+                        if (!send) {
+                            reply("Scheduling is unavailable in this chat.");
+                            continue;
+                        }
+                        const delay = minutes * 60_000;
+                        const timer = setTimeout(() => {
+                            scheduled.delete(timer);
+                            if (!active) return;
+                            void send(content).catch(() => { if (active) reply("Couldn’t send the scheduled message."); });
+                        }, delay);
+                        scheduled.add(timer);
+                        reply("Scheduled for <t:" + Math.floor((Date.now() + delay) / 1000) + ":t>. Keep CloudCord open until then.");
+                        continue;
+                    }
                     if (action.kind === "lookup") {
                         const reply = invocation?.reply;
                         if (!reply || activeLookups.has(action.service)) continue;

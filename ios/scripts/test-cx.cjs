@@ -16,8 +16,15 @@ const code = buildSync({
 let wikiRequest;
 let clockTime;
 const clockTimers = new Set();
+const scheduleTimers = new Map();
 vm.runInNewContext(code, {
-    module: moduleBox, AbortController, setTimeout, clearTimeout,
+    module: moduleBox, AbortController,
+    setTimeout(callback, delay) {
+        if (delay < 60_000) return setTimeout(callback, delay);
+        scheduleTimers.set(callback, delay);
+        return callback;
+    },
+    clearTimeout(timer) { if (!scheduleTimers.delete(timer)) clearTimeout(timer); },
     Date: class extends Date { static now() { return clockTime ?? Date.now(); } },
     setInterval: callback => { clockTimers.add(callback); return callback; },
     clearInterval: callback => clockTimers.delete(callback),
@@ -250,10 +257,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const previousEdits = [];
         const jumps = [];
         const composerActions = [];
+        const scheduledSends = [];
+        let activeAccount = me;
         const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]),
             jumpToMessage: target => jumps.push(target),
             startEditMessage: (channel, id, content) => composerActions.push(["edit", id, content]),
-            sendMessage: (...args) => repeated.push(args) };
+            sendMessage: (...args) => args[0] === "scheduled-channel" ? scheduledSends.push(args) : repeated.push(args) };
         const gestureChannel = "129876543219876543";
         const gestureMessages = new Map([
             [me, { id: me, author: { id: me }, content: "my message", type: 0, channel_id: gestureChannel, state: "SENT" }],
@@ -357,7 +366,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             PresenceStore: { getStatus: () => pingDnd ? "dnd" : "online" },
             UserGuildSettingsStore: { isMuted: () => pingMuted },
             UnreadSettingNoticeStore2: { maybeAutoUpgradeChannel: upgradeChannel },
-            UserStore: { getCurrentUser: () => ({ id: me }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
+            UserStore: { getCurrentUser: () => ({ id: activeAccount }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
             UserProfileStore: {
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]), banner: "a_" + "a".repeat(32) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
@@ -583,6 +592,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             unregisterCommand(name) { delete registered[name]; },
             sendMessage(...args) {
                 if (args[0] === repeatChannel) repeated.push(args);
+                if (args[0] === "scheduled-channel") scheduledSends.push(args);
                 return "sent normally";
             },
             sendBotMessage: (channel, message) => delivered.push([channel, typeof message === "string" ? message : message.content]),
@@ -2257,6 +2267,44 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(acknowledged.length, 1);
 
         const guildContext = { guild: { id: guildId }, channel: { id: "guild-channel", guild_id: guildId } };
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "ScheduledMessages").source;
+            assert.throws(() => activateCx(port, host, ["commands.register", "reply.local", "messages.send"]), /approval/);
+            selectCatalog("ScheduledMessages");
+            click(render(), "Allow for this session");
+            const schedule = registered.schedule;
+            const context = { channel: { id: "scheduled-channel" } };
+            const args = minutes => [{ name: "message", value: "Later" }, { name: "minutes", value: minutes }];
+            const runTimer = () => {
+                const [timer] = scheduleTimers.keys();
+                scheduleTimers.delete(timer);
+                timer();
+            };
+            assert.equal(schedule.execute(args(0), context), undefined);
+            assert.match(delivered.pop()[1], /Choose a delay/);
+            assert.equal(scheduleTimers.size, 0);
+            schedule.execute(args(2), context);
+            assert.deepEqual([...scheduleTimers.values()], [120000]);
+            assert.match(delivered.pop()[1], /^Scheduled for <t:\d+:t>/);
+            assert.equal(scheduledSends.length, 0);
+            runTimer();
+            await new Promise(setImmediate);
+            assert.equal(scheduledSends[0][0], context.channel.id);
+            assert.equal(scheduledSends[0][1].content, "Later");
+            schedule.execute(args(1), context);
+            assert.match(delivered.pop()[1], /Scheduled for/);
+            const repliesBeforeSwitch = delivered.length;
+            activeAccount = sender;
+            runTimer();
+            await new Promise(setImmediate);
+            assert.equal(scheduledSends.length, 1);
+            assert.equal(delivered.length, repliesBeforeSwitch);
+            activeAccount = me;
+            schedule.execute(args(1), context);
+            click(render(), "Disable ScheduledMessages");
+            assert.equal(scheduleTimers.size, 0);
+            assert.equal(registered.schedule, undefined);
+        }
         const wikiSource = cxCatalog.plugins.find(entry => entry.name === "WikiLookup").source;
         assert.throws(() => activateCx(wikiSource, host, ["commands.register", "reply.local"]), /approval/);
         assert.throws(() => parseCx(wikiSource.replace('lookup wikipedia "message"', 'lookup webhook "message"')), /Unknown CX instruction/);

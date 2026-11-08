@@ -1,0 +1,8 @@
+plugin "ScheduledMessages":
+  needs commands.register
+  needs messages.schedule
+  needs reply.local
+  on command "schedule":
+    input "message" text
+    input "minutes" integer
+    schedule message "message" after "minutes"

@@ -1032,6 +1032,16 @@ export function CxSettings() {
                                 inputs: Object.fromEntries(inputs.map(input => [input.name, findOption(args, input.name)])),
                                 sendRequested: optionalSend && findOption<boolean>(args, "send") === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
+                                prepareScheduledSend() {
+                                    const channelId = context.channel?.id;
+                                    const accountId = UserStore?.getCurrentUser()?.id;
+                                    if (!channelId || !accountId) return;
+                                    return async content => {
+                                        if (UserStore?.getCurrentUser()?.id !== accountId) return;
+                                        if (!ChannelStore?.getChannel(channelId)) throw new Error("The original channel is unavailable");
+                                        await MessageActions.sendMessage(channelId, { content, invalidEmojis: [], validNonShortcutEmojis: [], tts: false });
+                                    };
+                                },
                                 lookup(name, input) {
                                     if (name !== "roleMembers" && name !== "randomMember") return formatCxSpotify(name, input, SpotifyStore?.getTrack?.());
                                     const guild = context.guild?.id ?? context.channel?.guild_id;
