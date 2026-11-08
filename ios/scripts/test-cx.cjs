@@ -200,6 +200,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         function LongPressMessageActionSheet() {
             return jsx("Analytics", { children: jsx(NativeActionSheet, { children: jsx("OriginalAction", {}) }) });
         }
+        function ChannelLongPressActionSheetConnected() {
+            return jsx(NativeActionSheet, { children: jsx("OriginalAction", {}) });
+        }
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
         const guildId = "100000000000000004";
         const roleId = "100000000000000005";
@@ -1626,6 +1629,36 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(viewedProfiles.length, 2);
         assert.equal(savedProfileMedia.length, 1);
         assert.equal(menuPatches.size + appearanceHooks.size, 0);
+        selectCatalog("foreignCopyHandler");
+        click(render(), "Allow for this session");
+        const category = { id: guildId, name: "Team channels", type: 4 };
+        const getCopy = channel => {
+            if (desktop) {
+                const items = [];
+                for (const patch of menuPatches) patch(items, { channel });
+                return items[0]?.props;
+            }
+            const hook = appearanceHooks.get("ChannelLongPressActionSheetConnected");
+            const wrapped = hook(null, jsx(ChannelLongPressActionSheetConnected, { channel }));
+            const item = wrapped.type(wrapped.props);
+            const tree = item.type(item.props);
+            assert.ok(find(tree, entry => entry.type === "OriginalAction"));
+            return find(tree, entry => entry.props.label?.startsWith("Copy "))?.props;
+        };
+        const beforeChannelCopies = clipboardWrites.length;
+        assert.equal(getCopy({ id: "invalid", name: "Invalid" }), undefined);
+        const categoryCopy = getCopy(category);
+        const dmCopy = getCopy({ id: other, type: 3 });
+        assert.equal(categoryCopy.label, "Copy Category Name");
+        assert.equal(dmCopy.label, "Copy Channel Name");
+        const invokeCopy = action => action[desktop ? "action" : "onPress"]();
+        invokeCopy(categoryCopy);
+        invokeCopy(dmCopy);
+        click(render(), "Disable foreignCopyHandler");
+        invokeCopy(categoryCopy);
+        assert.deepEqual(clipboardWrites.slice(beforeChannelCopies), ["Team channels", "Group DM"]);
+        assert.equal(menuPatches.size + appearanceHooks.size, 0);
+        await new Promise(setImmediate);
         const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
         if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
         else editor.props.onChangeText(counter);
@@ -2358,7 +2391,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const draftFile = { filename: "personal.tar.gz", item: {} };
         const named = { filename: "KeepOriginal.png", item: {} };
         const preview = jsx(NativeUploadPreview, { upload: named });
-        const checkOptOut = () => {
+        const toggleUploadName = () => {
             if (desktop) {
                 const option = desktopPlugin.renderAnonymousUploadButton({ upload: named, canEdit: true });
                 option.type(option.props).props.onClick();
@@ -2370,7 +2403,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 control.type(control.props).props.onPress();
             }
         };
-        checkOptOut();
+        toggleUploadName();
         const keepName = { ...named };
         runUpload([draftFile, keepName]);
         assert.match(draftFile.filename, /^[0123456789bdfhjkmnpqrstvwxz]{7}\.tar\.gz$/);
@@ -2390,6 +2423,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(appearanceHooks.has(NativeUploadPreview), false);
         runUpload([protectedFile]);
         assert.equal(protectedFile.filename, "NeverLeak.png");
+
+        const randomNames = cxCatalog.plugins.find(entry => entry.name === "FileNameRandomization").source;
+        assert.throws(() => activateCx(randomNames, host, []), /approval/);
+        assert.throws(() => parseCx(randomNames.replace("{random}", "../{original}")), /underscores/);
+        assert.throws(() => parseCx(randomNames.replace("{random}", "{token}")), /underscores/);
+        selectCatalog("FileNameRandomization");
+        click(render(), "Allow for this session");
+        const formattedUpload = { ...named };
+        runUpload([formattedUpload]);
+        assert.equal(formattedUpload.filename, "KeepOriginal.png");
+        toggleUploadName();
+        runUpload([formattedUpload]);
+        assert.match(formattedUpload.filename, /^[A-Za-z0-9]{10}\.png$/);
+        click(render(), "Disable FileNameRandomization");
+        let formatter;
+        const customNames = randomNames.replace('"{random}" random 10 manual', '"prefix-{original}-{timestamp}-{random}" random 4 uppercase');
+        const stopFormat = activateCx(customNames, { ...host, registerUploadAnonymiser(value) {
+            formatter = value;
+            return () => { formatter = undefined; };
+        } }, ["uploads.rename"]);
+        const customFile = { filename: "SPOILER_my file.tar.gz" };
+        formatter.apply([customFile]);
+        assert.match(customFile.filename, /^SPOILER_PREFIX-MY_FILE-\d{13}-[A-Z0-9]{4}\.tar\.gz$/);
+        stopFormat();
+        assert.equal(formatter, undefined);
 
         if (desktop) assert.equal(desktopPlugin.useTypingFocus(focus), focus);
         selectCatalog("NoTypingAnimation");

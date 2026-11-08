@@ -42,10 +42,12 @@ import plugin_catalog_equius_s_typing_quirk from "../../../../examples/cx/catalo
 import plugin_catalog_eridan_typing_quirk from "../../../../examples/cx/catalog/plugins/eridan-typing-quirk.cx";
 import plugin_catalog_fake_profile_themes from "../../../../examples/cx/catalog/plugins/fake-profile-themes.cx";
 import plugin_catalog_feferi_typing_quirk from "../../../../examples/cx/catalog/plugins/feferi-typing-quirk.cx";
+import plugin_catalog_file_name_randomization from "../../../../examples/cx/catalog/plugins/file-name-randomization.cx";
 import plugin_catalog_fix_file_extensions from "../../../../examples/cx/catalog/plugins/fix-file-extensions.cx";
 import plugin_catalog_fix_images_quality from "../../../../examples/cx/catalog/plugins/fix-images-quality.cx";
 import plugin_catalog_floating_chat_bar from "../../../../examples/cx/catalog/plugins/floating-chat-bar.cx";
 import plugin_catalog_follow_voice_user from "../../../../examples/cx/catalog/plugins/follow-voice-user.cx";
+import plugin_catalog_foreign_copy_handler from "../../../../examples/cx/catalog/plugins/foreign-copy-handler.cx";
 import plugin_catalog_friend_invites from "../../../../examples/cx/catalog/plugins/friend-invites.cx";
 import plugin_catalog_gamzee_s_typing_quirk from "../../../../examples/cx/catalog/plugins/gamzee-s-typing-quirk.cx";
 import plugin_catalog_google_that from "../../../../examples/cx/catalog/plugins/google-that.cx";
@@ -324,10 +326,12 @@ export const cxCatalog = {
         { name: "EridanTypingQuirk", source: plugin_catalog_eridan_typing_quirk },
         { name: "FakeProfileThemes", source: plugin_catalog_fake_profile_themes },
         { name: "FeferiTypingQuirk", source: plugin_catalog_feferi_typing_quirk },
+        { name: "FileNameRandomization", source: plugin_catalog_file_name_randomization },
         { name: "FixFileExtensions", source: plugin_catalog_fix_file_extensions },
         { name: "FixImagesQuality", source: plugin_catalog_fix_images_quality },
         { name: "FloatingChatBar", source: plugin_catalog_floating_chat_bar },
         { name: "FollowVoiceUser", source: plugin_catalog_follow_voice_user },
+        { name: "foreignCopyHandler", source: plugin_catalog_foreign_copy_handler },
         { name: "FriendInvites", source: plugin_catalog_friend_invites },
         { name: "Gamzee'sTypingQuirk", source: plugin_catalog_gamzee_s_typing_quirk },
         { name: "GoogleThat", source: plugin_catalog_google_that },

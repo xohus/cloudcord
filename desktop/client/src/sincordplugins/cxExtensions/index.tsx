@@ -10,7 +10,7 @@ import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
-import { getCxProfileMedia } from "@utils/cx";
+import { getCxChannelNameCopy, getCxProfileMedia } from "@utils/cx";
 import { openImageModal } from "@utils/discord";
 import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
@@ -27,6 +27,23 @@ import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispat
 import type { ReactNode } from "react";
 
 const session = createCxSession();
+
+function registerCopyChannelName() {
+    let active = true;
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        if (!active || !props?.channel) return;
+        const copy = getCxChannelNameCopy(props.channel, id => UserStore.getUser(id)?.username);
+        if (!copy) return;
+        children.push(<Menu.MenuItem id="cx-copy-channel-name" label={copy.label} action={() => {
+            if (active) void copyToClipboard(copy.name).then(
+                () => showToast("Copied: " + copy.name), () => showToast("Couldn’t copy the channel name."),
+            );
+        }} />);
+    };
+    const menus = ["channel-context", "thread-context", "user-context", "gdm-context"];
+    addContextMenuPatch(menus, patch);
+    return () => { active = false; removeContextMenuPatch(menus, patch); };
+}
 
 function registerProfileMedia() {
     let active = true;
@@ -606,6 +623,8 @@ export function CxSettings() {
                             return registerMediaLinkCopy();
                         case "profile-media":
                             return registerProfileMedia();
+                        case "copy-channel-name":
+                            return registerCopyChannelName();
                         case "hide-suggested-channels":
                             return registerHideSuggestedChannels();
                         case "copy-text-attachment":
