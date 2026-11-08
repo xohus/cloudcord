@@ -1598,9 +1598,11 @@ export default function CxExtensions() {
                     if ("centeredMessageList" in style) {
                         const messages = findByFilePath(style.centeredMessageList)?.default;
                         if (!messages) throw new Error("Discord's message list is unavailable");
-                        return registerJsxAppearance([messages], element => element.type === messages
-                            ? React.cloneElement(element, { style: [element.props.style, { alignSelf: "center", width: "100%", maxWidth: style.width }] })
-                            : element);
+                        const centered = { alignSelf: "center", width: "100%", maxWidth: style.width };
+                        // The wallpaper hook may already have wrapped the original message list.
+                        return registerJsxAppearance([messages], tree => mapAppearanceElements(tree, element => element.type === messages
+                            ? React.cloneElement(element, { style: [element.props.style, centered] })
+                            : element));
                     }
                     if ("messageWidthRenderer" in style) {
                         const renderer = findByFilePath(style.messageWidthRenderer);

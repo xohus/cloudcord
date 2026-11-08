@@ -904,8 +904,15 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.deepEqual(JSON.parse(JSON.stringify(centered.props.style[1])), {
                     alignSelf: "center", width: "100%", maxWidth: 1100,
                 });
+                const wallpaper = jsx("ThemeBackground", { children: element });
+                const wrappedWallpaper = hook(null, wallpaper);
+                const styledWallpaper = wrappedWallpaper.type(wrappedWallpaper.props);
+                assert.equal(styledWallpaper.type, wallpaper.type);
+                assert.deepEqual(styledWallpaper.props.children.props.style, centered.props.style);
+                assert.equal(wallpaper.props.children, element);
                 settings.safeMode = { enabled: true };
                 assert.equal(wrapper.type(wrapper.props), element);
+                assert.equal(wrappedWallpaper.type(wrappedWallpaper.props), wallpaper);
                 settings.safeMode = undefined;
             } else if (rule.style?.messageWidthRenderer) {
                 const wide = Object.freeze({ constrainedWidth: 1000 });
