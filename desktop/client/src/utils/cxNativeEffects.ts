@@ -38,6 +38,7 @@ export const cxNativeEffects = {
     "toggle-message-embeds": { permission: "messages.toggleembeds", label: "Suppress or unsuppress embeds in the selected message" },
     "repeat-message": { permission: "messages.repeat", label: "Send the selected message again with its attachments and stickers" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
+    "all-call-time-counter": { permission: "voice.membertime", label: "Show elapsed call time next to members in server voice channels" },
     "call-time-counter": { permission: "voice.calltime", label: "Show the elapsed time in your current call" },
     "jump-to-message-menu": { permission: "channels.searchjump", label: "Jump to the first or last message from channel and message menus" },
     "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },

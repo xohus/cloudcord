@@ -291,9 +291,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const dispatch = event => rejectBulkAck && event.type === "BULK_ACK"
             ? Promise.reject(new Error("Could not acknowledge channels")) : acknowledged.push(event);
         const channelSelections = new Set(), rtcListeners = new Set(), voiceListeners = new Set();
+        const voiceEventListeners = new Map(["VOICE_STATE_UPDATES", "PASSIVE_UPDATE_V1", "PASSIVE_UPDATE_V2", "CONNECTION_OPEN", "LOGOUT"]
+            .map(name => [name, new Set()]));
         const listenersFor = name => {
-            assert.ok(["CHANNEL_SELECT", "RTC_CONNECTION_STATE"].includes(name));
-            return name === "RTC_CONNECTION_STATE" ? rtcListeners : channelSelections;
+            if (name === "RTC_CONNECTION_STATE") return rtcListeners;
+            if (name === "CHANNEL_SELECT") return channelSelections;
+            assert.ok(voiceEventListeners.has(name));
+            return voiceEventListeners.get(name);
         };
         const channelDispatcher = {
             dispatch,
@@ -373,6 +377,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 isFriend: id => id === sender,
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
             },
+            VoiceStateStore: { getVoiceStateForUser: () => undefined },
             SelectedChannelStore: {
                 getVoiceChannelId: () => currentVoice, getChannelId: () => selectedChannel,
                 addChangeListener: listener => voiceListeners.add(listener),
@@ -607,6 +612,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 PermissionsBits: embedPermissions, PinActions: pinActions,
                 React: { isValidElement: element => !!element?.type && !!element?.props,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
+                useCallback: callback => callback,
                 useSyncExternalStore: (subscribe, read) => {
                 if (typeof read() === "boolean") subscribe(() => typingSubscribers.add(read()));
                 return read();
@@ -717,14 +723,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                                 : name === "convertNameToSurrogate" ? emojiConverters : name in expressionSheets ? expressionSheets
                                     : name === "showSimpleActionSheet" ? linkSheet : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
-                useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
+                useState, useCallback: callback => callback, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : initial === null ? "ExpressionProvider" : "ProfileUserProvider" }),
                 useContext: context => context.Provider === "MemberRowProvider" ? inMemberRow
                     : context.Provider === "ExpressionProvider" ? expressionSelection : profileUser,
                 Fragment: Symbol.for("react.fragment"),
                 Children: { toArray: children => Array.isArray(children) ? children : children == null ? [] : [children] },
                 isValidElement: element => !!element?.type && !!element?.props,
-                createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
+                createElement: jsx, memo: type => ({ type, $$typeof: Symbol.for("react.memo") }), forwardRef: render => ({ render }),
                 cloneElement: (element, props) => ({ ...element, props: { ...element.props, ...props } }),
             }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: channelDispatcher,
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
@@ -2335,6 +2341,85 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             if (desktop) assert.equal(renderTime(secondVoice), null);
             else assert.equal(appearanceHooks.has(VoicePanelHeader), false);
             currentVoice = savedVoice;
+            clockTime = undefined;
+        }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "AllCallTimeCounter").source;
+            assert.throws(() => activateCx(port, host, ["voice.calltime"]), /approval/);
+            assert.throws(() => parseCx(port.replace("use all-call-time-counter", "use all-call-time-counter human human")), /timer options/);
+            if (!desktop) {
+                selectCatalog("HideVoiceUserAvatars");
+                click(render(), "Allow for this session");
+            }
+            selectCatalog("AllCallTimeCounter");
+            click(render(), "Allow for this session");
+            const row = nativeHeaders.get("VoiceUserItem");
+            const originalRow = row.type;
+            row.type = props => props.output;
+            const renderTime = (id, channelId, collapsed = false) => {
+                let timer;
+                if (desktop) timer = desktopPlugin.renderVoiceMemberTime(id, channelId);
+                else {
+                    const hook = appearanceHooks.get(row);
+                    const output = jsx("View", { children: [jsx(headerIcons.Avatar, {}), jsx("VoiceMemberName", {})] });
+                    const wrapped = hook(null, jsx(row, { user: { id }, channelId, guildId, collapsed, output }));
+                    const renderer = wrapped.type(wrapped.props);
+                    const tree = renderer.type.type(renderer.props);
+                    assert.ok(find(tree, item => item.type === "VoiceMemberName"));
+                    assert.equal(find(tree, item => item.type === headerIcons.Avatar), undefined);
+                    timer = find(tree, item => item.type?.name === "VoiceMemberTime");
+                }
+                return timer?.type(timer.props)?.props.children ?? null;
+            };
+            const emit = (event, payload) => voiceEventListeners.get(event).forEach(listener => listener(payload));
+            const from = { userId: sender, channelId: voiceTarget, guildId };
+            const moved = { ...from, channelId: secondVoice };
+            clockTime = 1_000_000;
+            assert.equal(renderTime(sender, voiceTarget), null);
+            emit("VOICE_STATE_UPDATES", { voiceStates: [from, { userId: other, channelId: voiceTarget }] });
+            assert.equal(renderTime(sender, voiceTarget), "00:00");
+            assert.equal(renderTime(other, voiceTarget), null);
+            if (!desktop) assert.equal(renderTime(sender, voiceTarget, true), null);
+            clockTime += 61_000;
+            emit("VOICE_STATE_UPDATES", { voiceStates: [from] });
+            assert.equal(renderTime(sender, voiceTarget), "01:01");
+            emit("VOICE_STATE_UPDATES", { voiceStates: [moved] });
+            assert.equal(renderTime(sender, voiceTarget), null);
+            assert.equal(renderTime(sender, secondVoice), "00:00");
+            emit("PASSIVE_UPDATE_V1", { guildId, voiceStates: [] });
+            assert.equal(renderTime(sender, secondVoice), null);
+            emit("VOICE_STATE_UPDATES", { voiceStates: [moved] });
+            emit("LOGOUT", {});
+            assert.equal(renderTime(sender, secondVoice), null);
+            click(render(), "Disable AllCallTimeCounter");
+            assert.ok([...voiceEventListeners.values()].every(listeners => !listeners.size));
+            if (!desktop) {
+                click(render(), "Disable HideVoiceUserAvatars");
+                assert.equal(appearanceHooks.has(row), false);
+            }
+            row.type = originalRow;
+
+            const clock = moduleBox.exports.createCxVoiceMemberClock();
+            let liveState = from;
+            const stop = clock.bind({
+                account: () => me, state: () => liveState,
+                channelGuild: () => guildId, dispatcher: channelDispatcher,
+            }, { human: true, minutesOnly: true, excludeSelf: true });
+            const first = clock.subscribe(sender, () => {});
+            const second = clock.subscribe(me, () => {});
+            assert.equal(clockTimers.size, 1);
+            assert.equal(clock.read(me), undefined);
+            assert.equal(clock.read(sender, voiceTarget), "0m");
+            clockTime += 61_000;
+            assert.equal(clock.read(sender, voiceTarget), "1m");
+            liveState = moved;
+            emit("PASSIVE_UPDATE_V2", {});
+            assert.equal(clock.read(sender, voiceTarget), undefined);
+            assert.equal(clock.read(sender, secondVoice), "0m");
+            first();
+            second();
+            assert.equal(clockTimers.size, 0);
+            stop();
             clockTime = undefined;
         }
         {

@@ -6,7 +6,7 @@ import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
-import { createCxCallClock, createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
+import { createCxCallClock, createCxJumpActions, createCxVoiceMemberClock, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel, type CxVoiceMemberOptions } from "@lib/api/cx";
 import { selectCxAppearanceOption } from "@lib/api/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
@@ -32,6 +32,7 @@ import { Alert, Animated, FlatList, Image, Linking, PixelRatio, Pressable, proce
 
 const session = createCxSession();
 const callClock = createCxCallClock();
+const voiceMemberClock = createCxVoiceMemberClock();
 const navigationControls = createCxNavigationControls();
 const timestamps = createCxTimestampRegistry();
 const timestampFields = [
@@ -155,6 +156,41 @@ function CallTime({ channelId }: { channelId: string; }) {
     if (!elapsed || settings.safeMode?.enabled) return null;
     return <Text style={{ textAlign: "center", fontSize: 12, fontVariant: ["tabular-nums"],
         color: resolveSemanticColor(semanticColors.TEXT_MUTED) }}>Time elapsed: {elapsed}</Text>;
+}
+
+function VoiceMemberTime({ userId, channelId, color }: { userId: string; channelId: string; color?: string; }) {
+    const subscribe = React.useCallback((listener: () => void) => voiceMemberClock.subscribe(userId, listener), [userId]);
+    const elapsed = React.useSyncExternalStore(subscribe, () => voiceMemberClock.read(userId, channelId));
+    return elapsed ? <Text accessibilityLabel={"Call time " + elapsed} style={{
+        marginStart: 6, fontSize: 11, fontVariant: ["tabular-nums"],
+        color: color ?? resolveSemanticColor(semanticColors.TEXT_MUTED),
+    }}>{elapsed}</Text> : null;
+}
+
+function registerVoiceMemberClock(options: CxVoiceMemberOptions) {
+    const row = findByFilePath("modules/guild_sidebar/native/VoiceUserItem.tsx")?.default;
+    const voice = findByStoreName("VoiceStateStore");
+    if (!row || typeof voice?.getVoiceStateForUser !== "function") throw new Error("Discord's voice members are unavailable");
+    const stopClock = voiceMemberClock.bind({
+        account: () => UserStore.getCurrentUser()?.id,
+        state: id => voice.getVoiceStateForUser(id),
+        channelGuild: id => ChannelStore.getChannel(id)?.guild_id,
+        enabled: () => !settings.safeMode?.enabled,
+        dispatcher: FluxDispatcher,
+    }, options);
+    try {
+        const stopRows = registerRenderedTree(row, (tree, props: {
+            user?: { id?: string; }; channelId?: string; guildId?: string; collapsed?: boolean; member?: { colorString?: string; };
+        }) => {
+            const { channelId, guildId, user, collapsed } = props;
+            if (collapsed || !isCxProfileUserId(user?.id) || !isCxProfileUserId(channelId) || !isCxProfileUserId(guildId)
+                || !React.isValidElement<{ children?: ReactNode; }>(tree) || !("children" in tree.props)) return tree;
+            const roleColor = props.member?.colorString;
+            const color = typeof roleColor === "string" && /^#[0-9a-f]{6}$/i.test(roleColor) ? roleColor : undefined;
+            return React.cloneElement(tree, { children: <>{tree.props.children}<VoiceMemberTime userId={user.id} channelId={channelId} color={color} /></> });
+        });
+        return () => { stopRows(); stopClock(); };
+    } catch (error) { stopClock(); throw error; }
 }
 
 function registerCallTimeCounter() {
@@ -899,16 +935,19 @@ function registerTreeAppearance(rule: {
         keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide));
 }
 
+const renderedTreeOriginals = new WeakMap<object, object>();
+
 function registerRenderedTree(target: string | object, change: (tree: ReactNode, props: object) => ReactNode) {
     const wrappers = new WeakMap<object, { type: ComponentType<object>; forwardsRef: boolean; }>();
     let active = true;
     function wrapRenderer(element: JSX.Element) {
-        if (typeof target !== "string" && element.type !== target) return element;
         const component = element.type as {
             $$typeof?: symbol;
             type?: unknown;
             compare?: (previous: object, next: object) => boolean;
         };
+        const original = renderedTreeOriginals.get(component) ?? component;
+        if (typeof target !== "string" && original !== target) return element;
         let wrapper = wrappers.get(component);
         if (!wrapper) {
             const memoized = component?.$$typeof === Symbol.for("react.memo");
@@ -924,6 +963,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
             const filtered = forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree;
             wrapper = { type: memoized ? React.memo(filtered, component.compare) : filtered, forwardsRef };
             wrappers.set(component, wrapper);
+            renderedTreeOriginals.set(wrapper.type, original);
         }
         const props = { ...element.props, key: element.key };
         if (wrapper.forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
@@ -1922,11 +1962,14 @@ export default function CxExtensions() {
                     return registerColorOverlay(style);
                 },
                 registerUploadAnonymiser,
-                registerNativeEffect(effect, avatarResolution = 256) {
+                registerNativeEffect(effect, avatarResolution = 256, memberTimerOptions) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
                         case "hide-role-headers":
                             return registerNoRoleHeaders();
+                        case "all-call-time-counter":
+                            if (!memberTimerOptions) throw new Error("Missing voice member timer options");
+                            return registerVoiceMemberClock(memberTimerOptions);
                         case "call-time-counter":
                             return registerCallTimeCounter();
                         case "jump-to-message-menu":

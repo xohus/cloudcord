@@ -10,6 +10,7 @@ import { formatCxProfileColors } from "./cxProfileColors";
 import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
 import { cxCalendarPeriods, cxTimestampSurfaces, type CxTimestampFormats, type CxTimestampTarget } from "./cxTimestamps";
 import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
+import type { CxVoiceMemberOptions } from "./cxVoiceMemberClock";
 import { validateCxWallpaper } from "./cxWallpaper";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
@@ -29,6 +30,7 @@ export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxImageSearchOptions, type CxSearchMediaSource } from "./cxMediaSearch";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
+export { createCxVoiceMemberClock, type CxVoiceMemberOptions } from "./cxVoiceMemberClock";
 export { createCxCallClock } from "./cxCallClock";
 export { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, type CxNavigationChannel } from "./cxNavigation";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
@@ -87,6 +89,7 @@ const permissionLabels = {
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+    "voice.membertime": "Use voice updates already loaded by Discord to show member call times on this device",
     "voice.calltime": "Read the current voice channel and show its elapsed call time on this device",
     "voice.notifyfriends": "Show local notifications when friends join or move between voice channels",
     "voice.followfriend": "Move you to the listed friend’s voice channel while you are already connected to voice",
@@ -182,6 +185,7 @@ type CxPlugin = {
     timestamps: CxTimestampFormats;
     nativeEffects: CxNativeEffect[];
     avatarResolution?: CxAvatarResolution;
+    voiceMemberOptions?: CxVoiceMemberOptions;
     uploadNaming?: CxUploadNaming;
     previousRule?: CxPreviousRule;
     profileActions: CxProfileMenuAction[];
@@ -268,6 +272,7 @@ export function parseCx(source: string): CxDocument {
     const timestamps: CxTimestampFormats = {};
     let hasTimestampSurface = false;
     let avatarResolution: CxAvatarResolution | undefined;
+    let voiceMemberOptions: CxVoiceMemberOptions | undefined;
     let uploadNaming: CxUploadNaming | undefined;
     let previousRule: CxPreviousRule | undefined;
     const profileActions = new Set<CxProfileMenuAction>();
@@ -354,15 +359,22 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
-        const effect = /^  use ([a-z-]+)(?: (\d+))?$/.exec(line);
+        const effect = /^  use ([a-z-]+)(?: ([a-z0-9 -]+))?$/.exec(line);
         if (effect) {
             const name = effect[1] as CxNativeEffect;
             if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name) || nativeEffects.has(name))
                 throw new Error("Unknown or duplicate client effect");
             if (name === "avatar-resolution") {
                 const size = Number(effect[2]) as CxAvatarResolution;
-                if (!cxAvatarResolutions.includes(size)) throw new Error("Choose an avatar size of 256, 512, 1024, 2048, or 4096");
+                if (!/^\d+$/.test(effect[2] ?? "") || !cxAvatarResolutions.includes(size)) throw new Error("Choose an avatar size of 256, 512, 1024, 2048, or 4096");
                 avatarResolution = size;
+            } else if (name === "all-call-time-counter") {
+                const flags = effect[2]?.split(" ") ?? [];
+                if (flags.some(flag => !["human", "minutes-only", "exclude-self"].includes(flag)) || new Set(flags).size !== flags.length)
+                    throw new Error("Voice member timer options are human, minutes-only, and exclude-self");
+                voiceMemberOptions = {
+                    human: flags.includes("human"), minutesOnly: flags.includes("minutes-only"), excludeSelf: flags.includes("exclude-self"),
+                };
             } else if (effect[2]) throw new Error("This client effect takes no options");
             nativeEffects.add(name);
             current = undefined;
@@ -583,7 +595,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, sendConfirmation, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, voiceMemberOptions, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -649,7 +661,7 @@ type CxHost = {
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
     registerTimestampFormats?: (formats: CxTimestampFormats) => () => void;
-    registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution) => () => void;
+    registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution, voiceMemberOptions?: CxVoiceMemberOptions) => () => void;
     registerUploadAnonymiser?: (anonymiser: CxUploadAnonymiser) => () => void;
     registerPreviousMessageRule?: (rule: CxPreviousRule) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
@@ -756,7 +768,8 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
         }
         for (const effect of document.nativeEffects) {
             if (!host.registerNativeEffect) throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());
-            cleanups.push(host.registerNativeEffect(effect, effect === "avatar-resolution" ? document.avatarResolution : undefined));
+            cleanups.push(host.registerNativeEffect(effect, effect === "avatar-resolution" ? document.avatarResolution : undefined,
+                effect === "all-call-time-counter" ? document.voiceMemberOptions : undefined));
         }
         if (document.suppressReplyPing) {
             if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");

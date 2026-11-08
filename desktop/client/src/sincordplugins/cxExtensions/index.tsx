@@ -18,7 +18,7 @@ import { openImageModal } from "@utils/discord";
 import { saveFile } from "@utils/web";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
-import { createCxCallClock, createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
+import { createCxCallClock, createCxJumpActions, createCxVoiceMemberClock, createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
 import { selectCxAppearanceOption } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
@@ -26,12 +26,19 @@ import { cxCatalog } from "@utils/cxCatalog";
 import type { Message } from "@vencord/discord-types";
 import definePlugin from "@utils/types";
 import { findByProps, findComponentByCodeLazy, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PinActions, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, VoiceStateStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 import { Alerts } from "@webpack/common";
 
 const session = createCxSession();
 const callClock = createCxCallClock();
+const voiceMemberClock = createCxVoiceMemberClock();
+
+function VoiceMemberTime({ userId, channelId }: { userId: string; channelId?: string; }) {
+    const subscribe = React.useCallback((listener: () => void) => voiceMemberClock.subscribe(userId, listener), [userId]);
+    const elapsed = React.useSyncExternalStore(subscribe, () => voiceMemberClock.read(userId, channelId));
+    return elapsed ? <span aria-label={"Call time " + elapsed} style={{ marginInlineStart: 6, fontVariantNumeric: "tabular-nums" }}>{elapsed}</span> : null;
+}
 
 function CallTime({ channelId }: { channelId?: string; }) {
     const elapsed = React.useSyncExternalStore(callClock.subscribe, () => callClock.read(channelId));
@@ -668,8 +675,16 @@ export function CxSettings() {
                     uploadAnonymiser = anonymiser;
                     return () => { uploadAnonymiser = undefined; };
                 },
-                registerNativeEffect(effect, avatarResolution = 256) {
+                registerNativeEffect(effect, avatarResolution = 256, memberTimerOptions) {
                     switch (effect) {
+                        case "all-call-time-counter":
+                            if (!memberTimerOptions) throw new Error("Missing voice member timer options");
+                            return voiceMemberClock.bind({
+                                account: () => UserStore.getCurrentUser()?.id,
+                                state: id => VoiceStateStore?.getVoiceStateForUser?.(id),
+                                channelGuild: id => ChannelStore.getChannel(id)?.guild_id,
+                                dispatcher: FluxDispatcher,
+                            }, memberTimerOptions);
                         case "call-time-counter":
                             return callClock.bind(SelectedChannelStore, FluxDispatcher);
                         case "jump-to-message-menu":
@@ -1129,6 +1144,13 @@ export default definePlugin({
             replace: "return $self.hideRoleHeaders()?null:",
         },
     }, {
+        find: "VOICE_PANEL}}",
+        predicate: () => !(Settings.plugins.CallTimer.enabled && Settings.plugins.CallTimer.allCallTimers),
+        replacement: {
+            match: /#{intl::GUEST_NAME_SUFFIX}\)\]\}\):""(?=.*?userId:(\i\.\i))/,
+            replace: "$&,$self.renderVoiceMemberTime($1,arguments[0]?.channelId??arguments[0]?.channel?.id)",
+        },
+    }, {
         find: "renderConnectionStatus(){",
         predicate: () => !Settings.plugins.CallTimer.enabled,
         replacement: [
@@ -1278,6 +1300,10 @@ export default definePlugin({
             if (fileCopyUsers && complete) void copyToClipboard(fileContents)
                 .then(() => showToast("File contents copied."), () => showToast("Couldn’t copy the file."));
         }}>{complete ? "Copy File Contents" : "File too large to copy"}</TextButton>;
+    },
+    renderVoiceMemberTime(userId: string, channelId?: string) {
+        if (!isCxProfileUserId(userId)) return null;
+        return <VoiceMemberTime userId={userId} channelId={isCxProfileUserId(channelId) ? channelId : undefined} />;
     },
     renderCallTime(channelId?: string) {
         return <CallTime channelId={channelId} />;

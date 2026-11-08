@@ -129,6 +129,15 @@
         "source": "https://github.com/BleedingBD/plugin-NoReplyPing/blob/c0376dc67966587d3ed256a828a311c62b91585e/NoReplyPing.plugin.js",
         "recipe": "reply-ping-default"
     },
+    "af11348e137dd263144e61929b9a25ba1dfcac67b3e134d929d93c5f2cbd2469": {
+        "name": "AllCallTimeCounter",
+        "author": "Max, nicola02nb, Witwitchy",
+        "license": "Apache-2.0",
+        "source": "https://github.com/Max-Herbold/AllCallTimersDiscordPlugin/blob/71cd81df986ee0c50c592d6766792d9e8c44532b/AllCallTimeCounter.plugin.js",
+        "recipe": "native-effect",
+        "effect": "all-call-time-counter",
+        "basis": "independent behavior implementation"
+    },
     "e168ad36d72bca544a49134d0e224ebe00dcc6b32d602bc4c6716a2c976c34ee": {
         "name": "CallTimeCounter",
         "author": "QWERT and KingGamingYT",
