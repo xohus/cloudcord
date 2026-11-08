@@ -42,7 +42,7 @@ jobs:
 
       - name: Check Discord theme compatibility
         run: |
-          npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
+          npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4 moment@2.30.1
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-patcher-symbol-proxy.cjs
           node ios/scripts/test-original-rain.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-cx.cjs
@@ -5663,7 +5663,8 @@ jobs:
           manifest = {
               "schema": 1,
               "version": os.environ.get("GITHUB_SHA", "local"),
-              "url": f"https://raw.githubusercontent.com/cloudcord-mod/cloudcord/{payload_commit}/dist/cc.js",
+              # Existing Android loaders validate this exact repository prefix.
+              "url": f"https://raw.githubusercontent.com/xohus/cloudcord/{payload_commit}/dist/cc.js",
               "sha256": hashlib.sha256(runtime).hexdigest(),
               "size": len(runtime),
           }

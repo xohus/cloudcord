@@ -20,9 +20,28 @@
 
 CloudCord is an actively maintained **client-side Discord modification framework** focused on iOS, iPadOS, and Android, with Windows desktop support. It extends the Discord client through runtime/framework injection, plugins, fake profile badges, profile customization, UI overrides, themes, and cross-device profile synchronization.
 
-CloudCord is **not** a Discord bot hosting service, server-hosting provider, chatbot SaaS, or Discord automation host. The canonical website is [cloudcord.xohus.lol](https://cloudcord.xohus.lol/), the canonical source is this repository, and the project is maintained by [Xohus](https://github.com/xohus).
+CloudCord is **not** a Discord bot hosting service, server-hosting provider, chatbot SaaS, or Discord automation host. The canonical website is [cloudcord.xohus.lol](https://cloudcord.xohus.lol/), this repository integrates the platform sources and publishes CloudCord releases, and the project is maintained by [Xohus](https://github.com/xohus).
 
 For machine-readable project guidance and entity disambiguation, see [CloudCord Entity & Citation Guide](ENTITY.md).
+
+## Platform repositories
+
+| Repository | Source |
+| --- | --- |
+| [Desktop](https://github.com/cloudcord-mod/desktop) | Windows installer, desktop runtime, browser extensions, and userscript |
+| [Android](https://github.com/cloudcord-mod/android) | Android Manager, patcher, and loader |
+| [iOS](https://github.com/cloudcord-mod/ios) | iOS and iPadOS loader and shared mobile runtime |
+| [macOS](https://github.com/cloudcord-mod/macos) | Native installer and DMG packaging for Apple Silicon and Intel |
+
+This repository keeps release history, the official download files, and the shared inputs used by the platform builds. Make platform changes in the corresponding repository. To include a reviewed Desktop, Android, or iOS source update in an official release, create an integration branch here, fetch the platform repository, and import its tracked directory. For example, to import Android:
+
+```sh
+git fetch https://github.com/cloudcord-mod/android.git main
+git restore --source=FETCH_HEAD --staged --worktree -- android
+git diff --cached --stat
+```
+
+Commit the reviewed changes and open an integration pull request. The macOS repository uses the source of the published Mac preview and builds its own DMGs.
 
 ## Install
 
