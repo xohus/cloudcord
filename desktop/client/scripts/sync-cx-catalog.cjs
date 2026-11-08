@@ -10,6 +10,7 @@ function loadCxRuntime() {
     const interpreter = { exports: {} };
     const { outputFiles } = buildSync({
         entryPoints: [path.join(root, "desktop/client/src/utils/cx.ts")],
+        nodePaths: [path.resolve(require.resolve("moment/package.json"), "../..")],
         bundle: true, write: false, format: "cjs",
     });
     vm.runInNewContext(outputFiles[0].text, { module: interpreter });

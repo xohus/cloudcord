@@ -10,6 +10,7 @@ const read = relative => fs.readFileSync(path.join(root, relative), "utf8");
 const moduleBox = { exports: {} };
 const code = buildSync({
     entryPoints: [path.join(root, "desktop/client/src/utils/cx.ts")],
+    nodePaths: [path.resolve(require.resolve("moment/package.json"), "../..")],
     bundle: true, write: false, format: "cjs", minify: true,
 }).outputFiles[0].text;
 let wikiRequest;
