@@ -2,6 +2,15 @@
 
 export type CxChannelLabel = { id?: string; name?: string; type?: number; guild_id?: string | null; };
 
+export function getCxChannelNameCopy(channel: CxChannelLabel & { recipients?: readonly string[]; }, username: (id: string) => string | undefined) {
+    if (typeof channel.id !== "string" || !/^\d{17,20}$/.test(channel.id)) return;
+    const label = channel.type === 4 ? "Copy Category Name" : "Copy Channel Name";
+    const recipient = channel.recipients?.[0];
+    const name = channel.name || (channel.type === 1 ? (recipient && username(recipient)) || "Direct Message"
+        : channel.type === 3 ? "Group DM" : channel.id);
+    return { label, name };
+}
+
 // CleanChannelName by AutumnVN (GPL-3.0-or-later).
 const smallCaps = Object.fromEntries([..."ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀꜱᴛᴜᴠᴡxʏᴢ"].map((letter, index) => [letter, "abcdefghijklmnopqrstuvwxyz"[index]]));
 

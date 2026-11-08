@@ -1,4 +1,19 @@
 {
+    "ad8540f2dae2cab6fd7600fc72f9da98dee2526001d200e2635b185063b58ae4": {
+        "name": "foreignCopyHandler",
+        "author": "foreignSeal",
+        "source": "https://github.com/foreignSeal/BetterDiscord-plugins/blob/0a25c44e24fa1990f31b17f154b5056b988656b4/src/foreignCopyHandler/foreignCopyHandler.plugin.js",
+        "recipe": "native-effect",
+        "effect": "copy-channel-name",
+        "basis": "independent behavior implementation"
+    },
+    "6cfced52bc79e1e4e4a545b374989113704d5951f6e47688e40f0a9945c175ef": {
+        "name": "FileNameRandomization",
+        "author": "Kaan",
+        "license": "GPL-3.0",
+        "source": "https://github.com/zrodevkaan/BDPlugins/blob/8419ffe6f4e180fe9a755cd3bf82c5649c173b99/Plugins/FileNameRandomization/FileNameRandomization.plugin.js",
+        "recipe": "formatted-upload-names"
+    },
     "d3f3d4e40cf5f2fc62fd23ef4e5250ce2e603d9c4e5c9bf9d43cc7190e474e64": {
         "name": "ChatButtonsBegone",
         "author": "TheLastBucket and Zacam",

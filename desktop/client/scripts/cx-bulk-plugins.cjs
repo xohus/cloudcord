@@ -453,6 +453,17 @@ function inspectBetterDiscord(file, code, appearance, nativeEffects) {
             cx: ["plugin " + JSON.stringify(name) + ":", "  needs " + nativeEffects[review.effect].permission,
                 "  use " + review.effect, ""].join("\n") };
     }
+    if (review?.name === name && review.recipe === "formatted-upload-names" && !source.parseDiagnostics.length) {
+        const defaults = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
+            .find(declaration => identifier(declaration.name) === "defaultSettings")?.initializer;
+        const length = value(defaults, "randomLength");
+        if (length && ts.isNumericLiteral(length) && literal(value(defaults, "customFormat")) === "{prefix}{random}{suffix}"
+            && literal(value(defaults, "prefix")) === "" && literal(value(defaults, "suffix")) === "") {
+            return { ...record, review: { ...review, sha256 }, capability: "upload-naming",
+                cx: ["plugin " + JSON.stringify(name) + ":", "  needs uploads.rename",
+                    '  before upload anonymise format "{random}" random ' + length.text + " manual", ""].join("\n") };
+        }
+    }
     if (review?.name === name && review.recipe === "configurable-appearance" && !source.parseDiagnostics.length) {
         const compiled = configurableHides(readBetterDiscordSwitches(source), chatButtonOptions, appearance);
         if (compiled) return { ...record, review: { ...review, sha256 }, capability: compiled.capability,

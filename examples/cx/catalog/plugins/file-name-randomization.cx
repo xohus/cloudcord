@@ -1,0 +1,3 @@
+plugin "FileNameRandomization":
+  needs uploads.rename
+  before upload anonymise format "{random}" random 10 manual

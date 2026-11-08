@@ -15,7 +15,7 @@ import { validateCxWallpaper } from "./cxWallpaper";
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMedia, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
-export { formatCxChannelName, type CxChannelLabel } from "./cxChannelNames";
+export { formatCxChannelName, getCxChannelNameCopy, type CxChannelLabel } from "./cxChannelNames";
 export { isCxNotificationMuted, type CxMessageAlert } from "./cxIncoming";
 export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, markCxServersReadAndWait, runCxFriendInvites } from "./cxClientCommands";
 export { animateCxAssets, buildCxRepeatMessage, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, getCxEmbedToggle, getCxMessageGesture, getCxPinAction, overrideCxMethods, raiseCxAvatarResolution, type CxRepeatMessage } from "./cxNativeEffects";
@@ -71,6 +71,7 @@ const permissionLabels = {
     "servers.markread": "Mark unread server channels as read when you run the listed command",
     "channels.markonopen": "Mark the channel you open as read through its newest known message",
     "channels.jump": "Jump within the current channel when you choose the navigation control",
+    "channels.clipboard": "Copy the selected channel or category name when you choose its menu action",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
     "profilemenu.media": "Open or download the selected user's Discord avatar or banner when you choose a profile menu action.",
     "appearance.hide": "Hide the listed interface elements on this device",
@@ -350,6 +351,19 @@ export function parseCx(source: string): CxDocument {
         }
         if (line === "  before send suppressReplyPing" && !suppressReplyPing) {
             suppressReplyPing = true;
+            current = undefined;
+            continue;
+        }
+        const uploadFormat = /^  before upload anonymise format ("(?:[^"\\]|\\.)*") random (\d{1,2})(?: (lowercase|uppercase))?( manual)?$/.exec(line);
+        if (uploadFormat) {
+            if (uploadNaming) throw new Error("Use one upload naming rule");
+            const template = quoted(uploadFormat[1], 96);
+            if (!/^(?:[A-Za-z0-9_-]|\{(?:random|timestamp|original)\})+$/.test(template) || /^spoiler_/i.test(template))
+                throw new Error("Use letters, numbers, underscores, hyphens, or the {random}, {timestamp}, and {original} fields");
+            const length = Number(uploadFormat[2]);
+            if (length < 1 || length > 24) throw new Error("Use a random filename length from 1 to 24");
+            const casing = uploadFormat[3] === "lowercase" ? "lowercase" : uploadFormat[3] === "uppercase" ? "uppercase" : undefined;
+            uploadNaming = { mode: "format", template, length, casing, manual: Boolean(uploadFormat[4]) };
             current = undefined;
             continue;
         }

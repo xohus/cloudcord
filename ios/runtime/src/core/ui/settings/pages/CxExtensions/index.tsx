@@ -22,7 +22,7 @@ import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { getCxMessageGesture } from "@lib/api/cx";
-import { getCxProfileMedia } from "@lib/api/cx";
+import { getCxChannelNameCopy, getCxProfileMedia } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
@@ -898,6 +898,35 @@ function registerQuickMention(enabled: () => boolean) {
     });
 }
 
+function registerCopyChannelName(enabled: () => boolean) {
+    const sheet = findByProps("ActionSheet")?.ActionSheet;
+    const row = findByProps("ActionSheetRow")?.ActionSheetRow;
+    if (!sheet || !row?.Group) throw new Error("Discord's channel actions are unavailable");
+    let active = true;
+    const stop = registerRenderedTree("ChannelLongPressActionSheetConnected", (tree, props: {
+        channel?: Parameters<typeof getCxChannelNameCopy>[0]; onClose?: () => void;
+    }) => {
+        if (!props.channel) return tree;
+        const copy = getCxChannelNameCopy(props.channel, id => UserStore?.getUser?.(id)?.username);
+        if (!copy) return tree;
+        const ActionSheetRow = row;
+        return mapAppearanceElements(tree, element => element.type === sheet
+            ? React.cloneElement(element, { children: [
+                ...React.Children.toArray(element.props.children),
+                <ActionSheetRow.Group key="cx-copy-channel-name">
+                    <ActionSheetRow label={copy.label} onPress={() => {
+                        if (!active || !enabled()) return;
+                        props.onClose?.();
+                        clipboard.setString(copy.name);
+                        showToast.showCopyToClipboard?.();
+                    }} />
+                </ActionSheetRow.Group>,
+            ] })
+            : element);
+    });
+    return () => { active = false; stop(); };
+}
+
 function registerPinShortcut(enabled: () => boolean) {
     const pins = findByProps("pinMessage", "unpinMessage");
     const permissions = findByProps("Fonts", "Permissions")?.Permissions;
@@ -1757,6 +1786,8 @@ export default function CxExtensions() {
                             return registerMediaLinkCopy();
                         case "profile-media":
                             return registerProfileMedia();
+                        case "copy-channel-name":
+                            return registerCopyChannelName(enabled);
                         case "hide-suggested-channels": {
                             const suggested = findByFilePath("modules/favorites/native/FavoritesGuildSuggestedChannels.tsx")?.default;
                             if (!suggested) throw new Error("Discord's suggested channels section is unavailable");
