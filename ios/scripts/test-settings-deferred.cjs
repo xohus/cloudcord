@@ -94,15 +94,18 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         }
         assert.equal(nativeTable.CLOUDCORD.unsearchable, undefined, 'the actual CloudCord row remains searchable');
         // Actual Android 352 list props, cached before injection; frozen like
-        // a compiler-owned node. Navigation retains the original screen/list.
+        // a compiler-owned node. Both component references use the lightweight
+        // cached-list path, while recursive list/overview hooks stay disabled.
         const frozenNode = Object.freeze({ sections: Object.freeze([
             Object.freeze({ settings: Object.freeze(['ACCOUNT']) })
         ]) });
         const frozenProps = Object.freeze({ node: frozenNode });
         const direct = searchList.SearchableSettingsList(frozenProps);
-        assert.equal(direct.sections[1]?.label, 'CloudCord', 'direct Android list hook inserts into cached node');
+        assert.equal(direct.sections[1]?.label, 'CloudCord', 'direct cached-list hook inserts without mutating native data');
         const element = jsxCallbacks.get('SearchableSettingsList')(capturedSearchList, { type: capturedSearchList, props: frozenProps });
-        assert.equal(capturedSearchList(element.props).sections[1]?.label, 'CloudCord', 'captured list reference also gets rows through JSX');
+        assert.equal(capturedSearchList(element.props).sections[1]?.label, 'CloudCord', 'cached list gets rows through one JSX hook');
+        assert.equal(element.props.node.sections.filter(s => s.label === 'CloudCord').length, 1, 'JSX and component hooks do not duplicate sections');
+        assert.equal(searchList.SearchableSettingsList(element.props), element.props.node, 'already prepared list props are reused without cloning');
         assert.equal(frozenNode.sections.length, 1, 'native frozen node remains untouched');
         const nested = { node: { sections: [{ settings: ['PRIVACY'] }] } };
         assert.equal(searchList.SearchableSettingsList(nested), nested.node, 'subpages do not receive root settings');
@@ -110,15 +113,13 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
             const config = { sections: [{ settings: ['ACCOUNT'] }] };
             for (let repeat = 0; repeat < 3; repeat++) {
                 const result = list.createList(config);
-                assert.equal(result.sections.filter(s => s.label === 'CloudCord').length, 1, 'every list copy sees one section, without duplicates');
-                assert.equal(result.sections[1].settings[0], 'CLOUDCORD');
+                assert.equal(result.sections.filter(s => s.label === 'CloudCord').length, 0, '352 avoids redundant createList hooks');
             }
         }
         for (let render = 0; render < 3; render++) {
             const output = screenParent[screenKey]();
             const sections = output.props.node?.sections ?? output.props.sections;
-            assert.equal(sections[1]?.label, 'CloudCord', screenKind + ': cached native screen list gets CloudCord');
-            assert.equal(sections.filter(s => s.label === 'CloudCord').length, 1, 'cached screen never accumulates duplicate sections');
+            assert.equal(sections.filter(s => s.label === 'CloudCord').length, 0, screenKind + ': overview render is not recursively patched');
         }
         assert.throws(() => lateRecord.factory(), /native factory failure/, 'native errors must not be swallowed');
         cleanups.forEach(fn => fn());
