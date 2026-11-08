@@ -14,6 +14,7 @@ import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
 import { intercept } from "@lib/api/flux";
+import { mapChatBackgroundRenderer } from "@lib/addons/themes/colors/patches/background";
 import { applyTemporaryTheme, registerColorOverlay } from "@lib/addons/themes/colors/updater";
 import { NativeFileModule } from "@lib/api/native/modules";
 import { isThemeSupported } from "@lib/api/native/loader";
@@ -879,7 +880,7 @@ function registerTreeAppearance(rule: {
 function registerRenderedTree(target: string | object, change: (tree: ReactNode, props: object) => ReactNode) {
     const wrappers = new WeakMap<object, { type: ComponentType<object>; forwardsRef: boolean; }>();
     let active = true;
-    const stop = registerJsxAppearance([target], element => {
+    function wrapRenderer(element: JSX.Element) {
         if (typeof target !== "string" && element.type !== target) return element;
         const component = element.type as {
             $$typeof?: symbol;
@@ -905,7 +906,8 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
         const props = { ...element.props, key: element.key };
         if (wrapper.forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
         return React.createElement(wrapper.type, props);
-    });
+    }
+    const stop = registerJsxAppearance([target], element => mapChatBackgroundRenderer(element, wrapRenderer));
     return () => { active = false; stop(); };
 }
 

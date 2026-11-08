@@ -611,6 +611,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/cxCatalog": { cxCatalog },
             "@lib/api/commands": commandApi,
             "@lib/api/commands/types": commandApi,
+            "@lib/addons/themes/colors/patches/background": {
+                mapChatBackgroundRenderer: (element, map) => element.type === "ThemeBackground"
+                    ? jsx(element.type, { ...element.props, children: map(element.props.children) }) : map(element),
+            },
             "@lib/addons/themes/colors/updater": {
                 applyTemporaryTheme(value, mode) {
                     nativeTheme = value;
@@ -3393,8 +3397,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 onMessageAccessibilityAction: () => composerActions.push("accessibility reaction"),
             });
             const tree = jsx("Container", { children: native });
-            const wrapped = appearanceHooks.get(MessagesRenderer)(null, jsx(MessagesRenderer, { output: tree }));
-            const renderer = wrapped.type(wrapped.props);
+            const messageRenderer = jsx(MessagesRenderer, { output: tree });
+            const wallpaper = jsx("ThemeBackground", { direct: true, children: messageRenderer });
+            const wrapped = appearanceHooks.get(MessagesRenderer)(null, wallpaper);
+            const themed = wrapped.type(wrapped.props);
+            assert.equal(themed.type, wallpaper.type);
+            const renderer = themed.props.children;
             const props = renderer.type(renderer.props).props.children.props;
             const tap = id => props.onDoubleTapMessage({ nativeEvent: { messageId: id } });
             tap(me);

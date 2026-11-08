@@ -185,8 +185,8 @@ for (const route of rendererRoutes) {
     'react-native': {View: 'View', Image: 'Image', Platform: {OS: iosRoute ? 'ios' : 'android'},
       StyleSheet: {absoluteFillObject: {}, create: value => value, flatten: value => value}},
     'chroma-js': Object.assign(() => ({alpha: opacity => ({hex: () => String(opacity)})}), {valid: () => true})
-  }).default;
-  const undo = patch();
+  });
+  const undo = patch.default();
   const ref = {};
   const forwardedElement = jsx(renderer, {style: surface.props.style, channelId: '123', ref});
   const androidElement = jsx(androidMemo, surface.props);
@@ -220,6 +220,21 @@ for (const route of rendererRoutes) {
   const tinted = jsxRoute ? content.props.children : content.props.children.props.children[1];
   assert.equal(tinted.props.style[1].backgroundColor, '0.25');
   if (iosRoute) assert.equal(tinted.props.ref, ref);
+  let mapped = false;
+  const composed = patch.mapChatBackgroundRenderer(wrapped, renderer => {
+    assert.equal(renderer, original);
+    mapped = true;
+    return jsx(renderer.type, {...renderer.props, cxGesture: true});
+  });
+  assert.equal(mapped, jsxRoute);
+  if (jsxRoute) {
+    const renderedChild = render(composed)[1].props.children;
+    assert.equal(renderedChild.props.cxGesture, true);
+    assert.equal(renderedChild.props.style[1].backgroundColor, '0.25');
+    assert.equal(wrapped.props.children, original);
+  } else {
+    assert.equal(composed, wrapped);
+  }
   assert.equal(surface.props.style.backgroundColor, '#202020');
   assert.equal(render(wrapped)[0].props.children.props.source, image.props.children.props.source);
   wallpaperSettings.safeMode = {enabled: true};

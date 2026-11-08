@@ -80,6 +80,14 @@ function ThemeBackground({ children, direct }: { children: React.ReactNode; dire
     </View>;
 }
 
+export function mapChatBackgroundRenderer(element: JSX.Element, map: (renderer: JSX.Element) => JSX.Element) {
+    if (element.type !== ThemeBackground) return map(element);
+    const { children, direct } = element.props;
+    if (!direct || !React.isValidElement(children)) return element;
+    const renderer = map(children);
+    return renderer === children ? element : React.cloneElement(element, { children: renderer });
+}
+
 export default function patchChatBackground() {
     let active = true;
     let modernSeen = false;
