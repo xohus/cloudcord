@@ -513,6 +513,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const diagnosticCache = { 42: { exports: diagnosticExports } };
         const settings = {};
+        const validateJumpWithAlert = message => !message.blocked;
+        const jumpValidator = { default: validateJumpWithAlert };
         let profileUser;
         let expressionSelection;
         const expressionSheets = { MessageEmojiActionSheet: () => null, StickerDetailActionSheet: () => null,
@@ -707,6 +709,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "modules/messages/validateJumpWithAlert.tsx" ? jumpValidator
                 : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
                 : path.endsWith("/GuildsBarFooterWrapper.tsx") ? { default: GuildsBarFooterWrapper }
                 : path.endsWith("/UsersFastList.tsx") ? { UsersFastList }
@@ -2678,6 +2681,28 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(appearanceHooks.size, 0);
             assert.equal(stylesheet, undefined);
         }
+        {
+            const jumpPort = cxCatalog.plugins.find(entry => entry.name === "NoUnblockToJump").source;
+            const message = { blocked: true };
+            const canSkip = () => desktop
+                ? desktopPlugin.canJumpWithoutUnblocking()
+                : jumpValidator.default(message);
+            assert.equal(canSkip(), false);
+            assert.throws(() => activateCx(jumpPort, host, ["channels.jump"]), /approval/);
+            selectCatalog("NoUnblockToJump");
+            click(render(), "Allow for this session");
+            assert.equal(canSkip(), true);
+            if (!desktop) {
+                settings.safeMode = { enabled: true };
+                assert.equal(canSkip(), false);
+                settings.safeMode = undefined;
+                assert.equal(canSkip(), true);
+            }
+            click(render(), "Disable NoUnblockToJump");
+            assert.equal(canSkip(), false);
+            assert.equal(jumpValidator.default, validateJumpWithAlert);
+        }
+
         {
             const originalSelection = selectedChannel;
             const channel = { id: other, type: 0 };

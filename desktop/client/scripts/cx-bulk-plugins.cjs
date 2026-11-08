@@ -959,6 +959,12 @@ const desktopEffectRecipes = {
         effect: "jump-to-message-menu",
         sha256: "50002ef6e62591654d9fca64bf4c61c7a99a8fb76e7b82a3b202dfce8c625d5a",
     },
+    NoUnblockToJump: {
+        effect: "jump-without-unblocking",
+        find: "#{intl::UNIGNORE_TO_JUMP_BODY}",
+        match: String.raw`/if\(\i\.\i\.isBlockedForMessage\(/`,
+        replace: "return true;$&",
+    },
     JumpToTop: {
         effect: "jump-to-first-message",
         sha256: "1efa186c89308932bfcc2ff26835e79394b2a0223d9857a10c5d8b10fba7b85f",

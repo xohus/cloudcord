@@ -84,6 +84,7 @@ const permissionLabels = {
     "servers.markread": "Mark unread server channels as read when you run the listed command",
     "channels.markonopen": "Mark the channel you open as read through its newest known message",
     "channels.searchjump": "Look up the first or last matching Discord message in the selected channel when you choose a jump action",
+    "messages.jumpblocked": "Jump to messages without changing your block or ignore list",
     "channels.jump": "Jump within the current channel when you choose the navigation control",
     "channels.clipboard": "Copy the selected channel or category name when you choose its menu action",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",

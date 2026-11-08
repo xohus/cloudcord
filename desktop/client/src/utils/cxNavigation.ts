@@ -2,7 +2,7 @@
 
 import { isCxProfileUserId } from "./cxProfileMenu";
 
-type NavigationControl = "jump-to-first-message" | "read-all-servers-button";
+type NavigationControl = "jump-without-unblocking" | "jump-to-first-message" | "read-all-servers-button";
 
 export function createCxNavigationControls() {
     const active = new Map<NavigationControl, { count: number; stop?: () => void; }>();

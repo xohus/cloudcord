@@ -143,6 +143,7 @@ import plugin_catalog_no_reply_ping from "../../../../examples/cx/catalog/plugin
 import plugin_catalog_no_role_headers from "../../../../examples/cx/catalog/plugins/no-role-headers.cx";
 import plugin_catalog_no_server_emojis from "../../../../examples/cx/catalog/plugins/no-server-emojis.cx";
 import plugin_catalog_no_typing_animation from "../../../../examples/cx/catalog/plugins/no-typing-animation.cx";
+import plugin_catalog_no_unblock_to_jump from "../../../../examples/cx/catalog/plugins/no-unblock-to-jump.cx";
 import plugin_catalog_normalize_message_links from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
 import plugin_catalog_open_steam_links_in_app from "../../../../examples/cx/catalog/plugins/open-steam-links-in-app.cx";
 import plugin_catalog_ping_notifications from "../../../../examples/cx/catalog/plugins/ping-notifications.cx";
@@ -440,6 +441,7 @@ export const cxCatalog = {
         { name: "NoRoleHeaders", source: plugin_catalog_no_role_headers },
         { name: "NoServerEmojis", source: plugin_catalog_no_server_emojis },
         { name: "NoTypingAnimation", source: plugin_catalog_no_typing_animation },
+        { name: "NoUnblockToJump", source: plugin_catalog_no_unblock_to_jump },
         { name: "NormalizeMessageLinks", source: plugin_catalog_normalize_message_links },
         { name: "OpenSteamLinksInApp", source: plugin_catalog_open_steam_links_in_app },
         { name: "PingNotifications", source: plugin_catalog_ping_notifications },

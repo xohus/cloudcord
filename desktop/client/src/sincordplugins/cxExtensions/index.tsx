@@ -759,6 +759,7 @@ export function CxSettings() {
                             return callClock.bind(SelectedChannelStore, FluxDispatcher);
                         case "jump-to-message-menu":
                             return registerJumpToMessageMenu();
+                        case "jump-without-unblocking":
                         case "jump-to-first-message":
                             return navigationControls.register(effect);
                         case "read-all-servers-button":
@@ -1241,6 +1242,13 @@ export default definePlugin({
             },
         ],
     }, {
+        find: "#{intl::UNIGNORE_TO_JUMP_BODY}",
+        predicate: () => !Settings.plugins.NoUnblockToJump?.enabled,
+        replacement: {
+            match: /if\(\i\.\i\.isBlockedForMessage\(/,
+            replace: "if($self.canJumpWithoutUnblocking())return true;$&",
+        },
+    }, {
         find: "Missing channel in Channel.renderHeaderToolbar",
         replacement: {
             match: /(?<=renderHeaderToolbar"\);let (\i)=\[\];)/,
@@ -1389,6 +1397,7 @@ export default definePlugin({
     renderCallTime(channelId?: string) {
         return <CallTime channelId={channelId} />;
     },
+    canJumpWithoutUnblocking() { return navigationControls.has("jump-without-unblocking"); },
     renderJumpToFirst(channel: CxNavigationChannel | undefined) {
         if (!navigationControls.has("jump-to-first-message")) return null;
         const target = getCxFirstMessageTarget(channel);

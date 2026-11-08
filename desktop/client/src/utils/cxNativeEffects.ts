@@ -43,6 +43,7 @@ export const cxNativeEffects = {
     "wait-for-slot": { permission: "voice.waitslot", label: "Queue for a full voice channel and respond when a slot opens" },
     "all-call-time-counter": { permission: "voice.membertime", label: "Show elapsed call time next to members in server voice channels" },
     "call-time-counter": { permission: "voice.calltime", label: "Show the elapsed time in your current call" },
+    "jump-without-unblocking": { permission: "messages.jumpblocked", label: "Skip the blocked, ignored, or spam author prompt when jumping to a message" },
     "jump-to-message-menu": { permission: "channels.searchjump", label: "Jump to the first or last message from channel and message menus" },
     "jump-to-first-message": { permission: "channels.jump", label: "Add a channel header button to jump to the first message" },
     "read-all-servers-button": { permission: "servers.markread", label: "Add a server list button to mark loaded server channels as read" },

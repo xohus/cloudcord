@@ -1,0 +1,3 @@
+plugin "NoUnblockToJump":
+  needs messages.jumpblocked
+  use jump-without-unblocking

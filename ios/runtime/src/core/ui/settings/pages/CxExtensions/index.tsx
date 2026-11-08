@@ -2089,6 +2089,12 @@ export default function CxExtensions() {
                             return registerCallTimeCounter();
                         case "jump-to-message-menu":
                             return registerJumpToMessageMenu(enabled);
+                        case "jump-without-unblocking":
+                            return navigationControls.register(effect, () => overrideCxMethods(
+                                findByFilePath("modules/messages/validateJumpWithAlert.tsx"),
+                                { default: () => true },
+                                enabled
+                            ));
                         case "jump-to-first-message":
                             return navigationControls.register(effect, () => registerJumpToFirst(enabled));
                         case "read-all-servers-button":
