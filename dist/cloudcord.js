@@ -38503,6 +38503,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/api/cxNativeEffects.ts
+  function getCxSpotifySongName(activity) {
+    if (activity?.type === 2 && activity.name === "Spotify" && typeof activity.details === "string" && activity.details.trim()) {
+      return activity.details;
+    }
+  }
   function sortCxReactions(reactions) {
     return reactions.length < 2 ? reactions : [
       ...reactions
@@ -38783,6 +38788,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "code-block-gap": {
           permission: "appearance.style",
           label: "Remove the extra blank line after fenced code blocks"
+        },
+        "force-owner-crown": {
+          permission: "appearance.style",
+          label: "Show the server owner\u2019s native crown in the member list"
+        },
+        "spotify-song-name": {
+          permission: "appearance.style",
+          label: "Show the song title in Spotify activity status"
         },
         "sort-reactions-by-count": {
           permission: "appearance.style",
@@ -46306,6 +46319,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/force-owner-crown.cx
+  var force_owner_crown_default;
+  var init_force_owner_crown = __esm({
+    "../examples/cx/catalog/plugins/force-owner-crown.cx"() {
+      force_owner_crown_default = 'plugin "ForceOwnerCrown":\n  needs appearance.style\n  use force-owner-crown\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/foreign-copy-handler.cx
   var foreign_copy_handler_default;
   var init_foreign_copy_handler = __esm({
@@ -47403,6 +47424,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_ship_calc = __esm({
     "../examples/cx/catalog/plugins/ship-calc.cx"() {
       ship_calc_default = 'plugin "ShipCalc":\n  needs commands.register\n  needs messages.send\n  on command "ship":\n    input "a" text\n    input "b" text\n    send "${ship(a, b)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/show-song-name.cx
+  var show_song_name_default;
+  var init_show_song_name = __esm({
+    "../examples/cx/catalog/plugins/show-song-name.cx"() {
+      show_song_name_default = 'plugin "ShowSongName":\n  needs appearance.style\n  use spotify-song-name\n';
     }
   });
 
@@ -48539,6 +48568,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_fix_images_quality();
       init_floating_chat_bar();
       init_follow_voice_user();
+      init_force_owner_crown();
       init_foreign_copy_handler();
       init_friend_invites();
       init_gamzee_s_typing_quirk();
@@ -48655,6 +48685,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_sed_enhanced();
       init_send_timestamps();
       init_ship_calc();
+      init_show_song_name();
       init_signature();
       init_silence_users();
       init_silent_message_toggle();
@@ -48997,6 +49028,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "FollowVoiceUser",
             source: follow_voice_user_default
+          },
+          {
+            name: "ForceOwnerCrown",
+            source: force_owner_crown_default
           },
           {
             name: "foreignCopyHandler",
@@ -49461,6 +49496,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ShipCalc",
             source: ship_calc_default
+          },
+          {
+            name: "ShowSongName",
+            source: show_song_name_default
           },
           {
             name: "Signature",
@@ -52973,23 +53012,51 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 var cache = /* @__PURE__ */ new WeakMap();
                 return overrideCxMethods(parser1, {
                   parseMessageMarkup(args, invoke) {
-                    var row = invoke(args);
-                    if (!Array.isArray(row?.content) || row.isInlineReplyPreview || row.hasBailedAst)
-                      return row;
-                    if (cache.has(row))
-                      return cache.get(row);
-                    var content = compactCodeBlocks2(row.content);
-                    var result = content === row.content ? row : {
-                      ...row,
+                    var row2 = invoke(args);
+                    if (!Array.isArray(row2?.content) || row2.isInlineReplyPreview || row2.hasBailedAst)
+                      return row2;
+                    if (cache.has(row2))
+                      return cache.get(row2);
+                    var content = compactCodeBlocks2(row2.content);
+                    var result = content === row2.content ? row2 : {
+                      ...row2,
                       content
                     };
-                    cache.set(row, result);
+                    cache.set(row2, result);
                     return result;
                   }
                 }, enabled);
               }
               case "quick-mention":
                 return registerQuickMention(enabled);
+              case "force-owner-crown": {
+                var row = findByFilePath("modules/main_tabs_v2/native/shared_components/user_list/UserRow.tsx")?.default;
+                if (!row)
+                  throw new Error("Discord\u2019s member row is unavailable");
+                return registerJsxAppearance([
+                  row
+                ], (element) => {
+                  var { guildId, user, isOwner } = element.props;
+                  if (isOwner || !isCxProfileUserId(guildId) || !isCxProfileUserId(user?.id) || GuildStore?.getGuild?.(guildId)?.ownerId !== user.id)
+                    return element;
+                  return React2.cloneElement(element, {
+                    isOwner: true
+                  });
+                });
+              }
+              case "spotify-song-name":
+                return overrideCxMethods(findByFilePath("modules/activity_status/getActivityStatusText.tsx"), {
+                  default(args, invoke) {
+                    var result = invoke(args);
+                    var activity = args[0];
+                    var title = args[1] === true && getCxSpotifySongName(activity);
+                    var artist = typeof activity?.state === "string" && activity.state.split("; ").join(", ");
+                    return title && artist && result && typeof result === "object" && "text" in result && result.text === artist ? {
+                      ...result,
+                      text: title
+                    } : result;
+                  }
+                }, enabled);
               case "sort-reactions-by-count":
                 return overrideCxMethods(findByFilePath("modules/messages/native/renderer/transformReactions.tsx"), {
                   default(args, invoke) {
@@ -54662,7 +54729,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "82df39abc1350462c2abc4320b340f5369a197e3";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "35dfcb301b536ecaa739b9c0ee3a7e180290c341";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
