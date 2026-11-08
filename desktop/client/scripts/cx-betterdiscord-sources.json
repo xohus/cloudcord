@@ -178,5 +178,13 @@
         "recipe": "native-effect",
         "effect": "user-notes",
         "basis": "independent behavior implementation"
+    },
+    "5e72c5bf4c66d0e520966d38725eb84278e315eb0fef4db99fdede615f38109e": {
+        "name": "UserTags",
+        "author": "Nyx",
+        "source": "https://github.com/SrS2225a/BetterDiscord/blob/415a84b535ae33f5ac706f647cc54a90bd2db24f/plugins/UserTags/UserTags.plugin.js",
+        "recipe": "native-effect",
+        "effect": "user-tags",
+        "basis": "independent behavior implementation"
     }
 }

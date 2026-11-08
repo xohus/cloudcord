@@ -1,0 +1,8 @@
+plugin "UserTags":
+  needs profile.localtags
+  needs commands.register
+  needs reply.local
+  use user-tags
+  on command "find-user-tags":
+    input "query" text
+    find users tagged "query"

@@ -121,6 +121,7 @@ const permissionLabels = {
     "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
     "lookup.translate": "Send the text and language you enter to Google Translate when you run the translate command",
     "profile.localnotes": "Read and edit your private user notes stored on this device",
+    "profile.localtags": "Read and edit private tags assigned to users on this device",
     "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command",
 };
 
@@ -152,6 +153,7 @@ type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteA
     | { kind: "copy-diagnostics"; }
     | { kind: "schedule-message"; text: string; minutes: string; }
     | { kind: "translate"; text: string; target: string; }
+    | { kind: "find-user-tags"; input: string; }
     | { kind: "upload-spoilers"; input: string; }
     | { kind: "lookup"; service: CxExternalLookup; input: string; };
 const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
@@ -165,6 +167,7 @@ const getActionPermissions = (action: Action): CxPermission[] => action.kind ===
     ? ["reply.local", `friends.invites.${action.operation}`]
     : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission]
         : action.kind === "translate" ? ["reply.local", "lookup.translate", "messages.send"]
+            : action.kind === "find-user-tags" ? ["reply.local", "profile.localtags"]
         : action.kind === "copy-diagnostics" ? ["reply.local", "diagnostics.copy"]
             : action.kind === "schedule-message" ? ["reply.local", "messages.schedule"]
             : action.kind === "upload-spoilers" ? ["reply.local", "uploads.rename"] : actionPermissions[action.kind];
@@ -572,6 +575,13 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const tagged = /^    find users tagged "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
+        if (tagged && nativeEffects.has("user-tags") && current && !current.actions.length && !current.text && current.inputs.length === 1
+            && current.inputs[0].name === tagged[1] && current.inputs[0].type === "text" && current.inputs[0].required) {
+            current.actions.push({ kind: "find-user-tags", input: tagged[1] });
+            current = undefined;
+            continue;
+        }
         const spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
         if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1
             && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
@@ -727,6 +737,7 @@ type Invocation = {
     markServersRead?: () => string;
     friendInvites?: (operation: CxFriendInviteAction) => Promise<string>;
     copyDiagnostics?: () => Promise<string>;
+    findUserTags?: (query: string) => Promise<string | undefined>;
     prepareChannel?: () => { reply: (message: string) => void; send: (message: string) => Promise<void>; } | undefined;
 };
 type CxHost = {
@@ -972,6 +983,17 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
                             clearTimeout(timer);
                             activeLookups.delete("translate");
                         });
+                        continue;
+                    }
+                    if (action.kind === "find-user-tags") {
+                        const channel = invocation?.prepareChannel?.();
+                        const search = invocation?.findUserTags;
+                        if (channel && search) {
+                            void search(inputs.get(action.input)!).then(
+                                result => { if (active && result) channel.reply(result); },
+                                () => { if (active) channel.reply("Couldn’t search local user tags."); },
+                            );
+                        }
                         continue;
                     }
                     if (action.kind === "lookup") {

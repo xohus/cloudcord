@@ -1727,7 +1727,7 @@ function registerReducedMotion() {
 
 type ProfileMenuItem = { label: string; action: () => void; };
 type ProfileMenuEntry = {
-    key: CxProfileMenuAction | "profile-media" | "user-notes";
+    key: CxProfileMenuAction | "profile-media" | "user-notes" | "user-tags";
     getItems: (id: string, guildId?: string) => ProfileMenuItem[];
 };
 const profileMenuActions = new Set<ProfileMenuEntry>();
@@ -1799,27 +1799,32 @@ function registerProfileMenuAction(action: CxProfileMenuAction) {
 }
 
 let clearLocalUserNotes: (() => void) | undefined;
+let findLocalUserTags: ((query: string) => Promise<string | undefined>) | undefined;
 let localUserNotesStorage: Promise<Record<string, Record<string, string>>> | undefined;
 
-function registerUserNotes() {
-    if (clearLocalUserNotes) throw new Error("Local user notes are already enabled");
+function registerLocalUserText(kind: "notes" | "tags") {
+    const tags = kind === "tags";
+    const label = tags ? "Local User Tags" : "Local User Note";
+    if (tags ? findLocalUserTags : clearLocalUserNotes) throw new Error(label + " is already enabled");
     const { AlertModal, AlertActions, AlertActionButton } = findByProps("AlertModal", "AlertActions") ?? {};
     if (!AlertModal || !AlertActions || !AlertActionButton) throw new Error("Discord's note editor is unavailable");
     const getStorage = () => localUserNotesStorage ??= createStorageAsync<Record<string, Record<string, string>>>("plugins/storage/cloudcord.cx-user-notes.json");
-    const notes = createCxUserNotes(() => UserStore.getCurrentUser()?.id, async account => (await getStorage())[account],
+    const key = (account: string) => tags ? "tags:" + account : account;
+    const notes = createCxUserNotes(() => UserStore.getCurrentUser()?.id, async account => (await getStorage())[key(account)],
         async (account, mutate) => {
             const storage = await getStorage();
-            storage[account] = mutate(storage[account]);
-        }, () => !settings.safeMode?.enabled);
-    const failed = () => showToast("Couldn’t update local user notes.");
-    const alertKey = "cloudcord-cx-user-note";
+            storage[key(account)] = mutate(storage[key(account)]);
+        }, () => !settings.safeMode?.enabled, kind);
+    const failed = (error: unknown) => showToast(error instanceof Error ? error.message : "Couldn’t update " + label.toLowerCase() + ".");
+    const alertKey = tags ? "cloudcord-cx-user-tags" : "cloudcord-cx-user-note";
     const stopMenu = registerProfileMenuEntry({
-        key: "user-notes",
-        getItems: id => [{ label: "Local User Note", action: () => {
+        key: tags ? "user-tags" : "user-notes",
+        getItems: id => [{ label, action: () => {
             void notes.open(id, (initial, save) => {
                 let draft = initial;
-                openAlert(alertKey, <AlertModal title="Local User Note"
-                    extraContent={<TextInput accessibilityLabel="Private note" defaultValue={initial} multiline maxLength={CX_USER_NOTE_LIMIT}
+                openAlert(alertKey, <AlertModal title={label}
+                    extraContent={<TextInput accessibilityLabel={tags ? "Private tags" : "Private note"} defaultValue={initial} multiline maxLength={CX_USER_NOTE_LIMIT}
+                        placeholder={tags ? "One tag per line" : undefined}
                         style={{ minHeight: 100, padding: 10, color: resolveSemanticColor(semanticColors.TEXT_DEFAULT) }}
                         onChangeText={value => { draft = value; }} />}
                     actions={<AlertActions>
@@ -1831,7 +1836,8 @@ function registerUserNotes() {
             }).catch(failed);
         } }],
     });
-    clearLocalUserNotes = () => {
+    if (tags) findLocalUserTags = notes.search;
+    else clearLocalUserNotes = () => {
         void notes.clear(() => new Promise<boolean>(resolve => Alert.alert(
             "Clear local user notes?", "This removes every local note for this account on this device.",
             [{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
@@ -1841,7 +1847,8 @@ function registerUserNotes() {
     };
     return () => {
         notes.stop();
-        clearLocalUserNotes = undefined;
+        if (tags) findLocalUserTags = undefined;
+        else clearLocalUserNotes = undefined;
         stopMenu();
     };
 }
@@ -2267,7 +2274,9 @@ export default function CxExtensions() {
                         case "profile-media":
                             return registerProfileMedia();
                         case "user-notes":
-                            return registerUserNotes();
+                            return registerLocalUserText("notes");
+                        case "user-tags":
+                            return registerLocalUserText("tags");
                         case "copy-channel-name":
                             return registerCopyChannelName(enabled);
                         case "hide-suggested-channels": {
@@ -2609,6 +2618,7 @@ export default function CxExtensions() {
                                 },
                                 markServersRead: () => markCxServersRead(getReadStores(), acknowledgeServers),
                                 friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
+                                findUserTags: findLocalUserTags,
                                 copyDiagnostics: async () => describeCcpReport(await copyCcpReport()),
                             });
                             if (outgoing !== undefined) return { content: outgoing };

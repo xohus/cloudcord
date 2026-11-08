@@ -675,7 +675,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
             "@webpack/common": {
                 Alerts: { confirm: () => new Promise(resolve => { confirmNotes = resolve; }), show(props) {
-                    if (props.title === "Local User Note") { noteAlert = props; return; }
+                    if (props.title === "Local User Note" || props.title === "Local User Tags") { noteAlert = props; return; }
                     const target = props.title === "Confirm message" ? nativeConfirmations : queuePrompts;
                     target.push({ props, resolve: value => value ? props.onConfirm() : props.onCancel() });
                 } },
@@ -1790,11 +1790,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.throws(() => activateCx(port, host, ["profilemenu.copy"]), /approval/);
             selectCatalog("UserNotes");
             click(render(), "Allow for this session");
-            const openNote = async (id, expected) => {
+            const openNote = async (id, expected, label = "Local User Note") => {
                 noteAlert = undefined;
-                const actions = actionList(id);
-                assert.deepEqual(Array.from(actions, item => item.label), ["Local User Note"]);
-                actions[0].action();
+                const action = actionList(id).find(item => item.label === label);
+                assert.ok(action);
+                action.action();
                 await new Promise(setImmediate);
                 const input = desktop ? noteAlert.body.props : noteAlert.extraContent.props;
                 assert.equal(input.defaultValue, expected);
@@ -1829,6 +1829,28 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             confirmNotes(true);
             await new Promise(setImmediate);
             await openNote(sender, "");
+            const tagPort = cxCatalog.plugins.find(entry => entry.name === "UserTags").source;
+            assert.throws(() => activateCx(tagPort, host, ["profile.localnotes", "commands.register", "reply.local"]), /approval/);
+            selectCatalog("UserTags");
+            click(render(), "Allow for this session");
+            assert.deepEqual(Array.from(actionList(sender), item => item.label), ["Local User Note", "Local User Tags"]);
+            const tags = "Local User Tags";
+            await saveNote(await openNote(sender, "", tags), "Friends\nRaids");
+            await saveNote(await openNote(other, "", tags), "Muted");
+            await openNote(sender, "");
+            const findTags = async query => {
+                assert.equal(registered["find-user-tags"].execute([{ name: "query", value: query }], { channel: { id: "tag-search" } }), undefined);
+                await new Promise(setImmediate);
+                return delivered.pop()[1];
+            };
+            assert.equal(await findTags("&FRIEN"), "Matching users\n<@" + sender + ">");
+            assert.equal(await findTags("!muted"), "Matching users\n<@" + sender + ">");
+            assert.equal(await findTags("raids muted"), "Matching users\n<@" + sender + ">\n<@" + other + ">");
+            activeAccount = other;
+            assert.equal(await findTags("friends"), "No tagged users match.");
+            activeAccount = me;
+            click(render(), "Disable UserTags");
+            assert.equal(registered["find-user-tags"], undefined);
             click(render(), "Disable UserNotes");
             assert.equal(menuPatches.size + appearanceHooks.size, 0);
         }

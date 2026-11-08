@@ -153,23 +153,28 @@ function registerCopyChannelName() {
 }
 
 let clearLocalUserNotes: (() => void) | undefined;
+let findLocalUserTags: ((query: string) => Promise<string | undefined>) | undefined;
 
-function registerUserNotes() {
-    if (clearLocalUserNotes) throw new Error("Local user notes are already enabled");
-    const key = (account: string) => "CloudCord.CX.UserNotes." + account;
+function registerLocalUserText(kind: "notes" | "tags") {
+    const tags = kind === "tags";
+    const label = tags ? "Local User Tags" : "Local User Note";
+    const itemId = tags ? "cx-user-tags" : "cx-user-note";
+    if (tags ? findLocalUserTags : clearLocalUserNotes) throw new Error(label + " is already enabled");
+    const key = (account: string) => (tags ? "CloudCord.CX.UserTags." : "CloudCord.CX.UserNotes.") + account;
     const notes = createCxUserNotes(() => UserStore.getCurrentUser()?.id,
-        account => DataStore.get(key(account)), (account, mutate) => DataStore.update(key(account), mutate));
-    const failed = () => showToast("Couldn’t update local user notes.");
+        account => DataStore.get(key(account)), (account, mutate) => DataStore.update(key(account), mutate), undefined, kind);
+    const failed = (error: unknown) => showToast(error instanceof Error ? error.message : "Couldn’t update " + label.toLowerCase() + ".");
     const menus = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
     const patch: NavContextMenuPatchCallback = (children, props) => {
         const id = props?.user?.id ?? props?.userId;
-        if (!isCxProfileUserId(id) || children.some(child => child?.props?.id === "cx-user-note")) return;
-        children.push(<Menu.MenuItem id="cx-user-note" label="Local User Note" action={() => {
+        if (!isCxProfileUserId(id) || children.some(child => child?.props?.id === itemId)) return;
+        children.push(<Menu.MenuItem id={itemId} label={label} action={() => {
             void notes.open(id, (initial, save) => {
                 let draft = initial;
                 Alerts.show({
-                    title: "Local User Note",
-                    body: <textarea aria-label="Private note" defaultValue={initial} maxLength={CX_USER_NOTE_LIMIT}
+                    title: label,
+                    body: <textarea aria-label={tags ? "Private tags" : "Private note"} defaultValue={initial} maxLength={CX_USER_NOTE_LIMIT}
+                        placeholder={tags ? "One tag per line" : undefined}
                         rows={5} style={{ width: "100%", boxSizing: "border-box" }}
                         onChange={event => { draft = event.currentTarget.value; }} />,
                     cancelText: "Cancel", confirmText: "Save", onConfirm: () => { void save(draft).catch(failed); },
@@ -178,7 +183,8 @@ function registerUserNotes() {
         }} />);
     };
     addContextMenuPatch(menus, patch);
-    clearLocalUserNotes = () => {
+    if (tags) findLocalUserTags = notes.search;
+    else clearLocalUserNotes = () => {
         void notes.clear(() => Alerts.confirm({
             title: "Clear local user notes?", body: "This removes every local note for this account on this device.",
             cancelText: "Cancel",
@@ -186,7 +192,8 @@ function registerUserNotes() {
     };
     return () => {
         notes.stop();
-        clearLocalUserNotes = undefined;
+        if (tags) findLocalUserTags = undefined;
+        else clearLocalUserNotes = undefined;
         removeContextMenuPatch(menus, patch);
     };
 }
@@ -862,7 +869,9 @@ export function CxSettings() {
                         case "profile-media":
                             return registerProfileMedia();
                         case "user-notes":
-                            return registerUserNotes();
+                            return registerLocalUserText("notes");
+                        case "user-tags":
+                            return registerLocalUserText("tags");
                         case "copy-channel-name":
                             return registerCopyChannelName();
                         case "hide-suggested-channels":
@@ -1101,6 +1110,7 @@ export function CxSettings() {
                                         : formatCxRoleMembers(input, guild, members, id => UserStore?.getUser(id));
                                 },
                                 friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
+                                findUserTags: findLocalUserTags,
                                 async copyDiagnostics() {
                                     const report = inspectCcpRuntime("desktop", findStore, wreq?.c);
                                     await copyToClipboard(JSON.stringify(report));

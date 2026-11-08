@@ -453,7 +453,10 @@ function inspectBetterDiscord(file, code, appearance, nativeEffects) {
         return { ...record, review: { ...review, sha256 }, capability: "native-effect",
             cx: ["plugin " + JSON.stringify(name) + ":", "  needs " + nativeEffects[review.effect].permission,
                 ...(review.defaultHide ? ["  needs appearance.hide", "  option hide " + review.defaultHide + " default-on"] : []),
-                "  use " + review.effect, ""].join("\n") };
+                ...(review.effect === "user-tags" ? ["  needs commands.register", "  needs reply.local"] : []),
+                "  use " + review.effect,
+                ...(review.effect === "user-tags" ? ['  on command "find-user-tags":', '    input "query" text', '    find users tagged "query"'] : []),
+                ""].join("\n") };
     }
     if (review?.name === name && review.recipe === "send-confirmation" && !source.parseDiagnostics.length) {
         const keyword = 'lipton green tea citrus';
