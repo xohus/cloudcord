@@ -806,7 +806,8 @@ function registerTreeAppearance(rule: {
 
 function registerRenderedTree(target: string | object, change: (tree: ReactNode, props: object) => ReactNode) {
     const wrappers = new WeakMap<object, { type: ComponentType<object>; forwardsRef: boolean; }>();
-    return registerJsxAppearance([target], element => {
+    let active = true;
+    const stop = registerJsxAppearance([target], element => {
         if (typeof target !== "string" && element.type !== target) return element;
         const component = element.type as {
             $$typeof?: symbol;
@@ -823,7 +824,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
             const render = nativeRender;
             function FilteredTree(props: object, ref?: unknown) {
                 const tree = render(props, ref) as ReactNode;
-                return settings.safeMode?.enabled ? tree : change(tree, props);
+                return !active || settings.safeMode?.enabled ? tree : change(tree, props);
             }
             const filtered = forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree;
             wrapper = { type: memoized ? React.memo(filtered, component.compare) : filtered, forwardsRef };
@@ -833,6 +834,7 @@ function registerRenderedTree(target: string | object, change: (tree: ReactNode,
         if (wrapper.forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
         return React.createElement(wrapper.type, props);
     });
+    return () => { active = false; stop(); };
 }
 
 type CxMobileMessageMenu = {
@@ -1263,7 +1265,8 @@ function registerRenderedChannelStyle(rule: {
     renderedComponents: readonly string[]; condition: "muted" | "inactive"; values: { opacity: number; };
 }) {
     const wrappers = new WeakMap<object, ComponentType<{ originalProps: object; }>>();
-    return registerJsxAppearance(rule.renderedComponents, element => {
+    let active = true;
+    const stop = registerJsxAppearance(rule.renderedComponents, element => {
         const { muted, unread } = element.props;
         if (typeof muted !== "boolean" || typeof unread !== "boolean"
             || !(muted || rule.condition === "inactive" && !unread)) return element;
@@ -1275,7 +1278,7 @@ function registerRenderedChannelStyle(rule: {
         if (!wrapper) {
             wrapper = function StyledChannel({ originalProps }) {
                 const output = render(originalProps) as ReactNode;
-                if (settings.safeMode?.enabled || !React.isValidElement<{ style?: unknown; }>(output)) return output;
+                if (!active || settings.safeMode?.enabled || !React.isValidElement<{ style?: unknown; }>(output)) return output;
                 if (!("style" in output.props)) return output;
                 return React.cloneElement(output, { style: [output.props.style, rule.values] });
             };
@@ -1283,6 +1286,7 @@ function registerRenderedChannelStyle(rule: {
         }
         return React.createElement(wrapper, { originalProps: element.props, key: element.key });
     });
+    return () => { active = false; stop(); };
 }
 
 let reducedMotionAppearance: { users: number; restore: () => void; } | undefined;

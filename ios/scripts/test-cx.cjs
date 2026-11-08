@@ -1108,10 +1108,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     const quietStyle = renderHook(quiet);
                     if (rule.style.condition === "inactive") assert.equal(quietStyle.type(quietStyle.props).props.style[1], rule.style.values);
                     else assert.equal(quietStyle, quiet);
-                    enabled.push([hook(null, muted), muted]);
+                    enabled.push([hook(null, muted), muted, mutedStyle]);
                 }
                 click(render(), "Disable " + rule.plugin);
-                for (const [wrapped, original] of enabled) assert.equal(wrapped.type(wrapped.props), original);
+                for (const [wrapped, original, styled] of enabled) {
+                    assert.equal(wrapped.type(wrapped.props), original);
+                    assert.equal(styled.type(styled.props).props.style, baseStyle);
+                }
                 assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.style?.serverIconScale) {
@@ -1252,6 +1255,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(appearanceHooks.size, 0);
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
+                assert.equal(patched.type.type(input), input);
                 continue;
             } else if (rule.mobile.expressionPickerTab) {
                 const gif = rule.mobile.expressionPickerTab === "gif";
