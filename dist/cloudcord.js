@@ -38908,6 +38908,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "messages.insertmention",
           label: "Insert the selected message author's mention into the current draft"
         },
+        "keep-long-drafts": {
+          permission: "drafts.long",
+          label: "Preserve long drafts in Discord\u2019s local draft store"
+        },
         "bypass-pin-prompt": {
           permission: "messages.pin",
           label: "Use Discord\u2019s Pin and Unpin actions without a confirmation prompt"
@@ -45581,6 +45585,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.openeditor": "Open Discord\u2019s editor for your own message when you double-click or double-tap it",
         "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user\u2019s message",
         "messages.insertmention": "Insert a mention into your current draft when you choose Quick Mention",
+        "drafts.long": "Keep the full text of your local drafts",
         "messages.pin": "Pin or unpin a message immediately when you choose a pin action.",
         "messages.toggleembeds": "Change embed visibility on the selected message when you choose its menu action.",
         "messages.repeat": "Send a copy of the selected message when you choose Repeat or Repeat and Reply. Mentions are suppressed.",
@@ -47145,6 +47150,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-draft-length-limit.cx
+  var no_draft_length_limit_default;
+  var init_no_draft_length_limit = __esm({
+    "../examples/cx/catalog/plugins/no-draft-length-limit.cx"() {
+      no_draft_length_limit_default = 'plugin "NoDraftLengthLimit":\n  needs drafts.long\n  use keep-long-drafts\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-mosaic.cx
   var no_mosaic_default;
   var init_no_mosaic = __esm({
@@ -48610,6 +48623,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_no_animations();
       init_no_blocked_messages();
       init_no_confirm_pin();
+      init_no_draft_length_limit();
       init_no_mosaic();
       init_no_pending_count();
       init_no_profile_themes();
@@ -49319,6 +49333,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "NoConfirmPin",
             source: no_confirm_pin_default
+          },
+          {
+            name: "NoDraftLengthLimit",
+            source: no_draft_length_limit_default
           },
           {
             name: "NoMosaic",
@@ -51569,6 +51587,37 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       stop();
     };
   }
+  function registerLongDrafts(enabled) {
+    var store = findByStoreName("DraftStore");
+    var premiumLimit = findByProps("MAX_MESSAGE_LENGTH_PREMIUM")?.MAX_MESSAGE_LENGTH_PREMIUM;
+    var limit = typeof premiumLimit === "number" ? premiumLimit + 500 : 4500;
+    if (typeof store?.getState !== "function")
+      throw new Error("Discord\u2019s draft store is unavailable");
+    return overrideCxMethods(FluxDispatcher?._actionHandlers, {
+      getOrderedActionHandlers(args, invoke) {
+        var handlers = invoke(args);
+        var payload = args[0];
+        if (payload?.type !== "DRAFT_CHANGE" && payload?.type !== "DRAFT_SAVE" || !Array.isArray(handlers))
+          return handlers;
+        var { channelId, draft, draftType } = payload;
+        if (typeof draft !== "string" || draft.length <= limit || !isCxProfileUserId(channelId) || typeof draftType !== "number" || !Number.isSafeInteger(draftType) || draftType < 0)
+          return handlers;
+        return handlers.map((handler) => handler.name === "DraftStore" && typeof handler.actionHandler === "function" ? {
+          ...handler,
+          actionHandler(action) {
+            var userId = UserStore2?.getCurrentUser?.()?.id;
+            var result = handler.actionHandler.call(this, action);
+            if (action !== payload || !enabled() || !isCxProfileUserId(userId) || UserStore2?.getCurrentUser?.()?.id !== userId)
+              return result;
+            var entry = store.getState?.()?.[userId]?.[channelId]?.[draftType];
+            if (entry?.draft === draft.slice(0, limit))
+              entry.draft = draft;
+            return result;
+          }
+        } : handler);
+      }
+    }, enabled);
+  }
   function registerBypassPinPrompt(enabled) {
     var alerts = findByFilePath("actions/native/AlertActionCreators.tsx")?.default;
     var translations = findByProps("intl", "t");
@@ -52956,6 +53005,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     ]);
                   }
                 }, enabled);
+              case "keep-long-drafts":
+                return registerLongDrafts(enabled);
               case "bypass-pin-prompt":
                 return registerBypassPinPrompt(enabled);
               case "pin-message-shortcut":
@@ -54611,7 +54662,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a5be300816b236f40302d2c6e838fe1b8102be6d";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "82df39abc1350462c2abc4320b340f5369a197e3";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
