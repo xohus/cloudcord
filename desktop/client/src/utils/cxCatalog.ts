@@ -136,6 +136,7 @@ import plugin_catalog_nepeta_s_typing_quirk from "../../../../examples/cx/catalo
 import plugin_catalog_no_animations from "../../../../examples/cx/catalog/plugins/no-animations.cx";
 import plugin_catalog_no_blocked_messages from "../../../../examples/cx/catalog/plugins/no-blocked-messages.cx";
 import plugin_catalog_no_confirm_pin from "../../../../examples/cx/catalog/plugins/no-confirm-pin.cx";
+import plugin_catalog_no_draft_length_limit from "../../../../examples/cx/catalog/plugins/no-draft-length-limit.cx";
 import plugin_catalog_no_mosaic from "../../../../examples/cx/catalog/plugins/no-mosaic.cx";
 import plugin_catalog_no_pending_count from "../../../../examples/cx/catalog/plugins/no-pending-count.cx";
 import plugin_catalog_no_profile_themes from "../../../../examples/cx/catalog/plugins/no-profile-themes.cx";
@@ -436,6 +437,7 @@ export const cxCatalog = {
         { name: "NoAnimations", source: plugin_catalog_no_animations },
         { name: "NoBlockedMessages", source: plugin_catalog_no_blocked_messages },
         { name: "NoConfirmPin", source: plugin_catalog_no_confirm_pin },
+        { name: "NoDraftLengthLimit", source: plugin_catalog_no_draft_length_limit },
         { name: "NoMosaic", source: plugin_catalog_no_mosaic },
         { name: "NoPendingCount", source: plugin_catalog_no_pending_count },
         { name: "NoProfileThemes", source: plugin_catalog_no_profile_themes },

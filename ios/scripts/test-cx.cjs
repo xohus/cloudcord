@@ -304,7 +304,17 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.ok(voiceEventListeners.has(name));
             return voiceEventListeners.get(name);
         };
+        const drafts = { [me]: {} };
+        const draftStore = { getState: () => drafts };
+        const draftHandlers = [{ name: "DraftStore", actionHandler(payload) {
+            const channel = drafts[me][payload.channelId] ??= {};
+            if (payload.draft) channel[payload.draftType] = { draft: payload.draft.slice(0, 4500), timestamp: 1 };
+            else delete channel[payload.draftType];
+            return payload.type === "DRAFT_SAVE";
+        } }];
+        const orderedDraftHandlers = () => draftHandlers;
         const channelDispatcher = {
+            _actionHandlers: { getOrderedActionHandlers: orderedDraftHandlers },
             dispatch,
             subscribe: (name, listener) => { listenersFor(name).add(listener); },
             unsubscribe: (name, listener) => { listenersFor(name).delete(listener); },
@@ -336,6 +346,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             emitChange() { motionUpdates++; }
         }
         const stores = {
+            DraftStore: draftStore,
             AccessibilityStore: new AccessibilityStore(),
             PresenceStore: { getStatus: () => pingDnd ? "dnd" : "online" },
             UserGuildSettingsStore: { isMuted: () => pingMuted },
@@ -2691,6 +2702,50 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(appearanceHooks.size, 0);
             assert.equal(stylesheet, undefined);
         }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "NoDraftLengthLimit").source;
+            assert.throws(() => activateCx(port, host, ["appearance.style"]), /approval/);
+            const draft = "a".repeat(4501) + "full draft";
+            const save = { type: "DRAFT_SAVE", channelId: other, draft, draftType: 0 };
+            const change = { ...save, type: "DRAFT_CHANGE", draft: draft + " changed" };
+            const run = payload => channelDispatcher._actionHandlers.getOrderedActionHandlers(payload)[0].actionHandler(payload);
+            const stored = () => drafts[me][other]?.[0]?.draft;
+            if (desktop) assert.equal(desktopPlugin.keepLongDrafts(), false);
+            else {
+                assert.equal(run(save), true);
+                assert.equal(stored(), draft.slice(0, 4500));
+            }
+            selectCatalog("NoDraftLengthLimit");
+            click(render(), "Allow for this session");
+            if (desktop) {
+                assert.equal(desktopPlugin.keepLongDrafts(), true);
+                const patch = desktopPlugin.patches.find(entry => entry.find === "ApplicationLauncherCommand=3").replacement;
+                const regex = new RegExp(patch.match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"));
+                const source = "(c=i).length>4500&&(c=c.substr(0,4500)),i=c";
+                const patched = source.replace(regex, patch.replace.replace("$self", "plugin"));
+                const runPatched = Function("i", "plugin", "let c;" + patched + ";return i;");
+                assert.equal(runPatched(draft, desktopPlugin), draft);
+                assert.equal(runPatched(draft, { keepLongDrafts: () => false }), draft.slice(0, 4500));
+            } else {
+                assert.equal(run(save), true);
+                assert.equal(stored(), draft);
+                assert.equal(run(change), false);
+                assert.equal(stored(), change.draft);
+                assert.equal(drafts[me][other][0].timestamp, 1);
+                assert.equal(channelDispatcher._actionHandlers.getOrderedActionHandlers({ ...save, type: "MESSAGE_SEND" }), draftHandlers);
+                assert.equal(channelDispatcher._actionHandlers.getOrderedActionHandlers({ ...save, draft: "short" }), draftHandlers);
+                assert.equal(run({ ...save, draft: "" }), true);
+                assert.equal(stored(), undefined);
+                settings.safeMode = { enabled: true };
+                assert.equal(run(save), true);
+                assert.equal(stored(), draft.slice(0, 4500));
+                settings.safeMode = undefined;
+            }
+            click(render(), "Disable NoDraftLengthLimit");
+            assert.equal(channelDispatcher._actionHandlers.getOrderedActionHandlers, orderedDraftHandlers);
+            if (desktop) assert.equal(desktopPlugin.keepLongDrafts(), false);
+        }
+
         {
             const port = cxCatalog.plugins.find(entry => entry.name === "BypassPinPrompt").source;
             assert.throws(() => activateCx(port, host, ["appearance.style"]), /approval/);

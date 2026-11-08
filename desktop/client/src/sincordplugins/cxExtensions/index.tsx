@@ -330,6 +330,7 @@ let imageLinkUsers = 0;
 let roleHeaderUsers = 0;
 let reactionSortUsers = 0;
 let bypassPinPromptUsers = 0;
+let longDraftUsers = 0;
 let fileCopyUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
@@ -835,6 +836,9 @@ export function CxSettings() {
                             return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "quick-mention":
                             return registerQuickMention();
+                        case "keep-long-drafts":
+                            longDraftUsers++;
+                            return () => { longDraftUsers--; };
                         case "bypass-pin-prompt":
                             bypassPinPromptUsers++;
                             return () => { bypassPinPromptUsers--; };
@@ -1249,6 +1253,13 @@ export default definePlugin({
                 replace: "$1[$2,$self.renderCallTime(this?.props?.channel?.id)]",
             },
         ],
+    }, {
+        find: "ApplicationLauncherCommand=3",
+        predicate: () => !Settings.plugins.NoDraftLengthLimit?.enabled,
+        replacement: {
+            match: /(\.length>(4500|\i))(?=&&\(\i=\i\.substr\(0,\2\)\))/,
+            replace: "$1&&!$self.keepLongDrafts()",
+        },
     }, ...['source:"message-actions"', 'id:"pin",action', '"Channel Pins"'].map(find => ({
         find,
         predicate: () => !Settings.plugins.BypassPinPrompt?.enabled,
@@ -1419,6 +1430,7 @@ export default definePlugin({
     renderCallTime(channelId?: string) {
         return <CallTime channelId={channelId} />;
     },
+    keepLongDrafts() { return longDraftUsers > 0; },
     shouldSkipPinPrompt() { return bypassPinPromptUsers > 0; },
     sortMessageReactions<T extends { count: number; }>(reactions: readonly T[]) {
         return reactionSortUsers > 0 ? sortCxReactions(reactions) : reactions;

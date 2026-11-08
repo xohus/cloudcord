@@ -1205,6 +1205,44 @@ function registerCopyChannelName(enabled: () => boolean) {
     return () => { active = false; stop(); };
 }
 
+function registerLongDrafts(enabled: () => boolean) {
+    type DraftState = Record<string, Record<string, Record<number, { draft?: unknown; }>>>;
+    type DraftPayload = { type?: string; channelId?: string; draft?: string; draftType?: number; };
+    type Handler = { name: string; actionHandler: (payload: DraftPayload) => unknown; };
+
+    const store = findByStoreName("DraftStore") as { getState?: () => DraftState; } | undefined;
+    const premiumLimit = findByProps("MAX_MESSAGE_LENGTH_PREMIUM")?.MAX_MESSAGE_LENGTH_PREMIUM;
+    const limit = typeof premiumLimit === "number" ? premiumLimit + 500 : 4500;
+    if (typeof store?.getState !== "function") throw new Error("Discord’s draft store is unavailable");
+
+    return overrideCxMethods(FluxDispatcher?._actionHandlers as object | undefined, {
+        getOrderedActionHandlers(args, invoke) {
+            const handlers = invoke(args);
+            const payload = args[0] as DraftPayload | undefined;
+            if ((payload?.type !== "DRAFT_CHANGE" && payload?.type !== "DRAFT_SAVE") || !Array.isArray(handlers)) return handlers;
+            const { channelId, draft, draftType } = payload;
+            if (typeof draft !== "string" || draft.length <= limit || !isCxProfileUserId(channelId)
+                || typeof draftType !== "number" || !Number.isSafeInteger(draftType) || draftType < 0) return handlers;
+
+            return (handlers as Handler[]).map(handler => handler.name === "DraftStore" && typeof handler.actionHandler === "function"
+                ? {
+                    ...handler,
+                    actionHandler(this: unknown, action: DraftPayload) {
+                        const userId = UserStore?.getCurrentUser?.()?.id;
+                        const result = handler.actionHandler.call(this, action);
+                        if (action !== payload || !enabled() || !isCxProfileUserId(userId)
+                            || UserStore?.getCurrentUser?.()?.id !== userId) return result;
+                        // Restore text before Discord’s dispatcher runs the normal save callback.
+                        const entry = store.getState?.()?.[userId]?.[channelId]?.[draftType];
+                        if (entry?.draft === draft.slice(0, limit)) entry.draft = draft;
+                        return result;
+                    },
+                }
+                : handler);
+        },
+    }, enabled);
+}
+
 function registerBypassPinPrompt(enabled: () => boolean) {
     const alerts = findByFilePath("actions/native/AlertActionCreators.tsx")?.default;
     const translations = findByProps("intl", "t");
@@ -2243,6 +2281,8 @@ export default function CxExtensions() {
                                     return invoke([{ ...options, reactions: sortCxReactions(options.reactions) }, ...args.slice(1)]);
                                 },
                             }, enabled);
+                        case "keep-long-drafts":
+                            return registerLongDrafts(enabled);
                         case "bypass-pin-prompt":
                             return registerBypassPinPrompt(enabled);
                         case "pin-message-shortcut":
