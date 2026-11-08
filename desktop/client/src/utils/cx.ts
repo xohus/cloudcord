@@ -10,6 +10,8 @@ import { formatCxProfileColors } from "./cxProfileColors";
 import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
 import { cxCalendarPeriods, cxTimestampSurfaces, type CxTimestampFormats, type CxTimestampTarget } from "./cxTimestamps";
 import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
+import type { CxCameraToneOptions } from "./cxCameraTone";
+import type { CxVoiceQueueOptions } from "./cxVoiceQueue";
 import type { CxVoiceMemberOptions } from "./cxVoiceMemberClock";
 import { validateCxWallpaper } from "./cxWallpaper";
 
@@ -30,6 +32,8 @@ export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxImageSearchOptions, type CxSearchMediaSource } from "./cxMediaSearch";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
 export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
+export { bindCxCameraTone, type CxCameraToneOptions } from "./cxCameraTone";
+export { createCxVoiceQueue, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "./cxVoiceQueue";
 export { createCxVoiceMemberClock, type CxVoiceMemberOptions } from "./cxVoiceMemberClock";
 export { createCxCallClock } from "./cxCallClock";
 export { createCxJumpActions, createCxNavigationControls, getCxFirstMessageTarget, type CxNavigationChannel } from "./cxNavigation";
@@ -89,6 +93,8 @@ const permissionLabels = {
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+    "voice.cameratone": "Play local sounds when camera state changes in your current voice call",
+    "voice.waitslot": "Watch a voice channel you queue for and join when you confirm or enable auto-join",
     "voice.membertime": "Use voice updates already loaded by Discord to show member call times on this device",
     "voice.calltime": "Read the current voice channel and show its elapsed call time on this device",
     "voice.notifyfriends": "Show local notifications when friends join or move between voice channels",
@@ -171,6 +177,8 @@ export type CxTheme = {
     semanticColors?: Record<string, string>;
     rawColors?: Record<string, string>;
 };
+type CxNativeOptions = CxVoiceMemberOptions | CxVoiceQueueOptions | CxCameraToneOptions;
+
 type CxPlugin = {
     kind: "plugin";
     name: string;
@@ -186,6 +194,8 @@ type CxPlugin = {
     nativeEffects: CxNativeEffect[];
     avatarResolution?: CxAvatarResolution;
     voiceMemberOptions?: CxVoiceMemberOptions;
+    voiceQueueOptions?: CxVoiceQueueOptions;
+    cameraToneOptions?: CxCameraToneOptions;
     uploadNaming?: CxUploadNaming;
     previousRule?: CxPreviousRule;
     profileActions: CxProfileMenuAction[];
@@ -273,6 +283,8 @@ export function parseCx(source: string): CxDocument {
     let hasTimestampSurface = false;
     let avatarResolution: CxAvatarResolution | undefined;
     let voiceMemberOptions: CxVoiceMemberOptions | undefined;
+    let voiceQueueOptions: CxVoiceQueueOptions | undefined;
+    let cameraToneOptions: CxCameraToneOptions | undefined;
     let uploadNaming: CxUploadNaming | undefined;
     let previousRule: CxPreviousRule | undefined;
     const profileActions = new Set<CxProfileMenuAction>();
@@ -375,6 +387,16 @@ export function parseCx(source: string): CxDocument {
                 voiceMemberOptions = {
                     human: flags.includes("human"), minutesOnly: flags.includes("minutes-only"), excludeSelf: flags.includes("exclude-self"),
                 };
+            } else if (name === "wait-for-slot") {
+                const flags = effect[2]?.split(" ") ?? [];
+                if (flags.some(flag => !["auto-join", "quiet"].includes(flag)) || new Set(flags).size !== flags.length)
+                    throw new Error("Voice queue options are auto-join and quiet");
+                voiceQueueOptions = { autoJoin: flags.includes("auto-join"), quiet: flags.includes("quiet") };
+            } else if (name === "webcam-start-notifier") {
+                const scope = effect[2] ?? "all";
+                if (scope !== "all" && scope !== "dm-only" && scope !== "server-only")
+                    throw new Error("Choose all, dm-only, or server-only camera notifications");
+                cameraToneOptions = { scope };
             } else if (effect[2]) throw new Error("This client effect takes no options");
             nativeEffects.add(name);
             current = undefined;
@@ -595,7 +617,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, sendConfirmation, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, voiceMemberOptions, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, voiceMemberOptions, voiceQueueOptions, cameraToneOptions, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -612,7 +634,13 @@ export function reviewCx(source: string) {
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(Object.entries(document.timestamps).map(([target, format]) => `Format ${target} timestamps as ${format}`))
-            .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
+            .concat(document.nativeEffects.map(effect => {
+                const label = cxNativeEffects[effect].label;
+                if (effect === "avatar-resolution") return label + " (" + document.avatarResolution + " px)";
+                if (effect === "wait-for-slot" && document.voiceQueueOptions?.autoJoin)
+                    return "Automatically join the selected voice channel when its slot opens";
+                return label;
+            }))
             .concat(document.uploadNaming ? ["Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")] : [])
             .concat(document.sendConfirmation ? ["Confirm before sending text containing " + document.sendConfirmation.phrases.join(", ")] : [])
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" || rule.name === "rewriteLink"
@@ -661,7 +689,7 @@ type CxHost = {
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
     registerTimestampFormats?: (formats: CxTimestampFormats) => () => void;
-    registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution, voiceMemberOptions?: CxVoiceMemberOptions) => () => void;
+    registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution, options?: CxNativeOptions) => () => void;
     registerUploadAnonymiser?: (anonymiser: CxUploadAnonymiser) => () => void;
     registerPreviousMessageRule?: (rule: CxPreviousRule) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
@@ -766,10 +794,14 @@ function bindCx(source: string, host: CxHost, approved: readonly CxPermission[],
             if (!host.registerTimestampFormats) throw new Error("This client cannot format timestamps");
             cleanups.push(host.registerTimestampFormats(document.timestamps));
         }
+        const nativeOptions: Partial<Record<CxNativeEffect, CxNativeOptions>> = {
+            "all-call-time-counter": document.voiceMemberOptions,
+            "wait-for-slot": document.voiceQueueOptions,
+            "webcam-start-notifier": document.cameraToneOptions,
+        };
         for (const effect of document.nativeEffects) {
             if (!host.registerNativeEffect) throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());
-            cleanups.push(host.registerNativeEffect(effect, effect === "avatar-resolution" ? document.avatarResolution : undefined,
-                effect === "all-call-time-counter" ? document.voiceMemberOptions : undefined));
+            cleanups.push(host.registerNativeEffect(effect, effect === "avatar-resolution" ? document.avatarResolution : undefined, nativeOptions[effect]));
         }
         if (document.suppressReplyPing) {
             if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");

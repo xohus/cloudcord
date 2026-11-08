@@ -939,6 +939,14 @@ const desktopEffectRecipes = {
         effect: "hide-role-headers",
         sha256: "04c990206c32b0d8f0d26cb4fb4fad35c725378eb0ad7fe957de718e6eacc3dc",
     },
+    WebcamStartNotifier: {
+        effect: "webcam-start-notifier",
+        sha256: "c595990e071fb99db1102d865f9ce6a3a754dc51c7c36fa327742fee8b092605",
+    },
+    WaitForSlot: {
+        effect: "wait-for-slot",
+        sha256: "9d4bc6294f5956e060be4521ac236da2a5a0ef9193a1d3cda4d0fbb82494d0f2",
+    },
     ReverseImageSearch: {
         effect: "reverse-image-search",
         sha256: "6979d409985889a1611626ef504379e5db9841deea9f1471a128e85a12092a57",

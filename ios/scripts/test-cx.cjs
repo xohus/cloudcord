@@ -196,7 +196,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             pinMessage: (channel, id) => pinCalls.push(["pin", channel.id, id]),
             unpinMessage: (channel, id) => pinCalls.push(["unpin", channel.id, id]),
         };
-        const embedPermissions = { SEND_MESSAGES: 2048n, MANAGE_MESSAGES: 8192n, EMBED_LINKS: 16384n };
+        const embedPermissions = { SEND_MESSAGES: 2048n, MANAGE_MESSAGES: 8192n, EMBED_LINKS: 16384n,
+            VIEW_CHANNEL: 1024n, CONNECT: 1048576n, MOVE_MEMBERS: 16777216n };
         const embedEndpoints = { MESSAGE: (channel, message) => "/channels/" + channel + "/messages/" + message };
         let embedMessage;
         const repeatChannel = "100000000000000011";
@@ -221,6 +222,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const voiceTarget = "100000000000000006", secondVoice = "100000000000000007";
         let currentVoice = null;
         const voiceJoins = [];
+        const queueChannel = { id: "100000000000000018", guild_id: guildId, name: "Game Room", type: 2, userLimit: 2 };
+        const queuePrompts = [], queueSounds = [];
+        let canJoinQueue = true, canBypassQueue = false, queueOccupants = { [sender]: {}, [other]: {} };
         const voiceActions = { selectVoiceChannel: channel => voiceJoins.push(channel) };
         const removals = [];
         const relationshipActions = { removeRelationship: id => removals.push(id) };
@@ -291,7 +295,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const dispatch = event => rejectBulkAck && event.type === "BULK_ACK"
             ? Promise.reject(new Error("Could not acknowledge channels")) : acknowledged.push(event);
         const channelSelections = new Set(), rtcListeners = new Set(), voiceListeners = new Set();
-        const voiceEventListeners = new Map(["VOICE_STATE_UPDATES", "PASSIVE_UPDATE_V1", "PASSIVE_UPDATE_V2", "CONNECTION_OPEN", "LOGOUT"]
+        const voiceEventListeners = new Map(["VOICE_STATE_UPDATES", "VOICE_CHANNEL_SELECT", "PASSIVE_UPDATE_V1", "PASSIVE_UPDATE_V2", "CONNECTION_OPEN", "LOGOUT"]
             .map(name => [name, new Set()]));
         const listenersFor = name => {
             if (name === "RTC_CONNECTION_STATE") return rtcListeners;
@@ -340,9 +344,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]), banner: "a_" + "a".repeat(32) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: id => id === jumpChannel.id ? jumpChannel : ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" || id === repeatChannel ? guildId : undefined,
+            ChannelStore: { getChannel: id => id === queueChannel.id ? queueChannel : id === jumpChannel.id ? jumpChannel : ({ id, name: "test", recipients: [sender], nsfw: id === "nsfw-channel", guild_id: id === "guild-channel" || id === repeatChannel ? guildId : undefined,
                 rateLimitPerUser: id === "slow-channel" ? 10 : 0 }) },
-            PermissionStore: { can: () => canSend },
+            PermissionStore: { can: (bit, channel) => channel?.id === queueChannel.id
+                ? bit === embedPermissions.MOVE_MEMBERS ? canBypassQueue : canJoinQueue
+                : canSend },
             GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
             GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
             GuildChannelStore: { getChannels: () => ({
@@ -377,7 +383,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 isFriend: id => id === sender,
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
             },
-            VoiceStateStore: { getVoiceStateForUser: () => undefined },
+            VoiceStateStore: { getVoiceStateForUser: () => undefined,
+                getVoiceStatesForChannel: id => id === queueChannel.id ? queueOccupants : {} },
             SelectedChannelStore: {
                 getVoiceChannelId: () => currentVoice, getChannelId: () => selectedChannel,
                 addChangeListener: listener => voiceListeners.add(listener),
@@ -560,6 +567,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const mocks = {
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
+            "@api/AudioPlayer": { playAudio: name => queueSounds.push(name) },
             "@api/Commands": commandApi,
             "@api/Settings": { Settings: { plugins: { CallTimer: { enabled: false } } } },
             "@api/ContextMenu": {
@@ -605,7 +613,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                         : key === "startEditMessage" ? messageEditor
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
             "@webpack/common": {
-                Alerts: { show: props => nativeConfirmations.push({ props, resolve: value => value ? props.onConfirm() : props.onCancel() }) },
+                Alerts: { show(props) {
+                    const target = props.title === "Confirm message" ? nativeConfirmations : queuePrompts;
+                    target.push({ props, resolve: value => value ? props.onConfirm() : props.onCancel() });
+                } },
                 ComponentDispatch: { dispatchToLastSubscribed(event, payload) {
                     if (event === "INSERT_TEXT") mentionActions.push([event, payload.rawText, payload.plainText]);
                 } },
@@ -681,6 +692,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "modules/blocked_domains/BlockedDomainStore.tsx" ? { default: { isBlockedDomain: url => url.endsWith("/blocked") ? { url } : null } }
                 : path.endsWith("/openMediaModal.tsx") ? { openMediaModal: options => viewedProfiles.push(options.initialSources[0]) }
                 : path.endsWith("/MediaSourceUtil.tsx") ? { downloadMediaAssetWithContentType: (...args) => savedProfileMedia.push(args) }
+                : path.endsWith("/SoundUtils.tsx") ? { playSound: name => queueSounds.push(name) }
                 : path.endsWith("/MediaTypes.tsx") ? { MediaType: nativeMediaType }
                 : path.endsWith("/transformMessageAttachments.tsx") ? attachmentRows
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
@@ -738,7 +750,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "react-native": {
                 Alert: { alert: (title, body, buttons, options) => {
                     if (title === "Confirm message") nativeConfirmations.push({ props: { title, body }, buttons, options });
-                    else mediaAlerts.push([title, body]);
+                    else if (title === "Voice channel is full" || title === "A voice slot is open") {
+                        queuePrompts.push({ props: { title, body, confirmText: buttons[1].text },
+                            resolve: value => value ? buttons[1].onPress() : buttons[0].onPress() });
+                    } else mediaAlerts.push([title, body]);
                 } },
                 PixelRatio: { getFontScale: () => deviceFontScale },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
@@ -2421,6 +2436,114 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(clockTimers.size, 0);
             stop();
             clockTime = undefined;
+        }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "WaitForSlot").source;
+            assert.throws(() => activateCx(port, host, ["voice.followfriend"]), /approval/);
+            assert.throws(() => parseCx(port.replace("use wait-for-slot", "use wait-for-slot auto-join auto-join")), /queue options/);
+            const autoPort = port.replace("use wait-for-slot", "use wait-for-slot auto-join quiet");
+            assert.ok(reviewCx(autoPort).effects.some(effect => effect.startsWith("Automatically join")));
+            selectCatalog("WaitForSlot");
+            click(render(), "Allow for this session");
+            const getMenu = () => {
+                if (desktop) {
+                    const children = [];
+                    for (const patch of menuPatches) patch(children, { channel: queueChannel });
+                    return children.find(item => item.props.id === "cx-wait-for-slot")?.props;
+                }
+                const hook = appearanceHooks.get("ChannelLongPressActionSheetConnected");
+                const wrapped = hook(null, jsx(ChannelLongPressActionSheetConnected, { channel: queueChannel }));
+                const renderer = wrapped.type(wrapped.props);
+                return find(renderer.type(renderer.props), item => /^(?:Leave|Join) Queue$/.test(item.props.label))?.props;
+            };
+            const clickQueue = () => getMenu()[desktop ? "action" : "onPress"]();
+            const emitSlotChange = () => voiceEventListeners.get("VOICE_STATE_UPDATES").forEach(listener => listener({}));
+            const beforeJoins = voiceJoins.length;
+            const beforeSounds = queueSounds.length;
+            const initialOccupants = queueOccupants;
+            canJoinQueue = false;
+            assert.equal(getMenu(), undefined);
+            canJoinQueue = true;
+            canBypassQueue = true;
+            assert.equal(getMenu(), undefined);
+            canBypassQueue = false;
+            voiceActions.selectVoiceChannel(queueChannel.id);
+            assert.equal(voiceJoins.length, beforeJoins);
+            assert.equal(queuePrompts[0].props.confirmText, "Wait");
+            // A slot opening while the Wait dialog is up still requires Join.
+            queueOccupants = { [sender]: {} };
+            queuePrompts.shift().resolve(true);
+            assert.equal(voiceJoins.length, beforeJoins);
+            assert.equal(queuePrompts[0].props.confirmText, "Join");
+            queueOccupants = initialOccupants;
+            queuePrompts.shift().resolve(true);
+            assert.equal(getMenu().label, "Leave Queue");
+            clickQueue();
+            assert.equal(getMenu().label, "Join Queue");
+            clickQueue();
+            queueOccupants = { [sender]: {} };
+            emitSlotChange();
+            assert.equal(queuePrompts[0].props.confirmText, "Join");
+            queuePrompts.shift().resolve(true);
+            assert.deepEqual(voiceJoins.slice(beforeJoins), [queueChannel.id]);
+            assert.deepEqual(queueSounds.slice(beforeSounds), ["user_join", "user_join"]);
+            const patchedJoin = voiceActions.selectVoiceChannel;
+            click(render(), "Disable WaitForSlot");
+            assert.notEqual(voiceActions.selectVoiceChannel, patchedJoin);
+            assert.ok([...voiceEventListeners.values()].every(listeners => !listeners.size));
+
+            let currentAccount = me, count = 2;
+            const joins = [];
+            const automatic = moduleBox.exports.createCxVoiceQueue({
+                account: () => currentAccount, currentVoice: () => undefined,
+                room: () => ({ name: queueChannel.name, limit: 2, occupants: count }),
+                join: id => joins.push(id), prompt: () => assert.fail("Auto-join must not prompt"),
+                sound: () => assert.fail("Quiet must not play sound"),
+            }, { autoJoin: true, quiet: true });
+            automatic.menu(queueChannel.id).run();
+            count = 1;
+            automatic.update();
+            currentAccount = other;
+            await Promise.resolve();
+            assert.equal(joins.length, 0);
+            count = 2;
+            automatic.menu(queueChannel.id).run();
+            count = 1;
+            automatic.update();
+            await Promise.resolve();
+            assert.deepEqual(joins, [queueChannel.id]);
+            automatic.stop();
+        }
+        {
+            const port = cxCatalog.plugins.find(entry => entry.name === "WebcamStartNotifier").source;
+            assert.throws(() => activateCx(port, host, ["voice.waitslot"]), /approval/);
+            assert.throws(() => parseCx(port.replace("use webcam-start-notifier", "use webcam-start-notifier dm-only server-only")), /camera notifications/);
+            const savedVoice = currentVoice, savedOccupants = queueOccupants;
+            const off = { userId: sender, channelId: queueChannel.id, selfVideo: false };
+            currentVoice = queueChannel.id;
+            queueOccupants = { [sender]: off };
+            const soundsStart = queueSounds.length;
+            const emitCamera = (...states) => voiceEventListeners.get("VOICE_STATE_UPDATES")
+                .forEach(listener => listener({ voiceStates: states }));
+            selectCatalog("WebcamStartNotifier");
+            click(render(), "Allow for this session");
+            emitCamera({ ...off, selfVideo: true });
+            emitCamera({ ...off, selfVideo: true });
+            emitCamera({ ...off, selfVideo: undefined });
+            emitCamera(off);
+            emitCamera({ ...off, channelId: secondVoice, selfVideo: true });
+            emitCamera({ ...off, selfVideo: true });
+            assert.deepEqual(queueSounds.slice(soundsStart), ["user_join", "user_leave"]);
+            if (!desktop) {
+                settings.safeMode = { enabled: true };
+                emitCamera(off);
+                settings.safeMode = undefined;
+                assert.equal(queueSounds.length, soundsStart + 2);
+            }
+            click(render(), "Disable WebcamStartNotifier");
+            assert.ok([...voiceEventListeners.values()].every(listeners => !listeners.size));
+            currentVoice = savedVoice;
+            queueOccupants = savedOccupants;
         }
         {
             selectCatalog("NoRoleHeaders");

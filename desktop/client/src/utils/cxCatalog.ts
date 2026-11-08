@@ -186,6 +186,8 @@ import plugin_catalog_unsuppress_embeds from "../../../../examples/cx/catalog/pl
 import plugin_catalog_vibe_check from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
 import plugin_catalog_voice_join_messages from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
 import plugin_catalog_vriska_s_typing_quirk from "../../../../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx";
+import plugin_catalog_wait_for_slot from "../../../../examples/cx/catalog/plugins/wait-for-slot.cx";
+import plugin_catalog_webcam_start_notifier from "../../../../examples/cx/catalog/plugins/webcam-start-notifier.cx";
 import plugin_catalog_wider_channel_list from "../../../../examples/cx/catalog/plugins/wider-channel-list.cx";
 import plugin_catalog_wiki_lookup from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
 import plugin_catalog_write_upper_case from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
@@ -480,6 +482,8 @@ export const cxCatalog = {
         { name: "VibeCheck", source: plugin_catalog_vibe_check },
         { name: "VoiceJoinMessages", source: plugin_catalog_voice_join_messages },
         { name: "Vriska'sTypingQuirk", source: plugin_catalog_vriska_s_typing_quirk },
+        { name: "WaitForSlot", source: plugin_catalog_wait_for_slot },
+        { name: "WebcamStartNotifier", source: plugin_catalog_webcam_start_notifier },
         { name: "WiderChannelList", source: plugin_catalog_wider_channel_list },
         { name: "WikiLookup", source: plugin_catalog_wiki_lookup },
         { name: "WriteUpperCase", source: plugin_catalog_write_upper_case },

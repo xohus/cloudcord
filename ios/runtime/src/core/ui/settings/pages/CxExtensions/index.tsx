@@ -1,7 +1,7 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
-import { getCxImageSearchOptions, getCxSteamLink, type CxSearchMediaSource } from "@lib/api/cx";
+import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxSearchMediaSource, type CxVoiceQueueOptions } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction, type CxRepeatMessage } from "@lib/api/cx";
@@ -1083,6 +1083,68 @@ function registerJumpToMessageMenu(enabled: () => boolean) {
     } catch (error) { stop(); throw error; }
 }
 
+function playCxVoiceTone(name: "user_join" | "user_leave") {
+    const sound = findByFilePath("modules/sound_playback/native/SoundUtils.tsx");
+    void Promise.resolve(sound?.playSound?.(name)).catch(() => {});
+}
+
+function registerWaitForSlot(options: CxVoiceQueueOptions, enabled: () => boolean) {
+    const actions = findByProps("selectVoiceChannel");
+    const voice = findByStoreName("VoiceStateStore");
+    const permission = findByStoreName("PermissionStore");
+    const bits = findByProps("Fonts", "Permissions")?.Permissions;
+    const sheet = findByProps("ActionSheet")?.ActionSheet;
+    const Row = findByProps("ActionSheetRow")?.ActionSheetRow;
+    if (typeof actions?.selectVoiceChannel !== "function" || typeof voice?.getVoiceStatesForChannel !== "function"
+        || typeof permission?.can !== "function" || bits?.CONNECT == null || bits?.VIEW_CHANNEL == null
+        || bits?.MOVE_MEMBERS == null || !sheet || !Row?.Group) throw new Error("Discord's voice queue controls are unavailable");
+    const queue = createCxVoiceQueue({
+        account: () => UserStore.getCurrentUser()?.id,
+        currentVoice: () => SelectedChannelStore.getVoiceChannelId(),
+        room(id) {
+            const channel = ChannelStore.getChannel(id);
+            if (channel?.type !== 2 || !permission.can(bits.VIEW_CHANNEL, channel) || !permission.can(bits.CONNECT, channel)
+                || permission.can(bits.MOVE_MEMBERS, channel)) return;
+            return getCxVoiceQueueRoom(channel, voice.getVoiceStatesForChannel(id));
+        },
+        join: id => actions.selectVoiceChannel(id),
+        prompt: (title, body, label, confirm, cancel) => Alert.alert(title, body, [
+            { text: "Cancel", style: "cancel", onPress: cancel }, { text: label, onPress: confirm },
+        ], { cancelable: true, onDismiss: cancel }),
+        sound: () => playCxVoiceTone("user_join"),
+        enabled,
+    }, options);
+    const cleanups = [queue.stop];
+    function stop() { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); }
+    try {
+        cleanups.push(overrideCxMethods(actions, {
+            selectVoiceChannel: (args, invoke) => queue.promptFull(args[0]) ? undefined : invoke(args),
+        }, enabled));
+        FluxDispatcher.subscribe("VOICE_STATE_UPDATES", queue.update);
+        cleanups.push(() => FluxDispatcher.unsubscribe("VOICE_STATE_UPDATES", queue.update));
+        FluxDispatcher.subscribe("LOGOUT", queue.reset);
+        cleanups.push(() => FluxDispatcher.unsubscribe("LOGOUT", queue.reset));
+        cleanups.push(registerRenderedTree("ChannelLongPressActionSheetConnected", (tree, props: {
+            channel?: { id?: string; }; onClose?: () => void;
+        }) => {
+            const action = queue.menu(props.channel?.id);
+            if (!action) return tree;
+            return mapAppearanceElements(tree, element => element.type === sheet
+                ? React.cloneElement(element, { children: [
+                    ...React.Children.toArray(element.props.children),
+                    <Row.Group key="cx-wait-for-slot">
+                        <Row label={action.label} onPress={() => {
+                            if (!enabled()) return;
+                            props.onClose?.();
+                            action.run();
+                        }} />
+                    </Row.Group>,
+                ] }) : element);
+        }));
+        return stop;
+    } catch (error) { stop(); throw error; }
+}
+
 function registerCopyChannelName(enabled: () => boolean) {
     const sheet = findByProps("ActionSheet")?.ActionSheet;
     const row = findByProps("ActionSheetRow")?.ActionSheetRow;
@@ -1962,14 +2024,33 @@ export default function CxExtensions() {
                     return registerColorOverlay(style);
                 },
                 registerUploadAnonymiser,
-                registerNativeEffect(effect, avatarResolution = 256, memberTimerOptions) {
+                registerNativeEffect(effect, avatarResolution = 256, effectOptions) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
                         case "hide-role-headers":
                             return registerNoRoleHeaders();
+                        case "webcam-start-notifier": {
+                            if (!effectOptions || !("scope" in effectOptions)) throw new Error("Missing camera tone options");
+                            const voice = findByStoreName("VoiceStateStore");
+                            return bindCxCameraTone({
+                                account: () => UserStore.getCurrentUser()?.id,
+                                selected() {
+                                    const id = SelectedChannelStore.getVoiceChannelId();
+                                    const channel = id && ChannelStore.getChannel(id);
+                                    if (id && channel) return { id, private: channel.type === 1 || channel.type === 3 };
+                                },
+                                states: id => voice?.getVoiceStatesForChannel?.(id),
+                                play: on => playCxVoiceTone(on ? "user_join" : "user_leave"),
+                                enabled,
+                                dispatcher: FluxDispatcher,
+                            }, effectOptions);
+                        }
+                        case "wait-for-slot":
+                            if (!effectOptions || !("autoJoin" in effectOptions)) throw new Error("Missing voice queue options");
+                            return registerWaitForSlot(effectOptions, enabled);
                         case "all-call-time-counter":
-                            if (!memberTimerOptions) throw new Error("Missing voice member timer options");
-                            return registerVoiceMemberClock(memberTimerOptions);
+                            if (!effectOptions || !("human" in effectOptions)) throw new Error("Missing voice member timer options");
+                            return registerVoiceMemberClock(effectOptions);
                         case "call-time-counter":
                             return registerCallTimeCounter();
                         case "jump-to-message-menu":

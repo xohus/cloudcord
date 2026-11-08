@@ -1,0 +1,3 @@
+plugin "WebcamStartNotifier":
+  needs voice.cameratone
+  use webcam-start-notifier

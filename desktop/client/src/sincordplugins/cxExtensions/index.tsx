@@ -1,3 +1,4 @@
+import { playAudio } from "@api/AudioPlayer";
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { addContextMenuPatch, findGroupChildrenByChildId, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
@@ -10,7 +11,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { CopyIcon, UpArrowIcon } from "@components/Icons";
 import { buildCxRepeatMessage, getCxEmbedToggle, getCxPinAction } from "@utils/cx";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
-import { getCxImageSearchOptions, getCxSteamLink } from "@utils/cx";
+import { bindCxCameraTone, createCxVoiceQueue, getCxImageSearchOptions, getCxSteamLink, getCxVoiceQueueRoom, type CxVoiceQueueOptions } from "@utils/cx";
 import { escapeRegExp } from "@utils/text";
 import { copyToClipboard } from "@utils/clipboard";
 import { getCxChannelNameCopy, getCxProfileMedia } from "@utils/cx";
@@ -74,6 +75,45 @@ function registerJumpToMessageMenu() {
         removeContextMenuPatch(channelMenus, channelPatch);
         removeContextMenuPatch("message", messagePatch);
     };
+}
+
+function registerWaitForSlot(options: CxVoiceQueueOptions) {
+    const queue = createCxVoiceQueue({
+        account: () => UserStore.getCurrentUser()?.id,
+        currentVoice: () => SelectedChannelStore.getVoiceChannelId(),
+        room(id) {
+            const channel = ChannelStore.getChannel(id);
+            if (channel?.type !== 2 || !PermissionStore.can(PermissionsBits.VIEW_CHANNEL, channel)
+                || !PermissionStore.can(PermissionsBits.CONNECT, channel) || PermissionStore.can(PermissionsBits.MOVE_MEMBERS, channel)) return;
+            return getCxVoiceQueueRoom(channel, VoiceStateStore?.getVoiceStatesForChannel?.(id));
+        },
+        join: id => ChannelActions.selectVoiceChannel(id),
+        prompt: (title, body, confirmText, onConfirm, onCancel) => Alerts.show({
+            title, body, confirmText, onConfirm, cancelText: "Cancel", onCancel,
+            onCloseCallback: () => queueMicrotask(onCancel),
+        }),
+        sound: () => { playAudio("user_join"); },
+    }, options);
+    const patch: NavContextMenuPatchCallback = (children, { channel }) => {
+        const action = queue.menu(channel?.id);
+        if (action && !findGroupChildrenByChildId("vc-wait-for-slot", children)) {
+            children.push(<Menu.MenuItem id="cx-wait-for-slot" label={action.label} action={action.run} />);
+        }
+    };
+    const cleanups = [queue.stop];
+    function stop() { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); }
+    try {
+        cleanups.push(overrideCxMethods(ChannelActions, {
+            selectVoiceChannel: (args, invoke) => queue.promptFull(args[0]) ? undefined : invoke(args),
+        }));
+        FluxDispatcher.subscribe("VOICE_STATE_UPDATES", queue.update);
+        cleanups.push(() => FluxDispatcher.unsubscribe("VOICE_STATE_UPDATES", queue.update));
+        FluxDispatcher.subscribe("LOGOUT", queue.reset);
+        cleanups.push(() => FluxDispatcher.unsubscribe("LOGOUT", queue.reset));
+        addContextMenuPatch("channel-context", patch);
+        cleanups.push(() => removeContextMenuPatch("channel-context", patch));
+        return stop;
+    } catch (error) { stop(); throw error; }
 }
 
 function registerCopyChannelName() {
@@ -675,16 +715,32 @@ export function CxSettings() {
                     uploadAnonymiser = anonymiser;
                     return () => { uploadAnonymiser = undefined; };
                 },
-                registerNativeEffect(effect, avatarResolution = 256, memberTimerOptions) {
+                registerNativeEffect(effect, avatarResolution = 256, effectOptions) {
                     switch (effect) {
+                        case "webcam-start-notifier":
+                            if (!effectOptions || !("scope" in effectOptions)) throw new Error("Missing camera tone options");
+                            return bindCxCameraTone({
+                                account: () => UserStore.getCurrentUser()?.id,
+                                selected() {
+                                    const id = SelectedChannelStore.getVoiceChannelId();
+                                    const channel = id && ChannelStore.getChannel(id);
+                                    if (id && channel) return { id, private: channel.type === 1 || channel.type === 3 };
+                                },
+                                states: id => VoiceStateStore?.getVoiceStatesForChannel?.(id),
+                                play: on => { playAudio(on ? "user_join" : "user_leave"); },
+                                dispatcher: FluxDispatcher,
+                            }, effectOptions);
+                        case "wait-for-slot":
+                            if (!effectOptions || !("autoJoin" in effectOptions)) throw new Error("Missing voice queue options");
+                            return registerWaitForSlot(effectOptions);
                         case "all-call-time-counter":
-                            if (!memberTimerOptions) throw new Error("Missing voice member timer options");
+                            if (!effectOptions || !("human" in effectOptions)) throw new Error("Missing voice member timer options");
                             return voiceMemberClock.bind({
                                 account: () => UserStore.getCurrentUser()?.id,
                                 state: id => VoiceStateStore?.getVoiceStateForUser?.(id),
                                 channelGuild: id => ChannelStore.getChannel(id)?.guild_id,
                                 dispatcher: FluxDispatcher,
-                            }, memberTimerOptions);
+                            }, effectOptions);
                         case "call-time-counter":
                             return callClock.bind(SelectedChannelStore, FluxDispatcher);
                         case "jump-to-message-menu":

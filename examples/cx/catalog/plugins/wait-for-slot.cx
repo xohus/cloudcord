@@ -1,0 +1,3 @@
+plugin "WaitForSlot":
+  needs voice.waitslot
+  use wait-for-slot
