@@ -39,7 +39,7 @@ const launch = viewModel.slice(viewModel.indexOf('fun launchVendetta()'), viewMo
 assert.ok(launch.indexOf('installManager.getInstalled()') < launch.indexOf('installManager.current'));
 assert.ok(launch.includes('if (intent == null)'));
 assert.ok(launch.includes('context.showToast(R.string.install_fail_generic)'));
-assert.ok(read('installer/step/Step.kt').includes('if (t is CancellationException) throw t'));
+assert.match(read('installer/step/Step.kt'), /if \(t is CancellationException\) \{\s*status = StepStatus\.QUEUED\s*throw t\s*\}/);
 const home = read('ui/viewmodel/home/HomeViewModel.kt');
 assert.ok(!home.includes('C0C0B01/CloudCordManager'));
 assert.ok(!home.includes('tagName.toInt()'));
