@@ -30,7 +30,7 @@ import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
 import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
 
-import { addFakeRequest, fakeGiftFor, hasFakeRequest, isFakeNitroActive, refreshFakeNitro, removeFakeRequest, setProfileNitroSource, startExtras, stopExtras } from "./extras";
+import { addFakeRequest, hasFakeRequest, isFakeNitroActive, refreshFakeNitro, removeFakeRequest, setProfileNitroSource, startExtras, stopExtras } from "./extras";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -2134,15 +2134,6 @@ export default definePlugin({
             ]
         },
         {
-            // Resolve the device-only fake gift link without asking Discord.
-            find: "GIFT_CODE_RESOLVE(e),query:{with_application",
-            noWarn: true,
-            replacement: {
-                match: /(async function \i\((\i)\){)(?=let \i=arguments\.length>1.{0,200}?GIFT_CODE_RESOLVE\(\2\),query)/,
-                replace: "$1{const __ccGift=$self.fakeGiftCode($2);if(__ccGift)return __ccGift;}"
-            }
-        },
-        {
             find: "getAvatarDecorationURL:",
             replacement: {
                 match: /(?<=function \i\((\i)\){)(?=.{0,20}let{avatarDecoration)/,
@@ -2243,11 +2234,6 @@ export default definePlugin({
 
     ownTenureCard() {
         return profileRuntimeActive && isEnabled && !!storedData.nitro;
-    },
-
-    fakeGiftCode(code: string) {
-        if (!profileRuntimeActive) return null;
-        return fakeGiftFor(code);
     },
 
     fakeCurrentUser(user: any) {
