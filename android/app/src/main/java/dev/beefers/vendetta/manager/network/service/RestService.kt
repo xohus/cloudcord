@@ -20,9 +20,9 @@ class RestService(
 ) {
 
     suspend fun getLatestRelease(repo: String) = withContext(Dispatchers.IO) {
-        require(repo == "xohus/cloudcord") { "Untrusted Manager update repository" }
+        require(repo == "cloudcord-mod/cloudcord") { "Untrusted Manager update repository" }
         httpService.request<List<Release>> {
-            url("https://api.github.com/repos/xohus/cloudcord/releases")
+            url("https://api.github.com/repos/cloudcord-mod/cloudcord/releases")
             parameter("per_page", 100)
             timeout { requestTimeoutMillis = 15_000 }
         }.transform { releases ->
@@ -48,7 +48,7 @@ class RestService(
         }
         if (proxy is ApiResponse.Success) return@withContext proxy
         httpService.request<List<Commit>> {
-            url("https://api.github.com/repos/xohus/cloudcord/commits")
+            url("https://api.github.com/repos/cloudcord-mod/cloudcord/commits")
             parameter("page", page.coerceAtLeast(1))
             parameter("per_page", 20)
             header("Accept", "application/vnd.github+json")

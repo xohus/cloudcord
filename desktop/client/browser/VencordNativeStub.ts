@@ -154,7 +154,7 @@ window.VencordNative = {
     },
 
     updater: {
-        getRepo: async () => ({ ok: true, value: "https://github.com/xohus/cloudcord" }),
+        getRepo: async () => ({ ok: true, value: "https://github.com/cloudcord-mod/cloudcord" }),
         getUpdates: async () => {
             try {
                 const response = await fetch("https://getcloudcord.com/api/browser/release", { cache: "no-store" });

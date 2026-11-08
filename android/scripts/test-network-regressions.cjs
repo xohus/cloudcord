@@ -4,7 +4,7 @@ const root = 'android/app/src/main/java/dev/beefers/vendetta/manager/';
 const rest = fs.readFileSync(root + 'network/service/RestService.kt', 'utf8');
 const pager = fs.readFileSync(root + 'network/utils/CommitsPagingSource.kt', 'utf8');
 const http = fs.readFileSync(root + 'network/service/HttpService.kt', 'utf8');
-assert.ok(rest.includes('https://api.github.com/repos/xohus/cloudcord/commits'));
+assert.ok(rest.includes('https://api.github.com/repos/cloudcord-mod/cloudcord/commits'));
 assert.ok(rest.includes('if (proxy is ApiResponse.Success) return@withContext proxy'));
 assert.ok(rest.includes('requestTimeoutMillis = 10_000'));
 assert.ok(rest.includes('requestTimeoutMillis = 15_000'));

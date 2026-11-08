@@ -33,25 +33,25 @@ For machine-readable project guidance and entity disambiguation, see [CloudCord 
   <img src="assets/readme/platforms/ios.svg" width="88" height="88" alt="iOS / iPadOS" />
   <h3>iOS / iPadOS</h3>
   <br /><br />
-  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta/cloudcord0.ipa"><strong>Download CloudCord IPA</strong></a>
+  <a href="https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta/cloudcord0.ipa"><strong>Download CloudCord IPA</strong></a>
   <br />
-  <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta">View iOS / iPadOS release</a></sub>
+  <sub><a href="https://github.com/cloudcord-mod/cloudcord/releases/tag/new_beta">View iOS / iPadOS release</a></sub>
 </td>
 <td align="center" width="33%">
   <img src="assets/readme/platforms/android.svg" width="88" height="88" alt="Android" />
   <h3>Android</h3>
   <br /><br />
-  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_android/cloudcord.apk"><strong>Download CloudCord APK</strong></a>
+  <a href="https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_android/cloudcord.apk"><strong>Download CloudCord APK</strong></a>
   <br />
-  <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta_android">View Android release</a></sub>
+  <sub><a href="https://github.com/cloudcord-mod/cloudcord/releases/tag/new_beta_android">View Android release</a></sub>
 </td>
 <td align="center" width="33%">
   <img src="assets/readme/platforms/windows.svg" width="88" height="88" alt="Windows desktop" />
   <h3>Windows</h3>
   <br /><br />
-  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/CloudCordInstaller.exe"><strong>Download CloudCord Installer</strong></a>
+  <a href="https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_t_desktop/CloudCordInstaller.exe"><strong>Download CloudCord Installer</strong></a>
   <br />
-  <sub><a href="https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe">Classic installer</a> · <a href="https://github.com/xohus/cloudcord/releases/tag/new_beta_t_desktop">View release</a></sub>
+  <sub><a href="https://github.com/cloudcord-mod/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe">Classic installer</a> · <a href="https://github.com/cloudcord-mod/cloudcord/releases/tag/new_beta_t_desktop">View release</a></sub>
 </td>
 </tr>
 </table>

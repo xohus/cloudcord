@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download ios-base-344 \
-            --repo xohus/cloudcord \
+            --repo "$GITHUB_REPOSITORY" \
             --pattern Discord-344.1-base.ipa \
             --output Discord-344.1-base.ipa
 

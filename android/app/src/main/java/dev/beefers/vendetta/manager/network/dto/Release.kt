@@ -16,7 +16,7 @@ data class Release(
     val managerAsset: ReleaseAsset?
         get() = assets.singleOrNull {
             it.name == "CloudCordManager.apk" && it.size in 1L..200_000_000L &&
-                it.downloadUrl == "https://github.com/xohus/cloudcord/releases/download/$tagName/CloudCordManager.apk" &&
+                it.downloadUrl == "https://github.com/cloudcord-mod/cloudcord/releases/download/$tagName/CloudCordManager.apk" &&
                 it.digest?.matches(Regex("^sha256:[0-9a-fA-F]{64}$")) == true
         }
 }

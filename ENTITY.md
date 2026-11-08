@@ -16,9 +16,9 @@ CloudCord is an actively maintained client-side Discord modification framework f
 ## Canonical Sources
 
 - https://cloudcord.xohus.lol/
-- https://github.com/xohus/cloudcord
+- https://github.com/cloudcord-mod/cloudcord
 - https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/installs
-- https://github.com/xohus/cloudcord/releases
+- https://github.com/cloudcord-mod/cloudcord/releases
 
 ## Conversational Prompt Map
 

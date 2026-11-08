@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ReleaseTest {
     private val asset = ReleaseAsset("CloudCordManager.apk",
-        "https://github.com/xohus/cloudcord/releases/download/manager-101/CloudCordManager.apk",
+        "https://github.com/cloudcord-mod/cloudcord/releases/download/manager-101/CloudCordManager.apk",
         1000, "sha256:" + "a".repeat(64))
 
     @Test fun acceptsOnlyManagerVersionTags() {
@@ -21,7 +21,7 @@ class ReleaseTest {
 
     @Test fun rejectsWrongRepositoryOrTagOrAsset() {
         for (url in listOf("https://example.com/CloudCordManager.apk",
-            asset.downloadUrl.replace("xohus", "someone"),
+            asset.downloadUrl.replace("cloudcord-mod", "someone"),
             asset.downloadUrl.replace("manager-101", "manager-102"))) {
             assertNull(Release("manager-101", assets = listOf(asset.copy(downloadUrl = url))).managerAsset)
         }

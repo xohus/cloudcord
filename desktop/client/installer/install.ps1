@@ -1,4 +1,4 @@
-$link = "https://github.com/xohus/cloudcord/releases/latest/download/CloudCordSetupCli.exe"
+$link = "https://github.com/cloudcord-mod/cloudcord/releases/latest/download/CloudCordSetupCli.exe"
 
 $outfile = "$env:TEMP\CloudCordSetupCli.exe"
 

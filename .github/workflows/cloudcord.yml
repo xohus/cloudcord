@@ -258,7 +258,7 @@ jobs:
           import { ScrollView, View } from "react-native";
 
           const PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-          const STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+          const STORECLOUD_ICON = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png";
 
           export default function StoreCloud() {
               useProxy(VdPluginManager.plugins);
@@ -858,7 +858,7 @@ jobs:
               [order[from], order[to]] = [order[to], order[from]];
               return order;
           }
-          const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+          const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png";
 
           function defaultBadgeOrder(nativeBadges: any[] = []): string[] {
               const nativeKeys = nativeBadges.filter(badge => !/^(?:sp_|fakeprofile-|cloudcord-)/.test(String(badge?.id || ""))).map(badgeLayoutKey);
@@ -5014,8 +5014,8 @@ jobs:
               raise RuntimeError("Runtime revision marker missing")
           entry.write_text(entry_text.replace(marker, '__CLOUDCORD_RUNTIME_REVISION__ = ' + json.dumps(revision), 1), encoding="utf-8")
 
-          GITHUB_URL = "https://github.com/xohus/cloudcord"
-          CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
+          GITHUB_URL = "https://github.com/cloudcord-mod/cloudcord"
+          CLOUDCORD_ICON = "https://raw.githubusercontent.com/cloudcord-mod/cloudcord/main/cloudcord-favicon.png"
 
           replacements = {
               "KettuExposed": "CloudCord",
@@ -5663,7 +5663,7 @@ jobs:
           manifest = {
               "schema": 1,
               "version": os.environ.get("GITHUB_SHA", "local"),
-              "url": f"https://raw.githubusercontent.com/xohus/cloudcord/{payload_commit}/dist/cc.js",
+              "url": f"https://raw.githubusercontent.com/cloudcord-mod/cloudcord/{payload_commit}/dist/cc.js",
               "sha256": hashlib.sha256(runtime).hexdigest(),
               "size": len(runtime),
           }

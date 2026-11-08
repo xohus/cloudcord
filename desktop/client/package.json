@@ -3,13 +3,13 @@
     "private": "true",
     "version": "0.1.0",
     "description": "CloudCord desktop client mod",
-    "homepage": "https://github.com/xohus/cloudcord#readme",
+    "homepage": "https://github.com/cloudcord-mod/cloudcord#readme",
     "bugs": {
-        "url": "https://github.com/xohus/cloudcord/issues"
+        "url": "https://github.com/cloudcord-mod/cloudcord/issues"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/xohus/cloudcord.git"
+        "url": "git+https://github.com/cloudcord-mod/cloudcord.git"
     },
     "license": "GPL-3.0-or-later",
     "author": "Xohus",

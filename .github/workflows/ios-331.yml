@@ -54,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download ios-legacy-331 \
-            --repo xohus/cloudcord \
+            --repo "$GITHUB_REPOSITORY" \
             --pattern cloudcord0-331.ipa \
             --output Discord-331.0-base.ipa
 

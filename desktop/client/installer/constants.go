@@ -15,17 +15,17 @@ import (
 var IsTestBuildStr = "0"
 var IsTestBuild = false
 
-var ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
+var ReleaseUrl = "https://api.github.com/repos/cloudcord-mod/cloudcord/releases/latest"
 var ReleaseUrlFallback = ""
-const InstallerReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
+const InstallerReleaseUrl = "https://api.github.com/repos/cloudcord-mod/cloudcord/releases/latest"
 const InstallerReleaseUrlFallback = ""
 
-var UserAgent = "CloudCordSetup/" + buildinfo.InstallerGitHash + " (https://github.com/xohus/cloudcord)"
+var UserAgent = "CloudCordSetup/" + buildinfo.InstallerGitHash + " (https://github.com/cloudcord-mod/cloudcord)"
 
 func init() {
 	if IsTestBuildStr == "1" || os.Getenv("CLOUDCORD_TEST_BUILD") == "1" {
 		IsTestBuild = true
-		ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/tags/new_beta_test_desktop"
+		ReleaseUrl = "https://api.github.com/repos/cloudcord-mod/cloudcord/releases/tags/new_beta_test_desktop"
 	}
 }
 
