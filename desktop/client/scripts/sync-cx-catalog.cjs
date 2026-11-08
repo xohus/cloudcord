@@ -25,6 +25,7 @@ function buildCatalog(additions = new Map()) {
     const names = new Set();
     const commands = new Set();
     const groups = {};
+    const pluginFiles = new Set();
     const imports = [];
     for (const [kind, target, original] of [
         ["plugin", 600, "examples/cx/pilot/character-counter.cx"],
@@ -32,6 +33,7 @@ function buildCatalog(additions = new Map()) {
     ]) {
         const folder = `examples/cx/catalog/${kind}s`;
         const filenames = fs.readdirSync(path.join(root, folder)).filter(name => name.endsWith(".cx"));
+        if (kind === "plugin") for (const name of filenames) pluginFiles.add(name.toLowerCase());
         if (kind === "plugin") for (const name of additions.keys()) {
             if (!/^[a-z][a-z0-9-]*\.cx$/.test(name) || filenames.some(existing => existing.toLowerCase() === name))
                 throw new Error("Invalid or existing CX filename: " + name);
@@ -68,7 +70,7 @@ function buildCatalog(additions = new Map()) {
         "};",
         "",
     ].join("\n");
-    return { source, plugins: groups.plugins.length, themes: groups.themes.length };
+    return { source, plugins: groups.plugins.length, themes: groups.themes.length, names, commands, pluginFiles };
 }
 
 if (require.main === module) {

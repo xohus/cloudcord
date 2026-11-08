@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildBatchPlan, buildPlan, checkAppearancePaths, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
+const { buildBatchPlan, buildPlan, checkAppearancePaths, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, selectReadyPorts, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
@@ -35,6 +35,44 @@ assert.equal(inspect(source.replace('"x"', '"$&x"')).cx, undefined);
 assert.equal(inspect(source.replace('import definePlugin', 'import "./unreviewed";\nimport definePlugin')).cx, undefined);
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", start() { fetch("/data"); },')).cx, undefined);
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
+
+const actionPlugin = (name, operation) => inspect(`import definePlugin from "@utils/types";
+export default definePlugin({
+    name: "${name}",
+    contextMenus: { message: (children) => { children.push({ action: () => ${operation} }); } },
+    flux: { MESSAGE_CREATE() { showToast("visible"); } },
+    start() { openModal(); },
+});`);
+const copyPlugins = ["Copy one", "Copy two"].map(name => ({
+    ...actionPlugin(name, 'copyToClipboard("value")'), status: "needs-adapter",
+}));
+const linkPlugin = { ...actionPlugin("Open URL", 'openExternal("https://example.org")'), status: "needs-adapter" };
+assert.deepEqual(copyPlugins[0].behaviors, ["event:MESSAGE_CREATE → notification", "menu:message → clipboard"]);
+const grouped = buildBatchPlan([...copyPlugins, linkPlugin]);
+assert.deepEqual(grouped.behaviorBatches.map(({ behavior, count }) => [behavior, count]),
+    [["event:MESSAGE_CREATE → notification", 3], ["menu:message → clipboard", 2]]);
+assert.deepEqual(grouped.behaviorBatches[1].sources.map(({ name }) => name), ["Copy one", "Copy two"]);
+const betterDiscordActions = inspectPlugin("menu.plugin.js", `/**
+ * @name Menu actions
+ */
+module.exports = class {
+    start() { ContextMenu.patch("message", () => ({ action: () => DiscordNative.clipboard.copy("value") })); }
+    onUserContextMenu() { BdApi.UI.showToast("visible"); }
+};`, "betterdiscord");
+assert.deepEqual(betterDiscordActions.behaviors, ["menu:message → clipboard", "menu:user-context → notification"]);
+
+const runtime = loadCxRuntime();
+const batchPorts = selectReadyPorts([
+    { name: "ClapText", file: "existing", cx: candidate.cx },
+    { name: "Malformed", file: "invalid", cx: "unknown" },
+    { name: "Duplicate command", file: "duplicate", cx: 'plugin "Duplicate command":\n  needs commands.register\n  needs messages.send\n  on command "ccp-count":\n    send "hello"\n' },
+    candidate,
+    candidate,
+], catalog, runtime);
+assert.deepEqual([...batchPorts.files.keys()], ["literal-replace.cx"]);
+assert.deepEqual(batchPorts.skipped.map(({ file }) => file), ["existing", "invalid", "duplicate"]);
+assert.match(batchPorts.skipped[2].reason, /duplicate CX command/);
+assert.deepEqual([...selectReadyPorts([candidate], { ...catalog, plugins: 600 }, runtime).files], []);
 
 const records = scan(undefined, { includeCompanions: true });
 assert.equal(records.find(record => record.name === "CCPCharacterCounter")?.status, "in-catalog");

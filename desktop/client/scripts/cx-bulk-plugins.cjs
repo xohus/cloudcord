@@ -27,6 +27,12 @@ const operationGroups = {
     persistence: /^(?:loadData|saveData|deleteData)$/,
 };
 const operationNames = Object.entries(operationGroups);
+const namedMenuHooks = {
+    onMessageContextMenu: "message",
+    onUserContextMenu: "user-context",
+    onGuildContextMenu: "guild-context",
+    onChannelContextMenu: "channel-context",
+};
 
 function operationForCall(callee, receiver) {
     if (!callee) return;
@@ -68,6 +74,7 @@ function inventory(source) {
     const hooks = new Set();
     const targets = new Set();
     const operations = new Set();
+    const behaviors = new Set();
     const importedNames = new Map();
     for (const statement of source.statements) {
         if (!ts.isImportDeclaration(statement)) continue;
@@ -132,7 +139,11 @@ function inventory(source) {
             const receiver = access && (ts.isPropertyAccessExpression(access.expression) ? access.expression.name.text : identifier(access.expression));
             const first = literal(node.arguments[0]);
             const operation = operationForCall(importedNames.get(callee) ?? callee, importedNames.get(receiver) ?? receiver);
-            if (operation) operations.add(operation);
+            if (operation) {
+                operations.add(operation);
+                const context = operationContext(node, importedNames);
+                if (context) behaviors.add(context + " → " + operation);
+            }
             if (/^(?:findByProps(?:Lazy)?|getByKeys)$/.test(callee ?? "") || callee === "byKeys" && receiver === "Filters") {
                 for (const argument of node.arguments) {
                     const key = literal(argument);
@@ -169,7 +180,45 @@ function inventory(source) {
         ts.forEachChild(node, visit);
     };
     visit(source);
-    return { hooks: [...hooks].sort(), targets: [...targets].sort(), ...(operations.size && { operations: [...operations].sort() }) };
+    return {
+        hooks: [...hooks].sort(), targets: [...targets].sort(),
+        ...(operations.size && { operations: [...operations].sort() }),
+        ...(behaviors.size && { behaviors: [...behaviors].sort() }),
+    };
+}
+
+// Only associate an action with a concrete callback or hook that encloses
+// it. Plugin-wide operation counts also include unrelated setup and settings.
+function operationContext(node, importedNames) {
+    for (let child = node, parent = node.parent; parent; child = parent, parent = parent.parent) {
+        if (ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent)) {
+            const name = identifier(parent.name) ?? literal(parent.name);
+            if (Object.hasOwn(namedMenuHooks, name)) return "menu:" + namedMenuHooks[name];
+            if (/^(?:onBeforeMessageSend|onBeforeMessageEdit|onSendMessage|onEditMessage)$/.test(name ?? ""))
+                return /Edit/.test(name) ? "message-edit" : "message-send";
+            if (/^(?:MESSAGE|VOICE|CHANNEL|GUILD|RELATIONSHIP|PRESENCE|TYPING|USER_PROFILE)_[A-Z][A-Z0-9_]*$/.test(name ?? ""))
+                return "event:" + name;
+            if (name === "execute" && ts.isObjectLiteralExpression(parent.parent)
+                && property(parent.parent, "name") && ts.isArrayLiteralExpression(parent.parent.parent)
+                && identifier(parent.parent.parent.parent.name) === "commands") return "command";
+            if (ts.isObjectLiteralExpression(parent.parent)
+                && identifier(parent.parent.parent.name) === "contextMenus"
+                && /^[a-z][a-z0-9-]{2,63}$/.test(name ?? "")) return "menu:" + name;
+        }
+        if (!ts.isCallExpression(parent) || !ts.isFunctionExpression(child) && !ts.isArrowFunction(child)
+            || !parent.arguments.includes(child)) continue;
+        const access = ts.isPropertyAccessExpression(parent.expression) ? parent.expression : undefined;
+        const callee = access?.name.text ?? identifier(parent.expression);
+        const receiver = access && (ts.isPropertyAccessExpression(access.expression) ? access.expression.name.text : identifier(access.expression));
+        const method = importedNames.get(callee) ?? callee;
+        const scope = literal(parent.arguments[0]);
+        if (!scope) continue;
+        if (/^(?:addContextMenuPatch|patchContextMenu)$/.test(method ?? "")
+            || method === "patch" && (importedNames.get(receiver) ?? receiver) === "ContextMenu")
+            return /^[a-z][a-z0-9-]{2,63}$/.test(scope) ? "menu:" + scope : undefined;
+        if (/^(?:subscribe|subscribeToDispatch)$/.test(method ?? "") && /^[A-Z][A-Z0-9_]+$/.test(scope))
+            return "event:" + scope;
+    }
 }
 
 function property(object, key) {
@@ -1242,6 +1291,7 @@ function inspectCompanions(entry, code) {
     const hooks = new Set();
     const targets = new Set();
     const operations = new Set();
+    const behaviors = new Set();
     const companions = [];
     function withinPlugin(file) {
         const local = path.relative(directory, file);
@@ -1250,7 +1300,7 @@ function inspectCompanions(entry, code) {
     for (const [file, text] of pending) {
         if (file.endsWith(".css")) {
             hooks.add("appearance");
-            inventoryStyles(text, targets);
+            inventoryStyles(text, targets, true);
             continue;
         }
         const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
@@ -1259,6 +1309,7 @@ function inspectCompanions(entry, code) {
             for (const hook of found.hooks) hooks.add(hook);
             for (const target of found.targets) targets.add(target);
             for (const operation of found.operations ?? []) operations.add(operation);
+            for (const behavior of found.behaviors ?? []) behaviors.add(behavior);
         }
         function visit(node) {
             ts.forEachChild(node, visit);
@@ -1281,7 +1332,7 @@ function inspectCompanions(entry, code) {
         }
         visit(source);
     }
-    return { companions, hooks, targets, operations };
+    return { companions, hooks, targets, operations, behaviors };
 }
 
 function betterDiscordFiles(folder) {
@@ -1381,12 +1432,13 @@ function scan(sourceDir, { includeCompanions = false, reviewedSources = [] } = {
             if (!record) continue;
             if (includeCompanions && !record.cx && !existing.has(record.name.toLowerCase())
                 && path.dirname(file) !== path.join(root, folder)) {
-                const { companions, hooks, targets, operations } = inspectCompanions(file, code);
+                const { companions, hooks, targets, operations, behaviors } = inspectCompanions(file, code);
                 if (companions.length) {
                     record.companions = companions.map(source => path.relative(root, source).replaceAll("\\", "/")).sort();
                     record.hooks = [...new Set([...record.hooks, ...hooks])].sort();
                     record.targets = [...new Set([...record.targets, ...targets])].sort();
                     if (operations.size) record.operations = [...new Set([...(record.operations ?? []), ...operations])].sort();
+                    if (behaviors.size) record.behaviors = [...new Set([...(record.behaviors ?? []), ...behaviors])].sort();
                 }
             }
             records.push(record);
@@ -1457,6 +1509,7 @@ function buildBatchPlan(records, limit = Infinity) {
     }
     const queues = new Map();
     const operationQueues = new Map();
+    const behaviorQueues = new Map();
     const pending = new Set();
     let ready = 0;
     let compare = 0;
@@ -1476,6 +1529,11 @@ function buildBatchPlan(records, limit = Infinity) {
             continue;
         }
         pending.add(key);
+        for (const { behaviors } of variants) for (const behavior of behaviors ?? []) {
+            const candidates = behaviorQueues.get(behavior) ?? new Set();
+            candidates.add(key);
+            behaviorQueues.set(behavior, candidates);
+        }
         for (const { operations, name, platform, file, hooks } of variants) for (const operation of operations ?? []) {
             const candidates = operationQueues.get(operation) ?? new Map();
             const candidate = candidates.get(key) ?? { name, sources: [] };
@@ -1532,7 +1590,15 @@ function buildBatchPlan(records, limit = Infinity) {
             const mobileSources = plugins.filter(plugin => plugin.sources.some(source => source.platform === "mobile")).length;
             return { operation, count: plugins.length, mobileSources, plugins };
         }).sort((a, b) => b.count - a.count || b.mobileSources - a.mobileSources || a.operation.localeCompare(b.operation));
-    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches, operationBatches, unbatched };
+    const behaviorBatches = [...behaviorQueues].filter(([, candidates]) => candidates.size > 1)
+        .map(([behavior, candidates]) => ({
+            behavior,
+            count: candidates.size,
+            sources: [...candidates].sort().flatMap(key => sources.get(key)
+                .filter(record => record.behaviors?.includes(behavior))
+                .map(({ name, file, platform, companions }) => ({ name, file, platform, ...(companions ? { companions } : {}) }))),
+        })).sort((a, b) => b.count - a.count || a.behavior.localeCompare(b.behavior));
+    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches, behaviorBatches, operationBatches, unbatched };
 }
 
 function checkAppearancePaths(appearance, indexes) {
@@ -1551,8 +1617,8 @@ function checkAppearancePaths(appearance, indexes) {
     return { checked, missing };
 }
 
-function verifyPorts(files) {
-    const { parseCx, activateCx } = require("./sync-cx-catalog.cjs").loadCxRuntime();
+function verifyPorts(files, runtime = require("./sync-cx-catalog.cjs").loadCxRuntime()) {
+    const { parseCx, activateCx } = runtime;
     for (const [file, source] of files) {
         try {
             const plugin = parseCx(source);
@@ -1567,6 +1633,8 @@ function verifyPorts(files) {
                 registerMessageTransform: register,
                 registerMessageEditTransform: register,
                 registerProfileBioTransform: register,
+                registerReplyPingSuppression: register,
+                registerProfileMenuAction: register,
                 registerIncomingRules: register,
                 registerNativeEffect: register,
                 registerUploadAnonymiser: register,
@@ -1601,14 +1669,43 @@ function portFiles(ports) {
     return files;
 }
 
+function selectReadyPorts(ports, baseline, runtime) {
+    const files = new Map();
+    const names = new Set(baseline.names);
+    const commands = new Set(baseline.commands);
+    const skipped = [];
+    for (const port of ports) {
+        try {
+            const candidate = portFiles([port]);
+            const [[filename, source]] = candidate;
+            if (files.get(filename) === source) continue;
+            if (baseline.plugins + files.size >= 600) throw new Error("catalog limit reached");
+            if (baseline.pluginFiles.has(filename) || files.has(filename)) throw new Error("duplicate CX filename " + filename);
+            const plugin = runtime.parseCx(source);
+            const name = plugin.name.trim().toLowerCase();
+            if (names.has(name)) throw new Error("duplicate CX name " + plugin.name);
+            const conflict = plugin.commands?.find(command => commands.has(command.name));
+            if (conflict) throw new Error("duplicate CX command /" + conflict.name);
+            verifyPorts(candidate, runtime);
+            files.set(filename, source);
+            names.add(name);
+            for (const command of plugin.commands) commands.add(command.name);
+        } catch (error) {
+            skipped.push({ name: port.name, file: port.file, reason: error.message });
+        }
+    }
+    return { files, skipped };
+}
+
 function addReady(ports) {
     if (!ports.length) {
         console.log("No new CX ports are ready.");
         return;
     }
-    const { buildCatalog, catalogPath } = require("./sync-cx-catalog.cjs");
-    const files = portFiles(ports);
-    verifyPorts(files);
+    const { buildCatalog, catalogPath, loadCxRuntime } = require("./sync-cx-catalog.cjs");
+    const { files, skipped } = selectReadyPorts(ports, buildCatalog(), loadCxRuntime());
+    for (const entry of skipped) console.warn("Skipped " + entry.name + " (" + entry.file + "): " + entry.reason);
+    if (!files.size) return;
     const catalog = buildCatalog(files);
     const created = [];
     const nextCatalog = catalogPath + "." + process.pid + ".tmp";
@@ -1696,6 +1793,10 @@ async function main(rawArgs) {
         console.log("Scanned " + plan.sources + " sources across " + plan.distinct + " distinct plugin names.");
         console.log(plan.ready + " ready, " + plan.compare + " need source comparison, " + plan.review + " need source review, "
             + plan.pending + " need adapters.");
+        if (plan.behaviorBatches.length) {
+            console.log("Shared action inside the same hook (groups overlap):");
+            for (const batch of plan.behaviorBatches.slice(0, 10)) console.log(batch.count + " " + batch.behavior);
+        }
         console.log("Reusable source shapes first, then shared anchors. Counts are candidates and exclude overlap with earlier rows.");
         for (const batch of plan.batches) {
             console.log(batch.additional + " " + batch.anchor + " (" + batch.mobileSources + " with mobile sources)  "
@@ -1729,4 +1830,4 @@ if (require.main === module) {
         process.exitCode = 1;
     });
 }
-module.exports = { buildBatchPlan, buildPlan, checkAppearancePaths, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts };
+module.exports = { buildBatchPlan, buildPlan, checkAppearancePaths, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, selectReadyPorts, verifyPorts };
