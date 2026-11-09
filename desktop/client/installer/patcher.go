@@ -48,11 +48,17 @@ func init() {
 	dir := os.Getenv("CLOUDCORD_DIRECTORY")
 	if dir == "" {
 		if !ExistsFile(BaseDir) {
-			BaseDirErr = os.Mkdir(BaseDir, 0755)
+			// A fresh account may not have ~/.config yet. Create every missing folder, then
+			// give the topmost one we created back to the user (we may be running under sudo).
+			created := BaseDir
+			for parent := path.Dir(created); parent != created && !ExistsFile(parent); parent = path.Dir(parent) {
+				created = parent
+			}
+			BaseDirErr = os.MkdirAll(BaseDir, 0755)
 			if BaseDirErr != nil {
 				Log.Error("Failed to create", BaseDir, BaseDirErr)
 			} else {
-				BaseDirErr = FixOwnership(BaseDir)
+				BaseDirErr = FixOwnership(created)
 			}
 		}
 	}
@@ -124,6 +130,13 @@ func patchAppAsar(dir string, isSystemElectron bool) (err error) {
 	Log.Debug("Writing custom app.asar to", appAsar)
 	if err := WriteAppAsar(appAsar, CloudCordDirectory); err != nil {
 		return err
+	}
+	// Discord on Linux now installs itself under ~/.config/discord. There the new app.asar
+	// must belong to the user, not root, or Discord's own updater can't manage it.
+	if home := os.Getenv("HOME"); home != "" && strings.HasPrefix(appAsar, path.Clean(home)+"/") {
+		if err := FixOwnership(appAsar); err != nil {
+			return err
+		}
 	}
 
 	return nil
