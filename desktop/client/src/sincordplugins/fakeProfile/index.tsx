@@ -1297,6 +1297,8 @@ const textRewriter = new class {
     private observer: MutationObserver | null = null;
     private pending: MutationRecord[] = [];
     private flushScheduled = false;
+    private flushTimer: ReturnType<typeof setTimeout> | null = null;
+    private flushFrame: number | null = null;
     private readonly originals = new WeakMap<Node, { source: string; replacement: string; }>();
     private realDates: string[] | null = null;
     private fakeDates: { iso: string; texts: string[]; } | null = null;
@@ -1369,6 +1371,7 @@ const textRewriter = new class {
     }
 
     private flush = () => {
+        this.flushFrame = null;
         this.flushScheduled = false;
         const records = this.pending.splice(0);
         if (!isEnabled) return;
@@ -1387,7 +1390,10 @@ const textRewriter = new class {
             this.pending.push(...records);
             if (this.flushScheduled) return;
             this.flushScheduled = true;
-            setTimeout(() => requestAnimationFrame(this.flush), 10);
+            this.flushTimer = setTimeout(() => {
+                this.flushTimer = null;
+                this.flushFrame = requestAnimationFrame(this.flush);
+            }, 10);
         });
         this.observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     }
@@ -1395,6 +1401,12 @@ const textRewriter = new class {
     stop() {
         this.observer?.disconnect();
         this.observer = null;
+        if (this.flushTimer !== null) clearTimeout(this.flushTimer);
+        if (this.flushFrame !== null) cancelAnimationFrame(this.flushFrame);
+        this.flushTimer = null;
+        this.flushFrame = null;
+        this.flushScheduled = false;
+        this.pending.length = 0;
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
             const original = this.originals.get(node);
