@@ -19,6 +19,22 @@ const stop = context.module.exports.installConnectionSettings({ store, rest, own
     assert.equal(rows.length, 2);
     assert.equal(rows[0], real[0]);
     assert.equal(rows[1].verified, false, 'local entries do not claim OAuth verification');
+    assert.ok(Array.isArray(rows[1].integrations) && rows[1].integrations.length === 0, 'Connections and Integrations screens can map over local rows');
+    for (const field of ['friendSync', 'showActivity', 'twoWayLink', 'revoked']) assert.equal(rows[1][field], false, field);
+    assert.equal(rows[1].metadataVisibility, 0);
+    assert.equal(rows[1].type, 'steam');
+    {
+        // Discord's own rows are class records whose fields may be getter-only.
+        class Record { get integrations() { return this._integrations || []; } get isRecord() { return true; } }
+        const realRecord = Object.assign(new Record(), { id: 'r', type: 'twitch', name: 'R', _integrations: [{ id: 'i' }] });
+        const recordStore = { getAccounts: () => [realRecord] };
+        const stopRecords = context.module.exports.installConnectionSettings({ store: recordStore, rest: { del: async () => {}, patch: async () => {} },
+            ownId: () => 'account-a', getData: () => data, remove() {}, explain() {} });
+        const local = recordStore.getAccounts()[1];
+        assert.equal(local.isRecord, true, 'local rows share the real record prototype');
+        assert.ok(Array.isArray(local.integrations) && local.integrations.length === 0, 'getter-only record fields are still defined on local rows');
+        stopRecords();
+    }
     assert.equal(store.getAccounts(), rows, 'unchanged reads retain snapshot identity');
     const url = '/users/@me/connections/steam/' + encodeURIComponent(rows[1].id);
     await assert.rejects(rest.patch({ url, body: { visibility: 0 } }), /CloudCord Profile/);

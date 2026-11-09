@@ -39,9 +39,21 @@ export function installConnectionSettings(options: {
         previous = real; fingerprint = current;
         const custom = nativeSocialProfile({}, data).connectedAccounts || [];
         if (!custom.length) return snapshot = real;
-        return snapshot = [...real, ...custom.map((account: any) => ({ ...account,
+        // Settings screens (Connections, Integrations) read Discord's record fields in camelCase,
+        // e.g. account.integrations.map(...). Give local rows every field a real row has, on the
+        // same prototype when there is a real row, so those screens can't hit undefined.
+        const proto = real.length ? Object.getPrototypeOf(real[0]) : Object.prototype;
+        // Own data properties, defined rather than assigned: a record prototype may have getter-only fields.
+        const asRecord = (fields: Record<string, unknown>) => Object.create(proto, Object.fromEntries(Object.entries(fields)
+            .map(([key, value]) => [key, { value, enumerable: true, writable: true, configurable: true }])));
+        return snapshot = [...real, ...custom.map((account: any) => asRecord({
+            type: account.type, name: account.name,
             id: prefix + owner + ":" + account.cloudcordPreview.id,
-            verified: false, revoked: false, friend_sync: false, show_activity: false,
+            verified: false, revoked: false, visibility: 1,
+            friendSync: false, friend_sync: false, showActivity: false, show_activity: false,
+            metadataVisibility: 0, metadata_visibility: 0, twoWayLink: false, two_way_link: false,
+            integrations: [], metadata: undefined, accessToken: undefined, access_token: undefined,
+            cloudcordCustom: true, cloudcordPreview: account.cloudcordPreview,
         }))];
     });
     const guarded = new Set<string>();
