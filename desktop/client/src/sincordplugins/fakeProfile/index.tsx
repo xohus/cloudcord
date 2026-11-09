@@ -2798,7 +2798,7 @@ function reapplyBadgeDirectory(userId: string | null | undefined) {
 
 // Ask Discord to load a profile again so the edited data replaces what it cached.
 function reloadDiscordProfile(userId: string | null | undefined) {
-    if (!userId) return;
+    if (!userId || !/^\d{15,22}$/.test(userId)) return;
     try { void Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })).catch(() => { }); } catch (e) { logger.warn("Fetching user profile failed", e); }
     reloadBadgeDirectory(userId);
 }
