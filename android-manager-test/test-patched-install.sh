@@ -70,7 +70,27 @@ if [[ "${CHECK_NATIVE_RECOVERY:-0}" == 1 ]]; then
   adb shell uiautomator dump /data/local/tmp/cloudcord-recovery.xml
   adb pull /data/local/tmp/cloudcord-recovery.xml pipeline-results/recovery-long-press.txt
   grep -Fq 'CloudCord recovery' pipeline-results/recovery-long-press.txt
-  grep -Fiq 'Download update' pipeline-results/recovery-long-press.txt
+  read -r update_x update_y < <(python3 - <<'PY'
+import re
+from xml.etree import ElementTree
+
+for node in ElementTree.parse("pipeline-results/recovery-long-press.txt").iter("node"):
+    if node.get("text", "").casefold() == "download update":
+        x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds", "")))
+        print((x1 + x2) // 2, (y1 + y2) // 2)
+        break
+else:
+    raise SystemExit("Recovery update button not found")
+PY
+  )
+  adb logcat -c
+  adb shell input tap "$update_x" "$update_y"
+  for attempt in $(seq 1 20); do
+    sleep 3
+    adb logcat -d > pipeline-results/recovery-download.txt
+    if grep -Eq 'Verified CloudCord bundle (updated|is up to date)' pipeline-results/recovery-download.txt; then break; fi
+  done
+  grep -Eq 'Verified CloudCord bundle (updated|is up to date)' pipeline-results/recovery-download.txt
   adb shell input keyevent KEYCODE_BACK
 fi
 
