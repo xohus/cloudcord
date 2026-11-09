@@ -13,7 +13,7 @@ import { fetchUserProfile, getCurrentChannel, openUserProfile } from "@utils/dis
 import definePlugin, { OptionType } from "@utils/types";
 import { User } from "@vencord/discord-types";
 import { findComponentByCodeLazy } from "@webpack";
-import { ContextMenuApi, Menu, useEffect, UserStore } from "@webpack/common";
+import { ContextMenuApi, Menu, showToast, Toasts, useEffect, UserStore } from "@webpack/common";
 
 interface UserProfileProps {
     popoutProps: Record<string, any>;
@@ -39,10 +39,15 @@ const AccountPanelContextMenu = ErrorBoundary.wrap(() => {
                 disabled={getCurrentChannel()?.getGuildId() == null}
                 action={async e => {
                     if (isPluginEnabled(alwaysExpandProfiles.name)) {
-                        const user = await fetchUserProfile(UserStore.getCurrentUser().id, {
-                            guild_id: prioritizeServerProfile ? undefined : getCurrentChannel()?.getGuildId()
-                        }, false);
-                        return openUserProfile(user!.userId);
+                        try {
+                            const user = await fetchUserProfile(UserStore.getCurrentUser().id, {
+                                guild_id: prioritizeServerProfile ? undefined : getCurrentChannel()?.getGuildId()
+                            }, false);
+                            if (user) openUserProfile(user.userId);
+                        } catch {
+                            showToast("Could not load this server profile. Try again.", Toasts.Type.FAILURE);
+                        }
+                        return;
                     }
                     openAlternatePopout = true;
                     accountPanelRef.current?.click();
@@ -144,8 +149,10 @@ function ServerProfileLauncher({ popoutProps, userId, guildId }: { popoutProps: 
     useEffect(() => {
         popoutProps.closePopout?.();
         popoutProps.onRequestClose?.();
-        fetchUserProfile(userId, { guild_id: guildId }, false).then(user => {
+        void fetchUserProfile(userId, { guild_id: guildId }, false).then(user => {
             if (user) openUserProfile(user.userId);
+        }).catch(() => {
+            showToast("Could not load this server profile. Try again.", Toasts.Type.FAILURE);
         });
     }, []);
     return null;
