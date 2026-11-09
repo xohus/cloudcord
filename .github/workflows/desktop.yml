@@ -239,6 +239,22 @@ jobs:
             exit "$status"
           fi
 
+      - name: Build Linux installer
+        working-directory: desktop/client/installer
+        shell: bash
+        run: |
+          set -e
+          # The command-line installer is pure Go, so it cross-compiles from this runner.
+          for arch in amd64 arm64; do
+            suffix=""
+            if [ "$arch" = arm64 ]; then suffix="-aarch64"; fi
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -tags cli \
+              -ldflags "-s -w -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
+              -o "CloudCordSetupCli-Linux$suffix" .
+          done
+          test -s CloudCordSetupCli-Linux
+          test -s CloudCordSetupCli-Linux-aarch64
+
       - name: Stage artifacts
         shell: bash
         run: |
@@ -261,6 +277,8 @@ jobs:
             cp "desktop/client/dist/CloudCordSetup.exe" "desktop/client/dist/CloudCordSetup-Test.exe"
             cp "desktop/client/dist/CloudCordSetup.exe" "desktop/client/dist/cloudcord-test.exe"
           fi
+
+          cp desktop/client/installer/CloudCordSetupCli-Linux desktop/client/installer/CloudCordSetupCli-Linux-aarch64 desktop/client/installer/install.sh desktop/client/dist/
 
           test -f desktop/client/dist/CloudCordSetup.exe
           test -f desktop/client/dist/CloudCordSetup-Test.exe
@@ -345,6 +363,9 @@ jobs:
             desktop/client/dist/cloudcord.exe
             desktop/client/dist/CloudCordInstaller.exe
             desktop/client/dist/CloudCordSetup-Test.exe
+            desktop/client/dist/CloudCordSetupCli-Linux
+            desktop/client/dist/CloudCordSetupCli-Linux-aarch64
+            desktop/client/dist/install.sh
             desktop/client/dist/cloudcord-test.exe
             desktop/client/dist/desktop-test.asar
             desktop/client/dist/cloudcord-test.asar
@@ -363,6 +384,9 @@ jobs:
           prerelease: true
           files: |
             desktop/client/dist/CloudCordSetup-Test.exe
+            desktop/client/dist/CloudCordSetupCli-Linux
+            desktop/client/dist/CloudCordSetupCli-Linux-aarch64
+            desktop/client/dist/install.sh
             desktop/client/dist/cloudcord-test.exe
             desktop/client/dist/desktop-test.asar
             desktop/client/dist/cloudcord-test.asar
