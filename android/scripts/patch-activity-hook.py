@@ -21,7 +21,15 @@ def patch_activity_hook(path: Path) -> None:
     source = source.replace(old, """                val act = thisObject as Activity
                 if (act.packageName != targetPackage) return@after
                 Log.i("Received Activity")""")
+    old = "                this@Main.onActivity(act)"
+    if source.count(old) != 1:
+        raise ValueError("Unexpected upstream module activity dispatch")
+    source = source.replace(old, """                this@Main.onActivity(act)
+                runCatching { CloudCordRecovery.attach(act) }
+                    .onFailure { Log.e("CloudCord recovery attachment failed", it) }""")
     path.write_text(source, encoding="utf-8")
+    recovery = Path(__file__).with_name("CloudCordRecovery.kt")
+    path.with_name(recovery.name).write_bytes(recovery.read_bytes())
 
 
 if __name__ == "__main__":
