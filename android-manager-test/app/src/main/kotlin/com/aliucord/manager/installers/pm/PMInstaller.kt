@@ -71,7 +71,7 @@ class PMInstaller(
 
         val pendingIntent = PendingIntent.getBroadcast(
             /* context = */ context,
-            /* requestCode = */ 0,
+            /* requestCode = */ -1,
             /* intent = */ callbackIntent,
             /* flags = */ PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
@@ -138,7 +138,9 @@ class PMInstaller(
 
         val pendingIntent = PendingIntent.getBroadcast(
             /* context = */ context,
-            /* requestCode = */ 0,
+            // Intent extras do not distinguish PendingIntents. Keep each
+            // PackageInstaller session's callback tied to its own session ID.
+            /* requestCode = */ sessionId,
             /* intent = */ callbackIntent,
             /* flags = */ PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )

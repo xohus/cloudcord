@@ -116,6 +116,7 @@ jobs:
           name: CloudCordManager-pipeline-results
           path: |
             android-manager-test/pipeline-results/*.txt
+            android-manager-test/pipeline-results/second-session/*.txt
             android-manager-test/pipeline-results/startup-ui.xml
             android-manager-test/pipeline-results/startup-screen.png
       - name: Upload patch log
