@@ -16910,8 +16910,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         return false;
       }
     };
+    var readingAccounts = false;
     wrap(options.store, "getAccounts", (original, args) => {
-      var real = original(...args);
+      if (readingAccounts)
+        return snapshot2 ?? [];
+      var real;
+      readingAccounts = true;
+      try {
+        real = original(...args);
+      } finally {
+        readingAccounts = false;
+      }
       if (!protectedWrites || !Array.isArray(real))
         return real;
       var data = options.getData();
@@ -55419,7 +55428,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "b94e83250a49bfa7da23ed7f5a418861f1fd6fd9";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1d604540587c873560e158b67491d42387b1265d";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
