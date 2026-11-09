@@ -83,14 +83,21 @@ else:
     raise SystemExit("Recovery update button not found")
 PY
   )
+  bundle="/data/user/0/$package/cache/pyoncord/bundle.js"
+  # Remove only the emulator's cached bundle after launch. Leave its ETag in
+  # place to exercise the updater's unconditional fetch when the cache is missing.
+  adb shell su 0 rm -f "$bundle"
+  adb shell su 0 test ! -e "$bundle"
   adb logcat -c
   adb shell input tap "$update_x" "$update_y"
   for attempt in $(seq 1 20); do
     sleep 3
     adb logcat -d > pipeline-results/recovery-download.txt
-    if grep -Eq 'Verified CloudCord bundle (updated|is up to date)' pipeline-results/recovery-download.txt; then break; fi
+    if grep -Fq 'Verified CloudCord bundle updated:' pipeline-results/recovery-download.txt; then break; fi
   done
-  grep -Eq 'Verified CloudCord bundle (updated|is up to date)' pipeline-results/recovery-download.txt
+  grep -Fq 'Verified CloudCord bundle updated:' pipeline-results/recovery-download.txt
+  adb shell su 0 test -s "$bundle"
+  adb shell su 0 sha256sum "$bundle" | tee pipeline-results/recovery-bundle-sha256.txt
   adb shell input keyevent KEYCODE_BACK
 fi
 
