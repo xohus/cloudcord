@@ -57,3 +57,21 @@ adb exec-out screencap -p > pipeline-results/startup-screen.png
 test -s pipeline-results/startup-pid.txt
 grep -q 'Running custom scripts' pipeline-results/startup-logcat.txt
 grep -q 'CloudCord is ready!' pipeline-results/startup-logcat.txt
+
+# Repatch the same Discord inputs for a second package while the first remains installed.
+second_package="${package}.second"
+second_results="pipeline-results/second-session"
+mkdir -p "$second_results"
+adb shell am instrument -w -r -e discordVersion "$version" -e clientPackage "$second_package" \
+  com.getcloudcord.manager.test/androidx.test.runner.AndroidJUnitRunner | tee "$second_results/instrumentation.txt"
+grep -Eq 'OK \([0-9]+ tests?\)' "$second_results/instrumentation.txt"
+adb exec-out run-as com.getcloudcord.manager tar -C files/pipeline-results -cf - . |
+  tar -xf - -C "$second_results"
+for apk in "$second_results"/*.apk; do
+  "$(dirname "$signer")/aapt" dump badging "$apk" > "$apk.package.txt"
+  grep -Fq "package: name='$second_package'" "$apk.package.txt"
+done
+adb install-multiple --no-streaming "$second_results"/*.apk | tee "$second_results/install.txt"
+grep -qx 'Success' "$second_results/install.txt"
+adb shell pm path "$package" | grep '^package:'
+adb shell pm path "$second_package" | grep '^package:'

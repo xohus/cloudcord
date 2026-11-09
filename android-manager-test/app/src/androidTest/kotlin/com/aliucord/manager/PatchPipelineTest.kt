@@ -18,9 +18,13 @@ class PatchPipelineTest {
     fun patchLatestDiscord() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val results = context.filesDir.resolve("pipeline-results").apply { mkdirs() }
-        val version = InstrumentationRegistry.getArguments().getString("discordVersion")
-        val options = if (version.isNullOrBlank()) PatchOptions.Default else
+        val arguments = InstrumentationRegistry.getArguments()
+        val version = arguments.getString("discordVersion")
+        val defaults = PatchOptions.Default
+        val packageName = arguments.getString("clientPackage") ?: defaults.packageName
+        val options = (if (version.isNullOrBlank()) defaults else
             PatchOptions.Default.copy(isDevMode = true, customVersionCode = version)
+        ).copy(packageName = packageName)
         val runner = RainPatchRunner(options)
         try {
             withTimeout(15 * 60 * 1000L) {
