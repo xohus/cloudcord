@@ -25,7 +25,7 @@ internal object CloudCordRecovery {
             if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP && event.action == KeyEvent.ACTION_DOWN) {
                 if (event.repeatCount == 0) {
                     openedForPress = false
-                } else if (!openedForPress && event.eventTime - event.downTime >= 1200) {
+                } else if (!openedForPress && (event.isLongPress || event.eventTime - event.downTime >= 1200)) {
                     openedForPress = true
                     activity.window.decorView.post {
                         if (activity.isFinishing || activity.isDestroyed || !activity.hasWindowFocus()) return@post
