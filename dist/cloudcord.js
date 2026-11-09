@@ -16929,15 +16929,39 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var custom = nativeSocialProfile({}, data).connectedAccounts || [];
       if (!custom.length)
         return snapshot2 = real;
+      var proto = real.length ? Object.getPrototypeOf(real[0]) : Object.prototype;
+      var asRecord = (fields) => Object.create(proto, Object.fromEntries(Object.entries(fields).map(([key, value]) => [
+        key,
+        {
+          value,
+          enumerable: true,
+          writable: true,
+          configurable: true
+        }
+      ])));
       return snapshot2 = [
         ...real,
-        ...custom.map((account) => ({
-          ...account,
+        ...custom.map((account) => asRecord({
+          type: account.type,
+          name: account.name,
           id: prefix2 + owner + ":" + account.cloudcordPreview.id,
           verified: false,
           revoked: false,
+          visibility: 1,
+          friendSync: false,
           friend_sync: false,
-          show_activity: false
+          showActivity: false,
+          show_activity: false,
+          metadataVisibility: 0,
+          metadata_visibility: 0,
+          twoWayLink: false,
+          two_way_link: false,
+          integrations: [],
+          metadata: void 0,
+          accessToken: void 0,
+          access_token: void 0,
+          cloudcordCustom: true,
+          cloudcordPreview: account.cloudcordPreview
         }))
       ];
     });
@@ -55395,7 +55419,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6163b22ea4e2062800ce9581f061541590a9b473";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "b94e83250a49bfa7da23ed7f5a418861f1fd6fd9";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
