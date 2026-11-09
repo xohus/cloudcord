@@ -1297,7 +1297,7 @@ const textRewriter = new class {
     private observer: MutationObserver | null = null;
     private pending: MutationRecord[] = [];
     private flushScheduled = false;
-    private readonly originals = new WeakMap<Node, string>();
+    private readonly originals = new WeakMap<Node, { source: string; replacement: string; }>();
     private realDates: string[] | null = null;
     private fakeDates: { iso: string; texts: string[]; } | null = null;
 
@@ -1341,7 +1341,9 @@ const textRewriter = new class {
         // Discord owns the text and selection in Slate, search and form editors.
         // Mutating their DOM bypasses editor state and can trap the caret/backspace.
         if (node.parentElement?.closest('[contenteditable]:not([contenteditable="false"]), [role="textbox"], input, textarea, select, script, style, code, pre')) return;
-        const source = this.originals.get(node) ?? node.nodeValue;
+        const previous = this.originals.get(node);
+        const source = previous && node.nodeValue === previous.replacement ? previous.source : node.nodeValue;
+        if (previous && node.nodeValue !== previous.replacement) this.originals.delete(node);
         const swaps: [string, string | undefined][] = [
             [_realUsername, storedData.username],
             [_realGlobalName, storedData.globalName],
@@ -1354,8 +1356,9 @@ const textRewriter = new class {
         for (const [from, to] of swaps) if (from && to && text.includes(from)) text = text.replaceAll(from, to);
         // Nitro milestone text is left to the badge component: storedData belongs to
         // the signed-in user and must never overwrite someone else's overlay.
-        if (text === source || text === node.nodeValue) return;
-        if (!this.originals.has(node)) this.originals.set(node, source);
+        if (text === node.nodeValue) return;
+        if (text === source) this.originals.delete(node);
+        else this.originals.set(node, { source, replacement: text });
         node.nodeValue = text;
     }
 
@@ -1396,7 +1399,7 @@ const textRewriter = new class {
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
             const original = this.originals.get(node);
             if (original === undefined) continue;
-            node.nodeValue = original;
+            if (node.nodeValue === original.replacement) node.nodeValue = original.source;
             this.originals.delete(node);
         }
     }
