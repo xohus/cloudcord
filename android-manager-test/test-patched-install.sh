@@ -58,6 +58,22 @@ test -s pipeline-results/startup-pid.txt
 grep -q 'Running custom scripts' pipeline-results/startup-logcat.txt
 grep -q 'CloudCord is ready!' pipeline-results/startup-logcat.txt
 
+if [[ "${CHECK_NATIVE_RECOVERY:-0}" == 1 ]]; then
+  adb shell input keyevent KEYCODE_VOLUME_UP
+  adb shell uiautomator dump /data/local/tmp/cloudcord-recovery.xml
+  adb pull /data/local/tmp/cloudcord-recovery.xml pipeline-results/recovery-short-press.txt
+  if grep -Fq 'CloudCord recovery' pipeline-results/recovery-short-press.txt; then
+    echo 'An ordinary volume press opened recovery' >&2
+    exit 1
+  fi
+  adb shell input keyevent --longpress KEYCODE_VOLUME_UP
+  adb shell uiautomator dump /data/local/tmp/cloudcord-recovery.xml
+  adb pull /data/local/tmp/cloudcord-recovery.xml pipeline-results/recovery-long-press.txt
+  grep -Fq 'CloudCord recovery' pipeline-results/recovery-long-press.txt
+  grep -Fiq 'Download update' pipeline-results/recovery-long-press.txt
+  adb shell input keyevent KEYCODE_BACK
+fi
+
 # Repatch the same Discord inputs for a second package while the first remains installed.
 second_package="${package}.second"
 second_results="pipeline-results/second-session"
