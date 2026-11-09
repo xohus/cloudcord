@@ -10,9 +10,15 @@ import io.github.revenge.xposed.modules.UpdaterModule
 internal object CloudCordRecovery {
     fun attach(activity: Activity) {
         val window = activity.window ?: return
-        val callback = window.callback ?: return
-        if (callback is RecoveryCallback) return
-        window.callback = RecoveryCallback(activity, callback)
+        fun wrapCallback() {
+            val callback = window.callback ?: return
+            if (callback !is RecoveryCallback) window.callback = RecoveryCallback(activity, callback)
+        }
+        wrapCallback()
+        // Discord can replace the callback after onCreate while setting up its window.
+        window.decorView.viewTreeObserver.addOnWindowFocusChangeListener { focused ->
+            if (focused) wrapCallback()
+        }
     }
 
     private class RecoveryCallback(
