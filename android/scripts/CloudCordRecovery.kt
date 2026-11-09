@@ -26,27 +26,40 @@ internal object CloudCordRecovery {
         private val delegate: Window.Callback,
     ) : Window.Callback by delegate {
         private var openedForPress = false
+        private var pressStartedAt: Long? = null
 
         override fun dispatchKeyEvent(event: KeyEvent): Boolean {
             if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP && event.action == KeyEvent.ACTION_DOWN) {
                 if (event.repeatCount == 0) {
                     openedForPress = false
+                    pressStartedAt = event.eventTime
                 } else if (!openedForPress && (event.isLongPress || event.eventTime - event.downTime >= 1200)) {
-                    openedForPress = true
-                    activity.window.decorView.post {
-                        if (activity.isFinishing || activity.isDestroyed || !activity.hasWindowFocus()) return@post
-                        AlertDialog.Builder(activity)
-                            .setTitle("CloudCord recovery")
-                            .setMessage("Download a verified CloudCord update without reinstalling Discord.")
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .setPositiveButton("Download update") { _, _ ->
-                                UpdaterModule.downloadScript(activity, officialOnly = true)
-                            }
-                            .show()
-                    }
+                    openRecovery()
+                }
+            } else if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP && event.action == KeyEvent.ACTION_UP) {
+                // Some Android 9 inputs report only down and up, with no repeat or long-press flag.
+                val start = pressStartedAt
+                pressStartedAt = null
+                if (!openedForPress && !event.isCanceled && start != null && event.eventTime - start >= 1000) {
+                    openRecovery()
                 }
             }
             return delegate.dispatchKeyEvent(event)
+        }
+
+        private fun openRecovery() {
+            openedForPress = true
+            activity.window.decorView.post {
+                if (activity.isFinishing || activity.isDestroyed || !activity.hasWindowFocus()) return@post
+                AlertDialog.Builder(activity)
+                    .setTitle("CloudCord recovery")
+                    .setMessage("Download a verified CloudCord update without reinstalling Discord.")
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton("Download update") { _, _ ->
+                        UpdaterModule.downloadScript(activity, officialOnly = true)
+                    }
+                    .show()
+            }
         }
     }
 }
