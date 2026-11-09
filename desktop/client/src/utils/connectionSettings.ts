@@ -28,8 +28,14 @@ export function installConnectionSettings(options: {
             return true;
         } catch { return false; /* A renamed or readonly store cannot prevent startup. */ }
     };
+    // If "original" ever resolves back to this wrapper (a lazy store stand-in does that),
+    // answer from the last good list instead of recursing until the stack overflows.
+    let readingAccounts = false;
     wrap(options.store, "getAccounts", (original, args) => {
-        const real = original(...args);
+        if (readingAccounts) return snapshot ?? [];
+        let real: any;
+        readingAccounts = true;
+        try { real = original(...args); } finally { readingAccounts = false; }
         if (!protectedWrites || !Array.isArray(real)) return real;
         const data = options.getData();
         const owner = options.ownId();

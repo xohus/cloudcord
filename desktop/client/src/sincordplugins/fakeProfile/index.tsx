@@ -19,7 +19,7 @@ import { popNotice, showNotice } from "@api/Notices";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { installConnectionSettings } from "@utils/connectionSettings";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
-import { findByCodeLazy, findByProps, findStoreLazy } from "@webpack";
+import { filters, findByCodeLazy, findByProps, findStoreLazy, waitFor } from "@webpack";
 import { fetchProfileResponse } from "@utils/profileSyncNetwork";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -2432,16 +2432,23 @@ export default definePlugin({
 
         await loadData();
         if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
-        this._connectionSettings = installConnectionSettings({
-            store: findStoreLazy("ConnectedAccountsStore"), rest: RestAPI,
-            ownId: () => activeUserId() || "",
-            getData: () => isEnabled ? storedData : null,
-            remove: id => {
-                saveOwnData({ ...storedData, customConnections: storedData.customConnections?.filter(entry => entry.id !== id) });
-                queueSharedPublish();
-                forceAccountPanelRerender();
-            },
-            explain: () => showToast("Edit this connection in CloudCord Profile settings.", Toasts.Type.MESSAGE),
+        // Wrap the real store, never a lazy stand-in: before Discord loads ConnectedAccountsStore
+        // (always the case right after login), a lazy getAccounts resolves to our own wrapper
+        // and calls itself until the stack overflows.
+        const connectionGeneration = generation;
+        waitFor(filters.byStoreName("ConnectedAccountsStore"), (store: any) => {
+            if (!profileRuntimeActive || connectionGeneration !== profileRuntimeGeneration || this._connectionSettings) return;
+            this._connectionSettings = installConnectionSettings({
+                store, rest: RestAPI,
+                ownId: () => activeUserId() || "",
+                getData: () => isEnabled ? storedData : null,
+                remove: id => {
+                    saveOwnData({ ...storedData, customConnections: storedData.customConnections?.filter(entry => entry.id !== id) });
+                    queueSharedPublish();
+                    forceAccountPanelRerender();
+                },
+                explain: () => showToast("Edit this connection in CloudCord Profile settings.", Toasts.Type.MESSAGE),
+            });
         });
         this._nativeSocial = installNativeSocialHooks({
             ownId: () => UserStore.getCurrentUser()?.id || "",

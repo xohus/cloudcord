@@ -35,6 +35,16 @@ const stop = context.module.exports.installConnectionSettings({ store, rest, own
         assert.ok(Array.isArray(local.integrations) && local.integrations.length === 0, 'getter-only record fields are still defined on local rows');
         stopRecords();
     }
+    {
+        // A lazy store stand-in: its getAccounts looks the method up on the store at call time,
+        // so after wrapping it resolves to the wrapper itself. This used to overflow the stack.
+        const lazyStore = {};
+        lazyStore.getAccounts = function (...args) { return lazyStore.getAccounts.call(this, ...args); };
+        const stopLazy = context.module.exports.installConnectionSettings({ store: lazyStore, rest: { del: async () => {}, patch: async () => {} },
+            ownId: () => 'account-a', getData: () => data, remove() {}, explain() {} });
+        assert.doesNotThrow(() => lazyStore.getAccounts(), 'a self-resolving store cannot recurse forever');
+        stopLazy();
+    }
     assert.equal(store.getAccounts(), rows, 'unchanged reads retain snapshot identity');
     const url = '/users/@me/connections/steam/' + encodeURIComponent(rows[1].id);
     await assert.rejects(rest.patch({ url, body: { visibility: 0 } }), /CloudCord Profile/);
