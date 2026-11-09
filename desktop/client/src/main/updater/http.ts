@@ -27,12 +27,14 @@ import gitHash from "~git-hash";
 import gitRemote from "~git-remote";
 
 import { ASAR_FILE, serializeErrors } from "./common";
+import { launchWindowsUpdate } from "./windows";
 
 const API_BASE = `https://api.github.com/repos/${gitRemote}`;
 // Plain release downloads aren't rate limited like the GitHub API (60 requests an hour
 // per IP without a login), so update checks use them and never depend on the API.
 const RELEASE_BASE = `https://github.com/${gitRemote}/releases/download/new_beta_t_desktop`;
 let PendingUpdate: { asarUrl: string; checksumUrl: string; } | null = null;
+let stagedChecksum: string | null = null;
 
 async function githubGet<T = any>(endpoint: string) {
     return fetchJson<T>(API_BASE + endpoint, {
@@ -118,6 +120,12 @@ async function applyUpdates() {
     const backupPath = `${asarPath}.backup`;
     writeFileSync(newPath, data, { flush: true });
 
+    if (process.platform === "win32") {
+        stagedChecksum = actualHash;
+        PendingUpdate = null;
+        return true;
+    }
+
     try {
         if (existsSync(backupPath)) unlinkSync(backupPath);
         copyFileSync(asarPath, backupPath);
@@ -134,10 +142,23 @@ async function applyUpdates() {
     return true;
 }
 
+async function restartAfterUpdate() {
+    if (stagedChecksum) {
+        if (createHash("sha256").update(readFileSync(`${__dirname}.new`)).digest("hex") !== stagedChecksum)
+            throw new Error("Staged CloudCord update changed. Download the update again before restarting.");
+        await launchWindowsUpdate(__dirname, stagedChecksum, app.getPath("exe"));
+    } else {
+        app.relaunch();
+    }
+    app.quit();
+    return true;
+}
+
 ipcMain.handle(IpcEvents.GET_REPO, serializeErrors(() => `https://github.com/${gitRemote}`));
 ipcMain.handle(IpcEvents.GET_UPDATES, serializeErrors(calculateGitChanges));
 ipcMain.handle(IpcEvents.UPDATE, serializeErrors(fetchUpdates));
 ipcMain.handle(IpcEvents.BUILD, serializeErrors(applyUpdates));
+ipcMain.handle(IpcEvents.RESTART_UPDATE, serializeErrors(restartAfterUpdate));
 
 // Renderer reloads do not reload Electron's cached main-process modules.
 // Check each load, verify the published archive, then restart only if it changed.
@@ -150,8 +171,7 @@ app.on("browser-window-created", (_event, window) => {
         reloadUpdateRunning = true;
         try {
             if (await fetchUpdates() && await applyUpdates()) {
-                app.relaunch();
-                app.quit();
+                await restartAfterUpdate();
             }
         } catch (error) {
             console.warn("[CloudCord] Runtime update unavailable; keeping current version", error);

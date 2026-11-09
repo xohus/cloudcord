@@ -12,8 +12,7 @@ import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import { Span } from "@components/Span";
 import { Margins } from "@utils/margins";
-import { relaunch } from "@utils/native";
-import { changes, checkForUpdates, update, updateError } from "@utils/updater";
+import { changes, checkForUpdates, restartAfterUpdate, update, updateError } from "@utils/updater";
 import { ConfirmModal, openModal, React, Toasts, useState } from "@webpack/common";
 
 import { runWithDispatch } from "./runWithDispatch";
@@ -121,9 +120,14 @@ export function Updatable(props: CommonProps) {
                                             confirmText="Restart"
                                             cancelText="Not now!"
                                             variant="primary"
-                                            onConfirm={() => {
-                                                relaunch();
-                                                r();
+                                            onConfirm={async () => {
+                                                try {
+                                                    await restartAfterUpdate();
+                                                } catch {
+                                                    Toasts.show({ id: Toasts.genId(), message: "Could not restart CloudCord. Try the updater again.", type: Toasts.Type.FAILURE });
+                                                } finally {
+                                                    r();
+                                                }
                                             }}
                                             onCancel={r}
                                         />

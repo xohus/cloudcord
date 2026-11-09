@@ -1,0 +1,40 @@
+const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+const vm = require('node:vm'), assert = require('node:assert/strict'), crypto = require('node:crypto');
+const { spawn, execFileSync } = require('node:child_process');
+const esbuild = require('esbuild');
+const context = vm.createContext({ module: { exports: {} }, require, process, Buffer });
+vm.runInContext(esbuild.transformSync(fs.readFileSync('src/main/updater/windows.ts', 'utf8'), { loader: 'ts', format: 'cjs' }).code, context);
+const { windowsUpdateScript } = context.module.exports;
+assert.throws(() => windowsUpdateScript('a', 'bad hash', 'b', 1), /Invalid staged/);
+if (process.platform !== 'win32') {
+    console.log('SKIP Windows filesystem integration on non-Windows host');
+} else (async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cloudcord-update-test-'"));
+    const archive = path.join(directory, 'cloudcord.asar');
+    const powershell = path.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe');
+    const executable = path.join(process.env.SystemRoot, 'System32/whoami.exe');
+    const next = Buffer.from('verified replacement runtime');
+    const hash = crypto.createHash('sha256').update(next).digest('hex');
+    fs.writeFileSync(archive, 'previous runtime');
+    fs.writeFileSync(archive + '.new', next);
+    const quoted = "'" + archive.replaceAll("'", "''") + "'";
+    const holderScript = `$f = [IO.File]::Open(${quoted}, 'Open', 'Read', 'None'); Write-Output 'ready'; Start-Sleep -Milliseconds 900; $f.Dispose()`;
+    const holder = spawn(powershell, ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(holderScript, 'utf16le').toString('base64')], { windowsHide: true });
+    await new Promise((resolve, reject) => {
+        holder.once('error', reject);
+        holder.stdout.once('data', resolve);
+        holder.once('exit', code => { if (code) reject(Error('Lock holder failed')); });
+    });
+    const started = Date.now();
+    const script = windowsUpdateScript(archive, hash, executable, holder.pid);
+    execFileSync(powershell, ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 15000 });
+    assert(Date.now() - started >= 500, 'helper waits for the process holding the archive');
+    assert.equal(fs.readFileSync(archive, 'utf8'), next.toString());
+    assert.equal(fs.readFileSync(archive + '.backup', 'utf8'), 'previous runtime');
+    fs.writeFileSync(archive + '.new', 'corrupted staged download');
+    const corrupt = windowsUpdateScript(archive, hash, executable, 2147483000);
+    execFileSync(powershell, ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(corrupt, 'utf16le').toString('base64')], { windowsHide: true, timeout: 15000 });
+    assert.equal(fs.readFileSync(archive, 'utf8'), next.toString(), 'checksum failure preserves installed runtime');
+    assert.match(fs.readFileSync(archive + '.update-error.txt', 'utf8'), /SHA-256/);
+    console.log('PASS real Windows locked-file handoff, quoted paths, backup and corrupt-stage rejection');
+})().catch(error => { console.error(error); process.exitCode = 1; });

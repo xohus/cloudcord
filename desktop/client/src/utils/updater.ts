@@ -57,15 +57,20 @@ export async function update() {
     const res = await Unwrap(VencordNative.updater.update());
 
     if (res) {
-        isOutdated = false;
         if (!await Unwrap(VencordNative.updater.rebuild()))
             throw new Error("The Build failed. Please try manually building the new update");
+        isOutdated = false;
     }
 
     return res;
 }
 
 export const getRepo = () => Unwrap(VencordNative.updater.getRepo());
+
+export async function restartAfterUpdate() {
+    if (IS_STANDALONE && !IS_WEB) await Unwrap(VencordNative.updater.restart());
+    else relaunch();
+}
 
 export async function maybePromptToUpdate(confirmMessage: string, checkForDev = false) {
     if (IS_WEB || IS_UPDATER_DISABLED) return;
@@ -78,7 +83,7 @@ export async function maybePromptToUpdate(confirmMessage: string, checkForDev = 
             if (wantsUpdate && isNewer) return alert("Your local copy has more recent commits. Please stash or reset them.");
             if (wantsUpdate) {
                 await update();
-                relaunch();
+                await restartAfterUpdate();
             }
         }
     } catch (err) {

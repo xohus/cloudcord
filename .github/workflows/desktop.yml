@@ -98,6 +98,8 @@ jobs:
           node scripts/test-profile-hook-lifecycle.cjs
           node scripts/test-profile-network-timeout.cjs
           node scripts/test-profile-fetch-failure.cjs
+          node scripts/test-windows-update.cjs
+          node scripts/test-updater-staging.cjs
 
       - name: Check shared custom friend and connection previews
         env:
