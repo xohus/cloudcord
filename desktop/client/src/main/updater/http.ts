@@ -68,8 +68,10 @@ async function fetchUpdates() {
         throw new Error("The CloudCord release checksum is unreadable");
 
     const asarPath = __dirname;
-    if (asarPath.toLowerCase().endsWith(".asar") && createHash("sha256").update(readFileSync(asarPath)).digest("hex") === expected)
+    if (asarPath.toLowerCase().endsWith(".asar") && createHash("sha256").update(readFileSync(asarPath)).digest("hex") === expected) {
+        PendingUpdate = null;
         return false;
+    }
 
     PendingUpdate = { asarUrl: `${RELEASE_BASE}/${ASAR_FILE}`, checksumUrl };
     return true;
