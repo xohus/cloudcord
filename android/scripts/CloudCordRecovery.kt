@@ -33,7 +33,9 @@ internal object CloudCordRecovery {
                             .setTitle("CloudCord recovery")
                             .setMessage("Download a verified CloudCord update without reinstalling Discord.")
                             .setNegativeButton(android.R.string.cancel, null)
-                            .setPositiveButton("Download update") { _, _ -> UpdaterModule.downloadScript(activity) }
+                            .setPositiveButton("Download update") { _, _ ->
+                                UpdaterModule.downloadScript(activity, officialOnly = true)
+                            }
                             .show()
                     }
                 }
