@@ -31063,32 +31063,24 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ];
       CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/cloudcord-mod/release-hub/main/cloudcord-favicon.png";
       CLOUDCORD_STAFF_ROLES = {
-        "463515440606609419": "Founder",
+        "544915373812744216": "Founder",
         "1417880742502994042": "Chief of staff",
         "1394648991223779328": "Management Supervisor",
         "1526004298020950075": "Management Supervisor",
-        "1540350369232850995": "Manager",
-        "1497588725788442637": "Manager",
-        "1330236504198611029": "Social Media Manager",
-        "1191456523763859558": "Admin",
-        "1457121276748365989": "Admin",
-        "1465007041390317579": "Admin",
-        "1470732628461359251": "Lead of Support",
-        "553936745058664458": "Mod",
-        "1073445426025480202": "Mod",
-        "1141922991622586418": "Mod",
-        "1495382175158243440": "Mod",
-        "562677177779224588": "Trial Moderator",
-        "673898407601111059": "Trial Moderator",
-        "1416192374895542455": "Trial Moderator",
+        "1330236504198611029": "Manager",
+        "1340400343573336126": "Social Media Manager",
+        "562677177779224588": "Admin",
+        "1497588725788442637": "Admin",
+        "579298596537630722": "Mod",
+        "1191456523763859558": "Mod",
+        "1416192374895542455": "Mod",
+        "662384927500927006": "Trial Moderator",
+        "1069892245823692871": "Trial Moderator",
+        "1207406739134091274": "Trial Moderator",
         "1440072683969839235": "Trial Moderator",
-        "1540703692133634183": "Trial Moderator",
-        "1560310951805321359": "Trial Moderator",
-        "551069589983854603": "Senior Support",
-        "257020965756731403": "Support",
-        "1069892245823692871": "Support",
-        "1186647886608478260": "Support",
-        "1560496375710613514": "Support"
+        "1566826744126636097": "Trial Moderator",
+        "257020965756731403": "Senior Support",
+        "1253436423923699796": "Support"
       };
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
@@ -55428,7 +55420,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1d604540587c873560e158b67491d42387b1265d";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "18be700f2dd77079a2c80849eff0f9cfb6477edd";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
