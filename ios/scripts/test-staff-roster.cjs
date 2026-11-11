@@ -2,21 +2,22 @@ const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const roster = JSON.parse(fs.readFileSync('config/staff-roster.json', 'utf8'));
-assert.equal(roster.reviewedAt, '2026-10-26');
+assert.equal(roster.reviewedAt, '2026-11-11');
 assert.equal(roster.roles[0].name, 'Chief of staff');
 assert.deepEqual(roster.roles[0].userIds, ['1417880742502994042']);
 assert.equal(roster.roles[1].name, 'Management Supervisor');
 assert.deepEqual(roster.roles[1].userIds, ['1394648991223779328', '1526004298020950075']);
 const entries = roster.roles.flatMap(role => role.userIds.map(id => [id, role.name]));
-assert.equal(entries.length, 25, 'current Discord snapshot has 25 staff accounts, not the old quota');
+assert.equal(entries.length, 17, 'the Discord snapshot has 17 staff accounts plus the server owner');
 assert.equal(new Set(entries.map(([id]) => id)).size, entries.length, 'each staff account has exactly one highest-rank badge');
 assert(!entries.some(([id]) => id === roster.owner), 'owner is outside the staff slots');
 const expected = { [roster.owner]: 'Founder', ...Object.fromEntries(entries) };
-const removedStaff = ['318501167741272066', '1121228881425354832', '1169999011642605628', '1312331817818394665', '1453130879537905734', '1541881462914023501'];
+const removedStaff = ['318501167741272066', '1121228881425354832', '1169999011642605628', '1312331817818394665', '1453130879537905734', '1541881462914023501', '463515440606609419', '1465007041390317579', '1470732628461359251'];
 for (const id of removedStaff) assert.equal(expected[id], undefined, 'former staff must not keep an official badge');
-assert.equal(expected['1330236504198611029'], 'Social Media Manager', 'highest rank wins over trial/support roles');
-assert.equal(expected['1416192374895542455'], 'Trial Moderator');
-assert.equal(expected['1470732628461359251'], 'Lead of Support');
+assert.equal(expected['1330236504198611029'], 'Manager', 'highest rank wins over trial/support roles');
+assert.equal(expected['1416192374895542455'], 'Mod');
+assert.equal(expected['544915373812744216'], 'Founder');
+assert.equal(expected['257020965756731403'], 'Senior Support');
 for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloudcord.yml']) {
     const source = fs.readFileSync(path, 'utf8');
     const object = source.match(/const CLOUDCORD_STAFF_ROLES: Record<string, string> = (\{[\s\S]*?\});/)[1];
@@ -27,4 +28,4 @@ for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloud
 }
 const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 assert.match(workflow, /^          const CLOUDCORD_STAFF_ROLES:/m, 'mobile heredoc must retain YAML indentation');
-console.log('PASS live 25-account roster, six removed badges, highest-rank titles and desktop/browser/mobile parity; owner preserved');
+console.log('PASS staff roster, revoked badges, highest-rank titles and desktop/browser/mobile parity');

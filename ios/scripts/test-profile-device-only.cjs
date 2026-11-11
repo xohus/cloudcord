@@ -25,5 +25,5 @@ for (const [source, flag] of [[desktop, 'storedData.localOnly'], [mobile, 'rootS
 assert(desktop.includes('localOnly: !useEverywhere'));
 assert(mobile.includes('rootSettings.fakeProfileLocalOnly = false'));
 assert(mobile.includes('A previously shared profile remains shared until replaced'));
-assert(mobile.includes('"1465007041390317579": "Admin"'));
+assert(mobile.includes('"562677177779224588": "Admin"'));
 console.log('PASS device-only upload/pull guards, saved mode and staff assignment');

@@ -13,7 +13,7 @@ const context = { module: { exports: {} }, require: name => {
     return {};
 } };
 vm.runInNewContext(esbuild.transformSync(fs.readFileSync(path.join(__dirname, '../src/api/Badges.ts'), 'utf8'), { loader: 'ts', format: 'cjs' }).code, context);
-const api = context.module.exports, args = { userId: '1465007041390317579', guildId: 'guild' };
+const api = context.module.exports, args = { userId: '562677177779224588', guildId: 'guild' };
 const roster = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../config/staff-roster.json'), 'utf8'));
 for (const rank of roster.roles) for (const userId of rank.userIds) {
     const official = api._getBadges({ ...args, userId }).filter(b => b.id.startsWith('cloudcord-official-'));
