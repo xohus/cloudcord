@@ -2527,6 +2527,10 @@ jobs:
           function renderedUserId(props: any) {
               return props?.userId
                   || props?.user_id
+                  || props?.member?.userId
+                  || props?.member?.user?.id
+                  || props?.result?.userId
+                  || props?.result?.user?.id
                   || props?.profileUserId
                   || props?.message?.author?.id
                   || props?.author?.id
@@ -2705,6 +2709,8 @@ jobs:
                   if (data) {
                       Object.assign(currentProps, nativeProfileAppearance(data));
                       if (props.user) currentProps.user = cloneSharedUser(props.user, data);
+                      if (props.member?.user) currentProps.member = { ...props.member, user: cloneSharedUser(props.member.user, data) };
+                      if (props.result?.user) currentProps.result = { ...props.result, user: cloneSharedUser(props.result.user, data) };
                       for (const key of ["profile", "userProfile", "displayProfile", "guildMemberProfile"]) {
                           if (props[key]) currentProps[key] = decorateSharedProfile(props[key], id, data);
                       }
@@ -2720,6 +2726,11 @@ jobs:
                           currentProps.global_name = name;
                           currentProps.name = name;
                       }
+                      const identityName = name || data.username;
+                      if (identityName && "nick" in props) currentProps.nick = identityName;
+                      if (identityName && "nickname" in props) currentProps.nickname = identityName;
+                      if (data.avatar && "avatarSource" in props) currentProps.avatarSource = { uri: data.avatar };
+                      if (data.avatar && "avatarURL" in props) currentProps.avatarURL = data.avatar;
                   }
                   // React must own this child's hooks. Calling Component(props)
                   // merges Discord's hook sequence into this wrapper and can
@@ -2743,7 +2754,8 @@ jobs:
                   "ProfileHeaderName", "ProfileDisplayName", "UserProfileName",
                   "ProfileUsername", "UserTagAndPronouns", "UserTag",
                   "UserProfilePrimaryInfo", "DiscordTag", "UsernameWithEffects",
-                  "GuildTag", "VoiceGuildTag",
+                  "GuildTag", "VoiceGuildTag", "UserMention", "MentionUser",
+                  "MentionAutocompleteRow", "UserAutocompleteRow",
                   "UserProfileUsername", "UserProfileDisplayName", "ProfileHeaderUserInfo", "UserProfileHeaderInfo"
               ];
               const applyIdentity = (props: any, id: string, data: any) => {
@@ -2818,6 +2830,22 @@ jobs:
           function ensurePatches() {
               if (initialized) return;
               initialized = true;
+              const mentionSearch = findByProps("queryMentionResults");
+              addPatch("queryMentionResults", mentionSearch, (args, original) => {
+                  const withAliases = (members: any[]) => members.map(member => {
+                      if (!member || typeof member !== "object" || !("userId" in member) || !("nick" in member)) return member;
+                      const id = String(member.userId);
+                      if (!/^\d{15,22}$/.test(id) || isRealProfileView(id)) return member;
+                      const profile = isCurrentUser(id) ? (preview.enabled ? preview : null) : getProfileOverride(id);
+                      const nick = profile?.username || profile?.globalName || profile?.displayName;
+                      return nick ? { ...member, nick } : member;
+                  });
+                  return original(...args.map(value => {
+                      if (Array.isArray(value)) return withAliases(value);
+                      if (Array.isArray(value?.members)) return { ...value, members: withAliases(value.members) };
+                      return value;
+                  }));
+              });
               (globalThis as any).__CLOUDCORD_PRESENTATION_USER__ = (user: any) => {
                   if (!user?.id) return user;
                   if (isCurrentUser(String(user.id))) return preview.enabled ? cloneObject(user, "user") : user;
@@ -3001,7 +3029,8 @@ jobs:
                   addPatch(method, avatarResolver, (args, original) => customAvatarFor(args) || original(...args));
               }
               for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource", "getAvatarSource"]) {
-                  addPatch(method, avatarResolver, (args, original) => {
+                  const sourceResolver = typeof avatarResolver?.[method] === "function" ? avatarResolver : findByProps(method);
+                  addPatch(method, sourceResolver, (args, original) => {
                       const uri = customAvatarFor(args);
                       return uri ? { uri } : original(...args);
                   });

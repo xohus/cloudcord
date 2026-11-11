@@ -2084,6 +2084,9 @@ function disguiseUser(real: any, fields: Record<string, () => unknown>): any {
 
 /** Decoration, badge flags and profile metadata from a CloudCord profile onto a disguised user. */
 function dressUserClone(clone: any, profile: CustomProfileData) {
+    if (profile.avatar) {
+        Object.defineProperty(clone, "getAvatarURL", { value: () => profile.avatar, configurable: true });
+    }
     if (profile.decorationAsset) clone.avatarDecoration = clone.avatarDecorationData = nativeDecoration(profile);
     if (shouldReplaceBadges(profile)) clone.publicFlags = profile.badgeFlags ?? 0;
     applyNativeProfileMetadata(clone, profile, false, false);
@@ -2115,6 +2118,19 @@ export default definePlugin({
     },
 
     patches: [
+        {
+            find: ",queryMentionResults(",
+            replacement: [
+                {
+                    match: /(?<=\i=)\i\.\i\.getMembers\(.{0,25}\)\.filter\(\i\)/g,
+                    replace: "$self.withMentionAliases($&)"
+                },
+                {
+                    match: /(?<=\i=)\i\.recipients\.map\(.{0,100}\?\?null\}\)\)/,
+                    replace: "$self.withMentionAliases($&)"
+                }
+            ]
+        },
         {
             // Discord applies the Nitro type override only for staff. Apply it while Fake Nitro is on.
             find: ".getPremiumTypeActual();return ",
@@ -2287,6 +2303,17 @@ export default definePlugin({
         dressUserClone(clone, storedData);
         ownUserCache = { source: user, clone, version: profileVersion };
         return clone;
+    },
+
+    withMentionAliases<T>(members: T): T {
+        if (!profileRuntimeActive || !Array.isArray(members)) return members;
+        return members.map(member => {
+            const id = member?.userId ?? member?.user?.id ?? member?.id;
+            if (typeof id !== "string" || !/^\d{15,22}$/.test(id) || isRealProfileView(id)) return member;
+            const profile = isMe(id) ? (isEnabled ? storedData : undefined) : viewedSharedProfile(id);
+            const nick = profile?.username || profile?.globalName;
+            return nick ? { ...member, nick } : member;
+        }) as T;
     },
 
     fakeOtherUser(user: any) {
