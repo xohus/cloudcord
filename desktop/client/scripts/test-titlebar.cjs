@@ -13,8 +13,14 @@ for (const desktop of [true, false]) for (const windows of [true, false]) {
             Settings: { winNativeTitleBar: native, frameless, mainWindowFrameless: main },
             coreStyleRootNode: {}, createAndAppendStyle() { const style = {}; styles.push(style); return style; }
         });
-        assert.equal(styles.length, desktop && windows && native && !frameless && !main ? 1 : 0,
-            'retain a Discord drag area whenever the native frame is disabled');
+        assert.equal(styles.length, desktop && windows ? 1 : 0);
+        if (!desktop || !windows) continue;
+        const css = styles[0].textContent;
+        if (native && !frameless && !main) assert.match(css, /display: none/);
+        else {
+            assert.match(css, /\[data-window-chrome="true"\]\s*\{\s*-webkit-app-region: drag/);
+            assert.match(css, /:is\(button,[\s\S]*?-webkit-app-region: no-drag/);
+        }
     }
 }
 console.log('PASS native/frameless title-bar combinations on desktop and web');

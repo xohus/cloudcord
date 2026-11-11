@@ -244,8 +244,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Match main/patcher.ts: frameless options take precedence over the native
     // title bar. Hiding Discord's bar in that case removes the only drag area.
-    if (IS_DISCORD_DESKTOP && IS_WINDOWS && Settings.winNativeTitleBar
-        && !Settings.frameless && !Settings.mainWindowFrameless) {
+    if (!IS_DISCORD_DESKTOP || !IS_WINDOWS) return;
+    if (Settings.winNativeTitleBar && !Settings.frameless && !Settings.mainWindowFrameless) {
         createAndAppendStyle("vencord-native-titlebar-style", coreStyleRootNode).textContent = "[class*=titleBar]{display: none!important}";
+        return;
     }
+    createAndAppendStyle("cloudcord-window-drag-style", coreStyleRootNode).textContent = `
+        [data-window-chrome="true"] { -webkit-app-region: drag; }
+        [data-window-chrome="true"] :is(button, a, input, select, textarea, [role="button"], [role="menuitem"], [contenteditable="true"], [class*="winButtons"]) {
+            -webkit-app-region: no-drag;
+        }
+    `;
 }, { once: true });

@@ -124,7 +124,9 @@ if (!IS_VANILLA) {
             } else if (frameless) {
                 options.frame = false;
             } else if (process.platform === "win32" && winNativeTitleBar) {
-                delete options.frame;
+                options.frame = true;
+                options.titleBarStyle = "default";
+                delete options.titleBarOverlay;
             }
 
             if (disableMinSize) {
