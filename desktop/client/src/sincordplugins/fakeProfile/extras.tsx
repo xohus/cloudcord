@@ -18,6 +18,8 @@ import { installGiftPreview } from "./giftPreview";
 import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
+import { fakeConversationCount, openFakeConversation, openFakeDm } from "../../cloudcordplugins/FakeMessages";
+import { openServerClone } from "../../cloudcordplugins/ServerClone";
 
 const NITRO_APP_ID = "521842831262875670";
 const NITRO_SKU = "521847234246082599";
@@ -832,6 +834,9 @@ export function stopExtras() {
 export function ExtrasPanel() {
     const state = useExtras();
     const [friendId, setFriendId] = React.useState("");
+    const [dmUserId, setDmUserId] = React.useState("");
+    const [cloneGuildId, setCloneGuildId] = React.useState("");
+    const guilds = Object.values(GuildStore.getGuilds() as Record<string, any>).sort((a, b) => String(a.name).localeCompare(String(b.name)));
     const [, force] = React.useReducer(x => x + 1, 0);
     const code = state.giftCode;
     const copy = async () => {
@@ -872,6 +877,23 @@ export function ExtrasPanel() {
                 {savedRequests().length > 0 && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { for (const item of savedRequests()) removeFakeRequest(item.id); force(); }}>Remove all ({savedRequests().length})</button>}
             </div>
             <span className="cpx-hint">They stay until you remove them, even after restarting.</span>
+        </Section>
+        <Section title="Fake messages" description="Fake conversations and DMs with friends, any user ID or made-up people (up to 10), only on your device. Nothing is sent.">
+            <div className="cpx-inline">
+                <button type="button" className="cpx-btn" onClick={() => openFakeConversation(SelectedChannelStore.getChannelId())}>Fake conversation in this chat</button>
+                {fakeConversationCount() > 0 && <span className="cpx-hint">{fakeConversationCount()} saved. Open it in any chat to edit or delete them.</span>}
+            </div>
+            <div className="cpx-inline">
+                <input className="cpx-input" placeholder="User ID for a fake DM" inputMode="numeric" value={dmUserId} onChange={event => setDmUserId(event.target.value.replace(/D/g, ""))} />
+                <button type="button" className="cpx-btn" onClick={() => openFakeDm(dmUserId)}>Fake DM</button>
+            </div>
+            <span className="cpx-hint">You can also right-click a chat (Fake conversation) or a user (Fake DM).</span>
+        </Section>
+        <Section title="Clone a server" description="Copies roles, channels, permissions, emojis, stickers and settings into a new server you own, using your account. Messages and members are never copied. Only clone servers you have the right to copy.">
+            <div className="cpx-inline">
+                <SelectField label="Server" options={[{ value: "", label: "Pick a server" }, ...guilds.map(guild => ({ value: guild.id, label: guild.name }))]} value={cloneGuildId} onChange={value => setCloneGuildId(String(value))} />
+                <button type="button" className="cpx-btn" disabled={!cloneGuildId} onClick={() => openServerClone(GuildStore.getGuild(cloneGuildId))}>Clone server</button>
+            </div>
         </Section>
         <Section title="Account tools">
             <div className="cpx-inline">

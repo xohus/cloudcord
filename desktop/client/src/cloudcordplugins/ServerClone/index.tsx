@@ -74,6 +74,12 @@ function CloneModal({ guild, rootProps }: { guild: any; rootProps: ModalProps; }
     </ModalRoot>;
 }
 
+/** Used by Extras in the profile editor. */
+export function openServerClone(guild: any) {
+    if (!guild?.id) return showToast("Pick a server first.", Toasts.Type.FAILURE);
+    openModal(props => <CloneModal guild={guild} rootProps={props} />);
+}
+
 const guildMenu: NavContextMenuPatchCallback = (children, { guild }: { guild: any; }) => {
     if (!guild?.id) return;
     const group = findGroupChildrenByChildId("privacy", children) ?? children;
@@ -85,5 +91,6 @@ export default definePlugin({
     description: "Copy a server's roles, channels, permissions, emojis, stickers and settings into a new server you own. Right-click a server, then Clone server.",
     authors: [Devs.Xohus],
     tags: ["Servers", "Utility"],
+    enabledByDefault: true,
     contextMenus: { "guild-context": guildMenu, "guild-header-popout": guildMenu },
 });

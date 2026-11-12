@@ -179,6 +179,13 @@ const openEditor = (channelId?: string | null) => {
     if (!channelId) return showToast("Open a chat first.", Toasts.Type.FAILURE);
     openModal(props => <Editor channelId={channelId} rootProps={props} />);
 };
+/** Used by Extras in the profile editor. */
+export const openFakeConversation = openEditor;
+export function openFakeDm(userId: string) {
+    if (!/^d{15,22}$/.test(userId)) return showToast("Enter a Discord user ID.", Toasts.Type.FAILURE);
+    void UserUtils.getUser(userId).catch(() => null).then(() => openModal(props => <Editor dmUser={userId} rootProps={props} />));
+}
+export const fakeConversationCount = () => conversations.length;
 
 const channelMenu: NavContextMenuPatchCallback = (children, { channel }: { channel: any; }) => {
     if (!channel?.id) return;
@@ -195,6 +202,7 @@ export default definePlugin({
     description: "Make fake conversations and fake DMs, only on your device: messages from friends, any user ID or made-up people (up to 10). Right-click a chat for Fake conversation, or a user for Fake DM.",
     authors: [Devs.Xohus],
     tags: ["Chat", "Fun"],
+    enabledByDefault: true,
     contextMenus: { "channel-context": channelMenu, "thread-context": channelMenu, "gdm-context": channelMenu, "user-context": userMenu },
     async start() {
         conversations = ((await DataStore.get(STORE_KEY)) ?? []).map(normalizeConversation).filter(Boolean);
