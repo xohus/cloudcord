@@ -1,0 +1,21 @@
+/* CloudCord Game Mode: less work for the GPU and CPU while a game runs. */
+html.cc-game-mode *,
+html.cc-game-mode *::before,
+html.cc-game-mode *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+
+html.cc-game-mode * {
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+html.cc-game-mode-cosmetics [class*="avatarDecoration"],
+html.cc-game-mode-cosmetics [class*="profileEffects"],
+html.cc-game-mode-cosmetics [class*="nameplate"] video,
+html.cc-game-mode-cosmetics [class*="nameplated"] video {
+    display: none !important;
+}

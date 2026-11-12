@@ -21,3 +21,5 @@
 .cc-fm-btn.danger { background: var(--status-danger, #da373c); color: #fff; }
 .cc-fm-btn:disabled { opacity: .5; cursor: not-allowed; }
 .cc-fm-footer { display: flex; gap: 8px; justify-content: flex-end; }
+.cc-fm-all { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: var(--background-secondary); font-size: 13px; }
+.cc-fm-all span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -38,6 +38,10 @@ export interface FakeConversation {
     channelId: string;
     people: FakePerson[];
     lines: FakeLine[];
+    /** Show it as a DM with one of the people. "local" means a DM that only exists on this device. */
+    dm?: { person: string; local: boolean; };
+    /** When it was saved; message times count back from this, so they stay put across restarts. */
+    savedAt?: number;
 }
 
 const DISCORD_EPOCH = 1420070400000n;
@@ -75,8 +79,13 @@ export function normalizeConversation(input: any): FakeConversation | null {
         text: String(line?.text || "").slice(0, 4000),
         minutesAgo: Math.max(0, Math.min(60 * 24 * 365, Number(line?.minutesAgo) || 0)),
     })).filter((line: FakeLine) => keys.has(line.person) && line.text.trim());
-    return { id: String(input.id || newKey()), name: String(input.name || "Fake conversation").slice(0, 60), channelId: String(input.channelId), people, lines };
+    const dm = input.dm && keys.has(String(input.dm.person)) ? { person: String(input.dm.person), local: input.dm.local === true } : undefined;
+    const savedAt = Number(input.savedAt) > 0 ? Number(input.savedAt) : undefined;
+    return { id: String(input.id || newKey()), name: String(input.name || "Fake conversation").slice(0, 60), channelId: String(input.channelId), people, lines, ...(dm ? { dm } : {}), ...(savedAt ? { savedAt } : {}) };
 }
+
+/** A channel id for a DM that only exists on this device. */
+export const newLocalChannelId = () => snowflakeAt(Date.now(), Math.floor(Math.random() * 0xfff));
 
 export interface FakeMessagesOptions {
     dispatcher: { dispatch(event: any): any; subscribe?(type: string, cb: (event: any) => void): void; unsubscribe?(type: string, cb: (event: any) => void): void; };
@@ -94,6 +103,8 @@ export interface FakeMessagesOptions {
     explain?: () => void;
     /** Discord's avatar helpers, so made-up people can have their own picture. */
     iconUtils?: any;
+    /** Something you typed in a local-only DM; add it to the conversation as your own line. */
+    addOwnLine?: (conversationId: string, text: string) => void;
 }
 
 export function installFakeMessages(options: FakeMessagesOptions) {
@@ -127,7 +138,7 @@ export function installFakeMessages(options: FakeMessagesOptions) {
     };
 
     const messagesFor = (conversation: FakeConversation) => {
-        const anchor = anchors.get(conversation.id) ?? Date.now();
+        const anchor = conversation.savedAt ?? anchors.get(conversation.id) ?? Date.now();
         anchors.set(conversation.id, anchor);
         const people = new Map(conversation.people.map(person => [person.key, person]));
         const guildId = options.getGuildId(conversation.channelId) || undefined;
@@ -151,11 +162,32 @@ export function installFakeMessages(options: FakeMessagesOptions) {
             });
     };
 
-    /** Shows (or re-shows) every conversation for a channel. */
+    const conversationsIn = (channelId: string) => options.getConversations()
+        .map(normalizeConversation).filter((item): item is FakeConversation => !!item && item.channelId === channelId);
+    const localDms = () => options.getConversations().map(normalizeConversation)
+        .filter((item): item is FakeConversation => !!item?.dm?.local);
+
+    /** A DM that only exists on this device, so it shows in the DM list. */
+    const createLocalDm = (conversation: FakeConversation) => {
+        const person = conversation.people.find(item => item.key === conversation.dm?.person);
+        if (!person) return;
+        idFor(person);
+        const messages = messagesFor(conversation);
+        try {
+            options.dispatcher.dispatch({ type: "CHANNEL_CREATE", channel: {
+                id: conversation.channelId, type: 1, flags: 0, is_spam: false,
+                last_message_id: messages[messages.length - 1]?.id ?? null,
+                recipients: [author(person)],
+            } });
+        } catch { }
+    };
+
+    /** Shows a conversation now (after you save it). Later loads merge the messages in instead. */
     const show = (channelId?: string) => {
         for (const raw of options.getConversations()) {
             const conversation = normalizeConversation(raw);
             if (!conversation || (channelId && conversation.channelId !== channelId)) continue;
+            if (conversation.dm?.local) createLocalDm(conversation);
             for (const message of messagesFor(conversation)) {
                 try {
                     options.dispatcher.dispatch({ type: "MESSAGE_CREATE", channelId: conversation.channelId, message, optimistic: false, isPushNotification: false });
@@ -171,23 +203,16 @@ export function installFakeMessages(options: FakeMessagesOptions) {
             try { options.dispatcher.dispatch({ type: "MESSAGE_DELETE", channelId: origin.channelId, id }); } catch { }
             shown.delete(id);
         }
+        const conversation = options.getConversations().map(normalizeConversation).find(item => item?.id === conversationId);
+        if (conversation?.dm?.local) { try { options.dispatcher.dispatch({ type: "CHANNEL_DELETE", channel: { id: conversation.channelId, type: 1 } }); } catch { } }
     };
 
-    // Discord replaces a channel's messages when it loads them; put the fake ones back.
-    const reload = (event: any) => {
-        const channelId = event?.channelId;
-        if (!channelId) return;
-        if (!options.getConversations().some(conversation => conversation?.channelId === channelId)) return;
-        setTimeout(() => show(channelId), 0);
-    };
-    for (const type of ["LOAD_MESSAGES_SUCCESS", "CHANNEL_SELECT"]) {
-        try {
-            options.dispatcher.subscribe?.(type, reload);
-            cleanups.push(() => options.dispatcher.unsubscribe?.(type, reload));
-        } catch { }
-    }
+    // Local DMs appear in the DM list from startup.
+    for (const conversation of localDms()) createLocalDm(conversation);
+    // A new session (login, reconnect) rebuilds the DM list; add the local ones back.
+    const onConnect = () => setTimeout(() => { for (const conversation of localDms()) createLocalDm(conversation); }, 0);
+    try { options.dispatcher.subscribe?.("CONNECTION_OPEN", onConnect); cleanups.push(() => options.dispatcher.unsubscribe?.("CONNECTION_OPEN", onConnect)); } catch { }
 
-    // Writes on a fake message never reach Discord.
     const wrap = (object: any, key: string, handler: (original: Function, args: any[]) => any) => {
         try {
             const original = object?.[key];
@@ -198,21 +223,80 @@ export function installFakeMessages(options: FakeMessagesOptions) {
             cleanups.push(() => { if (object[key] === replacement) object[key] = original; });
         } catch { /* a readonly helper must not stop startup */ }
     };
-    const fakeTarget = (args: any[]) => {
-        const url = String(args[0]?.url ?? args[0] ?? "");
+    const urlOf = (args: any[]) => String(args[0]?.url ?? args[0] ?? "");
+    const isLocalDm = (channelId: string) => localDms().some(item => item.channelId === channelId);
+    const ok = (body: any = null) => Promise.resolve({ ok: true, status: body == null ? 204 : 200, body });
+
+    // When Discord loads a chat, merge the fake messages into the page it gets, in time order.
+    // They are never sent again as "new", so a chat's latest message (and its place in the DM
+    // list) stays your real latest message.
+    const merge = (channelId: string, page: any[], query: string) => {
+        const fakes = conversationsIn(channelId).flatMap(messagesFor);
+        if (!fakes.length) return page;
+        const params = new URLSearchParams(query);
+        const ids = page.map(message => BigInt(message.id));
+        const newest = ids.length ? ids.reduce((a, b) => a > b ? a : b) : null;
+        const oldest = ids.length ? ids.reduce((a, b) => a < b ? a : b) : null;
+        const latestPage = !params.get("before") && !params.get("around") && !params.get("after");
+        const full = page.length >= Number(params.get("limit") || 50);
+        const fits = (id: bigint) => {
+            if (newest === null) return latestPage;
+            if (id > newest) return latestPage;
+            // Older than everything here: only on the last page of history (not a full page).
+            if (id < oldest!) return !full;
+            return true;
+        };
+        const extra = fakes.filter(message => fits(BigInt(message.id)) && !page.some(real => real.id === message.id));
+        return [...page, ...extra].sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : -1));
+    };
+    wrap(options.rest, "get", (original, args) => {
+        const url = urlOf(args);
+        const match = url.match(/\/channels\/(\d+)\/messages(?:\?(.*))?$/);
+        const query = new URLSearchParams(match?.[2] || "");
+        for (const [key, value] of Object.entries(args[0]?.query || {})) query.set(key, String(value));
+        if (match && isLocalDm(match[1])) return ok(merge(match[1], [], query.toString()));
+        if (/\/channels\/(\d+)/.test(url) && isLocalDm(url.match(/\/channels\/(\d+)/)![1])) return ok({});
+        if (!match || !conversationsIn(match[1]).length) return original(...args);
+        return Promise.resolve(original(...args)).then((response: any) => {
+            const page = response?.body;
+            if (!Array.isArray(page)) return response;
+            return { ...response, body: merge(match[1], page, query.toString()) };
+        });
+    });
+
+    // Writes on a fake message, or anything in a local DM, never reach Discord.
+    const fakeTarget = (url: string) => {
         const match = url.match(/\/channels\/\d+\/messages\/(\d+)/);
-        return match && shown.has(match[1]) ? { id: match[1], url } : null;
+        return match && shown.has(match[1]) ? match[1] : null;
     };
     for (const method of ["del", "delete", "patch", "put", "post"]) {
         wrap(options.rest, method, (original, args) => {
-            const target = fakeTarget(args);
+            const url = urlOf(args);
+            const channel = url.match(/\/channels\/(\d+)/)?.[1];
+            if (channel && isLocalDm(channel)) {
+                const conversation = localDms().find(item => item.channelId === channel)!;
+                if (method === "post" && /\/channels\/\d+\/messages$/.test(url)) {
+                    const text = String(args[0]?.body?.content || "").trim();
+                    if (text) options.addOwnLine?.(conversation.id, text);
+                    return ok({ id: snowflakeAt(Date.now(), 1), channel_id: channel, content: text });
+                }
+                const target = fakeTarget(url);
+                if (target && (method === "del" || method === "delete") && !/\/reactions\//.test(url)) {
+                    const origin = shown.get(target)!;
+                    try { options.dispatcher.dispatch({ type: "MESSAGE_DELETE", channelId: channel, id: target }); } catch { }
+                    shown.delete(target);
+                    options.removeLine?.(origin.conversation, origin.line);
+                }
+                return ok(); // typing, read state, close DM and the like stay on this device
+            }
+            const target = fakeTarget(url);
             if (!target) return original(...args);
-            const origin = shown.get(target.id)!;
-            if ((method === "del" || method === "delete") && !/\/reactions\//.test(target.url)) {
-                try { options.dispatcher.dispatch({ type: "MESSAGE_DELETE", channelId: origin.channelId, id: target.id }); } catch { }
-                shown.delete(target.id);
+            const origin = shown.get(target)!;
+            if ((method === "del" || method === "delete") && !/\/reactions\//.test(url)) {
+                try { options.dispatcher.dispatch({ type: "MESSAGE_DELETE", channelId: origin.channelId, id: target }); } catch { }
+                shown.delete(target);
                 options.removeLine?.(origin.conversation, origin.line);
-                return Promise.resolve({ ok: true, status: 204, body: null });
+                return ok();
             }
             options.explain?.();
             return Promise.reject(Object.assign(new Error("This is a fake message on your device."), { status: 400, body: { message: "This is a fake message on your device." } }));
@@ -233,6 +317,7 @@ export function installFakeMessages(options: FakeMessagesOptions) {
         isFake: (messageId: string) => shown.has(String(messageId)),
         stop: () => {
             for (const id of [...new Set([...shown.values()].map(origin => origin.conversation))]) hide(id);
+            for (const conversation of localDms()) hide(conversation.id);
             for (const cleanup of cleanups.reverse()) cleanup();
         },
     };

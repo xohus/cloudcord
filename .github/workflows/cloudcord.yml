@@ -433,7 +433,7 @@ jobs:
           function CustomSocialEditor(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialEditor; return <Component {...props} />; }
           import { presentationIdentity, presentationName } from "@lib/api/profileIdentity";
           import { installConnectionSettings } from "@lib/api/connectionSettings";
-          import { FakeConversation, FakePerson, installFakeMessages, MAX_FAKE_PEOPLE, newKey, normalizeConversation } from "@lib/api/fakeMessages";
+          import { FakeConversation, FakePerson, installFakeMessages, MAX_FAKE_PEOPLE, newKey, newLocalChannelId, normalizeConversation } from "@lib/api/fakeMessages";
           import { cloneServer } from "@lib/api/serverClone";
           import { installLocalRelationshipActions } from "@lib/api/localRelationshipActions";
           import { settings } from "@lib/api/settings";
@@ -3718,6 +3718,18 @@ jobs:
           function saveConversations(list: FakeConversation[]) {
               (rootSettings as any).fakeMessages = list.map(normalizeConversation).filter(Boolean);
           }
+          function FakeConversationsList() {
+              const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
+              const [, force] = useReducer((x: number) => x + 1, 0);
+              const list = savedConversations();
+              if (!list.length) return null;
+              return <K.Section title={"All your fake conversations (" + list.length + ")"} description="Delete one to remove its messages (and its DM, if it made one) from this device.">
+                  {list.map(item => <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text variant="text-sm/medium" style={{ flex: 1 }}>{item.name + (item.dm ? " (DM)" : "") + " · " + item.lines.length + " messages"}</Text>
+                      <Button text="Delete" variant="destructive" size="sm" onPress={() => { fakeMessages?.hide(item.id); saveConversations(savedConversations().filter(other => other.id !== item.id)); force(); }} />
+                  </View>)}
+              </K.Section>;
+          }
           function FakeMessagesSection() {
               const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
               const channelId = (findByStoreName("SelectedChannelStore") as any)?.getChannelId?.() as string | undefined;
@@ -3744,14 +3756,26 @@ jobs:
               const friendIds: string[] = ((findByStoreName("RelationshipStore") as any)?.getFriendIDs?.() ?? []).slice(0, 12);
               const me = users?.getCurrentUser?.();
               const show = () => {
-                  const clean = normalizeConversation(draft);
+                  const clean = normalizeConversation({ ...draft, savedAt: Date.now() });
                   if (!clean?.lines.length) return showToast("Add at least one message.");
                   fakeMessages?.hide(clean.id);
                   saveConversations([...savedConversations().filter(item => item.id !== clean.id), clean]);
                   fakeMessages?.show(clean.channelId);
-                  showToast("Shown in this chat, only on your device.");
+                  showToast(clean.dm ? "Added to your DMs, only on your device." : "Shown in this chat, only on your device.");
+              };
+              // A real DM with them if you have one, otherwise a DM that only exists on this device.
+              const setWhere = (value: string) => {
+                  if (value === "chat") return update({ dm: undefined, channelId: channelId || draft.channelId });
+                  const person = draft.people.find(item => item.key === value);
+                  if (!person) return;
+                  const real = person.userId ? (findByStoreName("ChannelStore") as any)?.getDMFromUserId?.(person.userId) : undefined;
+                  update({ dm: { person: person.key, local: !real }, channelId: real || newLocalChannelId() });
               };
               return <K.Section title={"Fake conversation in " + (channel?.name ? "#" + channel.name : "this chat")} description="Only you see these messages. Nothing is sent.">
+                  <K.Field label="Show it in">
+                      <K.Chips options={[{ value: "chat", label: "This chat" }, ...draft.people.filter(person => person.userId !== me?.id).map(person => ({ value: person.key, label: "DM with " + name(person) }))]} value={draft.dm?.person ?? "chat"} onChange={setWhere} />
+                  </K.Field>
+                  {draft.dm ? <Text variant="text-xs/medium" color="text-muted">{draft.dm.local ? "Adds a DM to your DM list that only exists on this device. What you type there stays on this device too." : "Uses your real DM with them; the fake messages only show for you."}</Text> : null}
                   <K.Field label={"People (" + draft.people.length + "/" + MAX_FAKE_PEOPLE + ")"}>
                       <K.Chips options={draft.people.map(person => ({ value: person.key, label: name(person) + " ×" }))} value={""} onChange={(key: string) => update({ people: draft.people.filter(item => item.key !== key), lines: draft.lines.filter(line => line.person !== key) })} />
                   </K.Field>
@@ -3854,6 +3878,7 @@ jobs:
                       {parseUserId(friendId) ? <Text variant="text-xs/medium" color="text-muted">{"User ID: " + parseUserId(friendId)}</Text> : null}
                   </K.Section>
                   <FakeMessagesSection />
+                  <FakeConversationsList />
                   <ServerCloneSection />
                   <K.Section title="Account tools">
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -3913,6 +3938,19 @@ jobs:
                               getUser: id => (findByStoreName("UserStore") as any)?.getUser?.(id),
                               getGuildId: channelId => (findByStoreName("ChannelStore") as any)?.getChannel?.(channelId)?.guild_id,
                               removeLine: (conversationId, lineKey) => saveConversations(savedConversations().map(item => item.id === conversationId ? { ...item, lines: item.lines.filter(line => line.key !== lineKey) } : item)),
+                              addOwnLine: (conversationId, text) => {
+                                  const me = (findByStoreName("UserStore") as any)?.getCurrentUser?.();
+                                  if (!me) return;
+                                  saveConversations(savedConversations().map(item => {
+                                      if (item.id !== conversationId) return item;
+                                      let self = item.people.find(person => person.userId === me.id);
+                                      const people = self ? item.people : [...item.people, self = { key: newKey(), userId: me.id }];
+                                      // Move the save time to now and keep earlier lines where they were.
+                                      const elapsed = Math.max(0, Math.round((Date.now() - (item.savedAt ?? Date.now())) / 60000));
+                                      return { ...item, people, savedAt: Date.now(), lines: [...item.lines.map(line => ({ ...line, minutesAgo: line.minutesAgo + elapsed })), { key: newKey(), person: self.key, text, minutesAgo: 0 }] };
+                                  }));
+                                  fakeMessages?.show(savedConversations().find(item => item.id === conversationId)?.channelId);
+                              },
                               explain: () => showToast("That's a fake message on your device."),
                           });
                       } catch {}
