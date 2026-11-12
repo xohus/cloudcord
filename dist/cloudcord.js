@@ -17024,43 +17024,74 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       text: String(line?.text || "").slice(0, 4e3),
       minutesAgo: Math.max(0, Math.min(60 * 24 * 365, Number(line?.minutesAgo) || 0))
     })).filter((line) => keys.has(line.person) && line.text.trim());
+    var dm = input.dm && keys.has(String(input.dm.person)) ? {
+      person: String(input.dm.person),
+      local: input.dm.local === true
+    } : void 0;
+    var savedAt = Number(input.savedAt) > 0 ? Number(input.savedAt) : void 0;
     return {
       id: String(input.id || newKey()),
       name: String(input.name || "Fake conversation").slice(0, 60),
       channelId: String(input.channelId),
       people,
-      lines
+      lines,
+      ...dm ? {
+        dm
+      } : {},
+      ...savedAt ? {
+        savedAt
+      } : {}
     };
   }
   function installFakeMessages(options) {
-    var _loop2 = function(type2) {
-      try {
-        options.dispatcher.subscribe?.(type2, reload);
-        cleanups.push(() => options.dispatcher.unsubscribe?.(type2, reload));
-      } catch (e) {
-      }
-    }, _loop1 = function(method2) {
+    var _loop2 = function(method2) {
       wrap(options.rest, method2, (original, args) => {
-        var target = fakeTarget(args);
-        if (!target)
+        var url2 = urlOf(args);
+        var channel = url2.match(/\/channels\/(\d+)/)?.[1];
+        if (channel && isLocalDm(channel)) {
+          var conversation2 = localDms().find((item) => item.channelId === channel);
+          if (method2 === "post" && /\/channels\/\d+\/messages$/.test(url2)) {
+            var text = String(args[0]?.body?.content || "").trim();
+            if (text)
+              options.addOwnLine?.(conversation2.id, text);
+            return ok({
+              id: snowflakeAt(Date.now(), 1),
+              channel_id: channel,
+              content: text
+            });
+          }
+          var target = fakeTarget(url2);
+          if (target && (method2 === "del" || method2 === "delete") && !/\/reactions\//.test(url2)) {
+            var origin = shown.get(target);
+            try {
+              options.dispatcher.dispatch({
+                type: "MESSAGE_DELETE",
+                channelId: channel,
+                id: target
+              });
+            } catch (e) {
+            }
+            shown.delete(target);
+            options.removeLine?.(origin.conversation, origin.line);
+          }
+          return ok();
+        }
+        var target1 = fakeTarget(url2);
+        if (!target1)
           return original(...args);
-        var origin = shown.get(target.id);
-        if ((method2 === "del" || method2 === "delete") && !/\/reactions\//.test(target.url)) {
+        var origin1 = shown.get(target1);
+        if ((method2 === "del" || method2 === "delete") && !/\/reactions\//.test(url2)) {
           try {
             options.dispatcher.dispatch({
               type: "MESSAGE_DELETE",
-              channelId: origin.channelId,
-              id: target.id
+              channelId: origin1.channelId,
+              id: target1
             });
           } catch (e) {
           }
-          shown.delete(target.id);
-          options.removeLine?.(origin.conversation, origin.line);
-          return Promise.resolve({
-            ok: true,
-            status: 204,
-            body: null
-          });
+          shown.delete(target1);
+          options.removeLine?.(origin1.conversation, origin1.line);
+          return ok();
         }
         options.explain?.();
         return Promise.reject(Object.assign(new Error("This is a fake message on your device."), {
@@ -17098,15 +17129,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         personIds.set(person.key, newPersonId());
       return personIds.get(person.key);
     };
-    var messagesFor = (conversation) => {
-      var anchor = anchors.get(conversation.id) ?? Date.now();
-      anchors.set(conversation.id, anchor);
-      var people = new Map(conversation.people.map((person) => [
+    var messagesFor = (conversation2) => {
+      var anchor = conversation2.savedAt ?? anchors.get(conversation2.id) ?? Date.now();
+      anchors.set(conversation2.id, anchor);
+      var people = new Map(conversation2.people.map((person) => [
         person.key,
         person
       ]));
-      var guildId = options.getGuildId(conversation.channelId) || void 0;
-      return conversation.lines.map((line, index) => ({
+      var guildId = options.getGuildId(conversation2.channelId) || void 0;
+      return conversation2.lines.map((line, index) => ({
         line,
         index,
         time: anchor - line.minutesAgo * 6e4
@@ -17114,19 +17145,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var person = people.get(line.person);
         idFor(person);
         var salt = 0;
-        for (var char of conversation.id)
+        for (var char of conversation2.id)
           salt = salt * 31 + char.charCodeAt(0) & 4095;
         var id = snowflakeAt(time, salt + index + 1 & 4095);
         shown.set(id, {
-          conversation: conversation.id,
+          conversation: conversation2.id,
           line: line.key,
-          channelId: conversation.channelId
+          channelId: conversation2.channelId
         });
         return {
           id,
           type: 0,
           content: line.text,
-          channel_id: conversation.channelId,
+          channel_id: conversation2.channelId,
           guild_id: guildId,
           timestamp: new Date(time).toISOString(),
           edited_timestamp: null,
@@ -17144,16 +17175,43 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         };
       });
     };
+    var conversationsIn = (channelId) => options.getConversations().map(normalizeConversation).filter((item) => !!item && item.channelId === channelId);
+    var localDms = () => options.getConversations().map(normalizeConversation).filter((item) => !!item?.dm?.local);
+    var createLocalDm = (conversation2) => {
+      var person = conversation2.people.find((item) => item.key === conversation2.dm?.person);
+      if (!person)
+        return;
+      idFor(person);
+      var messages = messagesFor(conversation2);
+      try {
+        options.dispatcher.dispatch({
+          type: "CHANNEL_CREATE",
+          channel: {
+            id: conversation2.channelId,
+            type: 1,
+            flags: 0,
+            is_spam: false,
+            last_message_id: messages[messages.length - 1]?.id ?? null,
+            recipients: [
+              author(person)
+            ]
+          }
+        });
+      } catch (e) {
+      }
+    };
     var show = (channelId) => {
       for (var raw of options.getConversations()) {
-        var conversation = normalizeConversation(raw);
-        if (!conversation || channelId && conversation.channelId !== channelId)
+        var conversation2 = normalizeConversation(raw);
+        if (!conversation2 || channelId && conversation2.channelId !== channelId)
           continue;
-        for (var message of messagesFor(conversation)) {
+        if (conversation2.dm?.local)
+          createLocalDm(conversation2);
+        for (var message of messagesFor(conversation2)) {
           try {
             options.dispatcher.dispatch({
               type: "MESSAGE_CREATE",
-              channelId: conversation.channelId,
+              channelId: conversation2.channelId,
               message,
               optimistic: false,
               isPushNotification: false
@@ -17179,20 +17237,31 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         }
         shown.delete(id);
       }
+      var conversation2 = options.getConversations().map(normalizeConversation).find((item) => item?.id === conversationId);
+      if (conversation2?.dm?.local) {
+        try {
+          options.dispatcher.dispatch({
+            type: "CHANNEL_DELETE",
+            channel: {
+              id: conversation2.channelId,
+              type: 1
+            }
+          });
+        } catch (e) {
+        }
+      }
     };
-    var reload = (event) => {
-      var channelId = event?.channelId;
-      if (!channelId)
-        return;
-      if (!options.getConversations().some((conversation) => conversation?.channelId === channelId))
-        return;
-      setTimeout(() => show(channelId), 0);
-    };
-    for (var type of [
-      "LOAD_MESSAGES_SUCCESS",
-      "CHANNEL_SELECT"
-    ])
-      _loop2(type);
+    for (var conversation of localDms())
+      createLocalDm(conversation);
+    var onConnect = () => setTimeout(() => {
+      for (var conversation2 of localDms())
+        createLocalDm(conversation2);
+    }, 0);
+    try {
+      options.dispatcher.subscribe?.("CONNECTION_OPEN", onConnect);
+      cleanups.push(() => options.dispatcher.unsubscribe?.("CONNECTION_OPEN", onConnect));
+    } catch (e) {
+    }
     var wrap = (object, key2, handler) => {
       try {
         var original = object?.[key2];
@@ -17211,13 +17280,63 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       } catch (e) {
       }
     };
-    var fakeTarget = (args) => {
-      var url2 = String(args[0]?.url ?? args[0] ?? "");
+    var urlOf = (args) => String(args[0]?.url ?? args[0] ?? "");
+    var isLocalDm = (channelId) => localDms().some((item) => item.channelId === channelId);
+    var ok = (body = null) => Promise.resolve({
+      ok: true,
+      status: body == null ? 204 : 200,
+      body
+    });
+    var merge = (channelId, page, query) => {
+      var fakes = conversationsIn(channelId).flatMap(messagesFor);
+      if (!fakes.length)
+        return page;
+      var params = new URLSearchParams(query);
+      var ids = page.map((message) => BigInt(message.id));
+      var newest = ids.length ? ids.reduce((a, b3) => a > b3 ? a : b3) : null;
+      var oldest = ids.length ? ids.reduce((a, b3) => a < b3 ? a : b3) : null;
+      var latestPage = !params.get("before") && !params.get("around") && !params.get("after");
+      var full = page.length >= Number(params.get("limit") || 50);
+      var fits = (id) => {
+        if (newest === null)
+          return latestPage;
+        if (id > newest)
+          return latestPage;
+        if (id < oldest)
+          return !full;
+        return true;
+      };
+      var extra = fakes.filter((message) => fits(BigInt(message.id)) && !page.some((real) => real.id === message.id));
+      return [
+        ...page,
+        ...extra
+      ].sort((a, b3) => BigInt(b3.id) > BigInt(a.id) ? 1 : -1);
+    };
+    wrap(options.rest, "get", (original, args) => {
+      var url2 = urlOf(args);
+      var match = url2.match(/\/channels\/(\d+)\/messages(?:\?(.*))?$/);
+      var query = new URLSearchParams(match?.[2] || "");
+      for (var [key2, value] of Object.entries(args[0]?.query || {}))
+        query.set(key2, String(value));
+      if (match && isLocalDm(match[1]))
+        return ok(merge(match[1], [], query.toString()));
+      if (/\/channels\/(\d+)/.test(url2) && isLocalDm(url2.match(/\/channels\/(\d+)/)[1]))
+        return ok({});
+      if (!match || !conversationsIn(match[1]).length)
+        return original(...args);
+      return Promise.resolve(original(...args)).then((response) => {
+        var page = response?.body;
+        if (!Array.isArray(page))
+          return response;
+        return {
+          ...response,
+          body: merge(match[1], page, query.toString())
+        };
+      });
+    });
+    var fakeTarget = (url2) => {
       var match = url2.match(/\/channels\/\d+\/messages\/(\d+)/);
-      return match && shown.has(match[1]) ? {
-        id: match[1],
-        url: url2
-      } : null;
+      return match && shown.has(match[1]) ? match[1] : null;
     };
     for (var method of [
       "del",
@@ -17226,7 +17345,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       "put",
       "post"
     ])
-      _loop1(method);
+      _loop2(method);
     for (var key of [
       "getUserAvatarURL",
       "getAvatarURL"
@@ -17248,12 +17367,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           ].map((origin) => origin.conversation))
         ])
           hide(id);
+        for (var conversation2 of localDms())
+          hide(conversation2.id);
         for (var cleanup of cleanups.reverse())
           cleanup();
       }
     };
   }
-  var MAX_FAKE_PEOPLE, MAX_FAKE_LINES, DISCORD_EPOCH;
+  var MAX_FAKE_PEOPLE, MAX_FAKE_LINES, DISCORD_EPOCH, newLocalChannelId;
   var init_fakeMessages = __esm({
     "src/lib/api/fakeMessages.ts"() {
       "use strict";
@@ -17262,6 +17383,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       MAX_FAKE_PEOPLE = 10;
       MAX_FAKE_LINES = 200;
       DISCORD_EPOCH = 1420070400000n;
+      newLocalChannelId = () => snowflakeAt(Date.now(), Math.floor(Math.random() * 4095));
     }
   });
 
@@ -27560,6 +27682,43 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   function saveConversations(list) {
     rootSettings.fakeMessages = list.map(normalizeConversation).filter(Boolean);
   }
+  function FakeConversationsList() {
+    var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
+    var [, force] = (0, import_react9.useReducer)((x2) => x2 + 1, 0);
+    var list = savedConversations();
+    if (!list.length)
+      return null;
+    return /* @__PURE__ */ jsx(K2.Section, {
+      title: "All your fake conversations (" + list.length + ")",
+      description: "Delete one to remove its messages (and its DM, if it made one) from this device.",
+      children: list.map((item) => /* @__PURE__ */ jsxs(import_react_native26.View, {
+        style: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/medium",
+            style: {
+              flex: 1
+            },
+            children: item.name + (item.dm ? " (DM)" : "") + " \xB7 " + item.lines.length + " messages"
+          }),
+          /* @__PURE__ */ jsx(Button2, {
+            text: "Delete",
+            variant: "destructive",
+            size: "sm",
+            onPress: () => {
+              fakeMessages?.hide(item.id);
+              saveConversations(savedConversations().filter((other) => other.id !== item.id));
+              force();
+            }
+          })
+        ]
+      }, item.id))
+    });
+  }
   function FakeMessagesSection() {
     var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     var channelId = findByStoreName("SelectedChannelStore")?.getChannelId?.();
@@ -27624,7 +27783,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var friendIds = (findByStoreName("RelationshipStore")?.getFriendIDs?.() ?? []).slice(0, 12);
     var me = users?.getCurrentUser?.();
     var show = () => {
-      var clean = normalizeConversation(draft);
+      var clean = normalizeConversation({
+        ...draft,
+        savedAt: Date.now()
+      });
       if (!clean?.lines.length)
         return showToast("Add at least one message.");
       fakeMessages?.hide(clean.id);
@@ -27633,12 +27795,52 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         clean
       ]);
       fakeMessages?.show(clean.channelId);
-      showToast("Shown in this chat, only on your device.");
+      showToast(clean.dm ? "Added to your DMs, only on your device." : "Shown in this chat, only on your device.");
+    };
+    var setWhere = (value) => {
+      if (value === "chat")
+        return update({
+          dm: void 0,
+          channelId: channelId || draft.channelId
+        });
+      var person = draft.people.find((item) => item.key === value);
+      if (!person)
+        return;
+      var real = person.userId ? findByStoreName("ChannelStore")?.getDMFromUserId?.(person.userId) : void 0;
+      update({
+        dm: {
+          person: person.key,
+          local: !real
+        },
+        channelId: real || newLocalChannelId()
+      });
     };
     return /* @__PURE__ */ jsxs(K2.Section, {
       title: "Fake conversation in " + (channel?.name ? "#" + channel.name : "this chat"),
       description: "Only you see these messages. Nothing is sent.",
       children: [
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "Show it in",
+          children: /* @__PURE__ */ jsx(K2.Chips, {
+            options: [
+              {
+                value: "chat",
+                label: "This chat"
+              },
+              ...draft.people.filter((person) => person.userId !== me?.id).map((person) => ({
+                value: person.key,
+                label: "DM with " + name(person)
+              }))
+            ],
+            value: draft.dm?.person ?? "chat",
+            onChange: setWhere
+          })
+        }),
+        draft.dm ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/medium",
+          color: "text-muted",
+          children: draft.dm.local ? "Adds a DM to your DM list that only exists on this device. What you type there stays on this device too." : "Uses your real DM with them; the fake messages only show for you."
+        }) : null,
         /* @__PURE__ */ jsx(K2.Field, {
           label: "People (" + draft.people.length + "/" + MAX_FAKE_PEOPLE + ")",
           children: /* @__PURE__ */ jsx(K2.Chips, {
@@ -28133,6 +28335,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           ]
         }),
         /* @__PURE__ */ jsx(FakeMessagesSection, {}),
+        /* @__PURE__ */ jsx(FakeConversationsList, {}),
         /* @__PURE__ */ jsx(ServerCloneSection, {}),
         /* @__PURE__ */ jsx(K2.Section, {
           title: "Account tools",
@@ -28255,6 +28458,42 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               ...item,
               lines: item.lines.filter((line) => line.key !== lineKey)
             } : item)),
+            addOwnLine: (conversationId, text) => {
+              var me = findByStoreName("UserStore")?.getCurrentUser?.();
+              if (!me)
+                return;
+              saveConversations(savedConversations().map((item) => {
+                if (item.id !== conversationId)
+                  return item;
+                var self2 = item.people.find((person) => person.userId === me.id);
+                var people = self2 ? item.people : [
+                  ...item.people,
+                  self2 = {
+                    key: newKey(),
+                    userId: me.id
+                  }
+                ];
+                var elapsed = Math.max(0, Math.round((Date.now() - (item.savedAt ?? Date.now())) / 6e4));
+                return {
+                  ...item,
+                  people,
+                  savedAt: Date.now(),
+                  lines: [
+                    ...item.lines.map((line) => ({
+                      ...line,
+                      minutesAgo: line.minutesAgo + elapsed
+                    })),
+                    {
+                      key: newKey(),
+                      person: self2.key,
+                      text,
+                      minutesAgo: 0
+                    }
+                  ]
+                };
+              }));
+              fakeMessages?.show(savedConversations().find((item) => item.id === conversationId)?.channelId);
+            },
             explain: () => showToast("That's a fake message on your device.")
           });
         } catch (e) {
@@ -56457,7 +56696,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "877929d9ac42b7a326b7e6ea385785768874da44";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "771fdf768dbf318ebb2f846439bed806b50ef5c8";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
