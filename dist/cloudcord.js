@@ -299,7 +299,7 @@
           return body;
         })())(),
         new Promise((_2, reject) => {
-          timeout = setTimeout(() => reject(new Error("download timed out")), 2e4);
+          timeout = setTimeout(() => reject(new Error("download timed out")), 9e4);
         })
       ]).finally(() => clearTimeout(timeout));
       if (typeof files?.writeFile !== "function")
@@ -56457,7 +56457,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "2147fd6351fadcf7dbe88274e727d98f630ee37c";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "4c5ed47307255266c5cb6877683920e2cc1053c0";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
