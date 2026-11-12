@@ -16996,6 +16996,657 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/fakeMessages.ts
+  function snowflakeAt(time, sequence2) {
+    return String(BigInt(Math.floor(time)) - DISCORD_EPOCH << 22n | BigInt(sequence2 & 4095));
+  }
+  function newPersonId() {
+    var random = Math.floor(Math.random() * 4194303);
+    return snowflakeAt(Date.UTC(2016, 0, 1) + Math.floor(Math.random() * 1e10), random);
+  }
+  function newKey() {
+    return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  }
+  function normalizeConversation(input) {
+    if (!input || typeof input !== "object" || !/^\d{15,22}$/.test(String(input.channelId || "")))
+      return null;
+    var people = (Array.isArray(input.people) ? input.people : []).slice(0, MAX_FAKE_PEOPLE).map((person) => ({
+      key: String(person?.key || newKey()),
+      userId: /^\d{15,22}$/.test(String(person?.userId || "")) ? String(person.userId) : void 0,
+      name: typeof person?.name === "string" ? person.name.slice(0, 32) : void 0,
+      username: typeof person?.username === "string" ? person.username.slice(0, 32) : void 0,
+      avatarUrl: /^https:\/\//.test(String(person?.avatarUrl || "")) ? String(person.avatarUrl) : void 0
+    })).filter((person) => person.userId || person.name);
+    var keys = new Set(people.map((person) => person.key));
+    var lines = (Array.isArray(input.lines) ? input.lines : []).slice(0, MAX_FAKE_LINES).map((line) => ({
+      key: String(line?.key || newKey()),
+      person: String(line?.person || ""),
+      text: String(line?.text || "").slice(0, 4e3),
+      minutesAgo: Math.max(0, Math.min(60 * 24 * 365, Number(line?.minutesAgo) || 0))
+    })).filter((line) => keys.has(line.person) && line.text.trim());
+    return {
+      id: String(input.id || newKey()),
+      name: String(input.name || "Fake conversation").slice(0, 60),
+      channelId: String(input.channelId),
+      people,
+      lines
+    };
+  }
+  function installFakeMessages(options) {
+    var _loop2 = function(type2) {
+      try {
+        options.dispatcher.subscribe?.(type2, reload);
+        cleanups.push(() => options.dispatcher.unsubscribe?.(type2, reload));
+      } catch (e) {
+      }
+    }, _loop1 = function(method2) {
+      wrap(options.rest, method2, (original, args) => {
+        var target = fakeTarget(args);
+        if (!target)
+          return original(...args);
+        var origin = shown.get(target.id);
+        if ((method2 === "del" || method2 === "delete") && !/\/reactions\//.test(target.url)) {
+          try {
+            options.dispatcher.dispatch({
+              type: "MESSAGE_DELETE",
+              channelId: origin.channelId,
+              id: target.id
+            });
+          } catch (e) {
+          }
+          shown.delete(target.id);
+          options.removeLine?.(origin.conversation, origin.line);
+          return Promise.resolve({
+            ok: true,
+            status: 204,
+            body: null
+          });
+        }
+        options.explain?.();
+        return Promise.reject(Object.assign(new Error("This is a fake message on your device."), {
+          status: 400,
+          body: {
+            message: "This is a fake message on your device."
+          }
+        }));
+      });
+    };
+    var cleanups = [];
+    var shown = /* @__PURE__ */ new Map();
+    var avatars = /* @__PURE__ */ new Map();
+    var anchors = /* @__PURE__ */ new Map();
+    var author = (person) => {
+      var real = person.userId ? options.getUser(person.userId) : null;
+      var id = person.userId || personIds.get(person.key) || "";
+      if (person.avatarUrl)
+        avatars.set(id, person.avatarUrl);
+      return {
+        id,
+        username: person.username || real?.username || (person.name || "user").toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 32) || "user",
+        global_name: person.name || real?.globalName || real?.global_name || real?.username || null,
+        avatar: person.avatarUrl ? null : real?.avatar ?? null,
+        discriminator: real?.discriminator ?? "0",
+        public_flags: real?.publicFlags ?? 0,
+        bot: false
+      };
+    };
+    var personIds = /* @__PURE__ */ new Map();
+    var idFor = (person) => {
+      if (person.userId)
+        return person.userId;
+      if (!personIds.has(person.key))
+        personIds.set(person.key, newPersonId());
+      return personIds.get(person.key);
+    };
+    var messagesFor = (conversation) => {
+      var anchor = anchors.get(conversation.id) ?? Date.now();
+      anchors.set(conversation.id, anchor);
+      var people = new Map(conversation.people.map((person) => [
+        person.key,
+        person
+      ]));
+      var guildId = options.getGuildId(conversation.channelId) || void 0;
+      return conversation.lines.map((line, index) => ({
+        line,
+        index,
+        time: anchor - line.minutesAgo * 6e4
+      })).sort((a, b3) => a.time - b3.time || a.index - b3.index).map(({ line, index, time }) => {
+        var person = people.get(line.person);
+        idFor(person);
+        var salt = 0;
+        for (var char of conversation.id)
+          salt = salt * 31 + char.charCodeAt(0) & 4095;
+        var id = snowflakeAt(time, salt + index + 1 & 4095);
+        shown.set(id, {
+          conversation: conversation.id,
+          line: line.key,
+          channelId: conversation.channelId
+        });
+        return {
+          id,
+          type: 0,
+          content: line.text,
+          channel_id: conversation.channelId,
+          guild_id: guildId,
+          timestamp: new Date(time).toISOString(),
+          edited_timestamp: null,
+          flags: 0,
+          author: author(person),
+          attachments: [],
+          embeds: [],
+          mentions: [],
+          mention_roles: [],
+          mention_everyone: false,
+          pinned: false,
+          tts: false,
+          components: [],
+          cloudcordFake: true
+        };
+      });
+    };
+    var show = (channelId) => {
+      for (var raw of options.getConversations()) {
+        var conversation = normalizeConversation(raw);
+        if (!conversation || channelId && conversation.channelId !== channelId)
+          continue;
+        for (var message of messagesFor(conversation)) {
+          try {
+            options.dispatcher.dispatch({
+              type: "MESSAGE_CREATE",
+              channelId: conversation.channelId,
+              message,
+              optimistic: false,
+              isPushNotification: false
+            });
+          } catch (e) {
+          }
+        }
+      }
+    };
+    var hide = (conversationId) => {
+      for (var [id, origin] of [
+        ...shown
+      ]) {
+        if (origin.conversation !== conversationId)
+          continue;
+        try {
+          options.dispatcher.dispatch({
+            type: "MESSAGE_DELETE",
+            channelId: origin.channelId,
+            id
+          });
+        } catch (e) {
+        }
+        shown.delete(id);
+      }
+    };
+    var reload = (event) => {
+      var channelId = event?.channelId;
+      if (!channelId)
+        return;
+      if (!options.getConversations().some((conversation) => conversation?.channelId === channelId))
+        return;
+      setTimeout(() => show(channelId), 0);
+    };
+    for (var type of [
+      "LOAD_MESSAGES_SUCCESS",
+      "CHANNEL_SELECT"
+    ])
+      _loop2(type);
+    var wrap = (object, key2, handler) => {
+      try {
+        var original = object?.[key2];
+        if (typeof original !== "function")
+          return;
+        var replacement = function replacement2(...args) {
+          return handler(original.bind(this), args);
+        };
+        object[key2] = replacement;
+        if (object[key2] !== replacement)
+          return;
+        cleanups.push(() => {
+          if (object[key2] === replacement)
+            object[key2] = original;
+        });
+      } catch (e) {
+      }
+    };
+    var fakeTarget = (args) => {
+      var url2 = String(args[0]?.url ?? args[0] ?? "");
+      var match = url2.match(/\/channels\/\d+\/messages\/(\d+)/);
+      return match && shown.has(match[1]) ? {
+        id: match[1],
+        url: url2
+      } : null;
+    };
+    for (var method of [
+      "del",
+      "delete",
+      "patch",
+      "put",
+      "post"
+    ])
+      _loop1(method);
+    for (var key of [
+      "getUserAvatarURL",
+      "getAvatarURL"
+    ]) {
+      wrap(options.iconUtils, key, (original, args) => {
+        var user = args[0];
+        var url2 = user?.id ? avatars.get(String(user.id)) : void 0;
+        return url2 ?? original(...args);
+      });
+    }
+    return {
+      show,
+      hide,
+      isFake: (messageId) => shown.has(String(messageId)),
+      stop: () => {
+        for (var id of [
+          ...new Set([
+            ...shown.values()
+          ].map((origin) => origin.conversation))
+        ])
+          hide(id);
+        for (var cleanup of cleanups.reverse())
+          cleanup();
+      }
+    };
+  }
+  var MAX_FAKE_PEOPLE, MAX_FAKE_LINES, DISCORD_EPOCH;
+  var init_fakeMessages = __esm({
+    "src/lib/api/fakeMessages.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      MAX_FAKE_PEOPLE = 10;
+      MAX_FAKE_LINES = 200;
+      DISCORD_EPOCH = 1420070400000n;
+    }
+  });
+
+  // src/lib/api/serverClone.ts
+  function toBase64(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i += 3) {
+      var a = bytes[i], b3 = bytes[i + 1], c2 = bytes[i + 2];
+      out += BASE64[a >> 2] + BASE64[(a & 3) << 4 | (b3 ?? 0) >> 4] + (b3 === void 0 ? "=" : BASE64[(b3 & 15) << 2 | (c2 ?? 0) >> 6]) + (c2 === void 0 ? "=" : BASE64[c2 & 63]);
+    }
+    return out;
+  }
+  function imageDataUrl(url2) {
+    return _async_to_generator(function* () {
+      var response = yield fetch(url2);
+      if (!response.ok)
+        throw new Error(`image ${response.status}`);
+      var type = response.headers.get("content-type") || (url2.includes(".gif") ? "image/gif" : "image/png");
+      return `data:${type};base64,${toBase64(new Uint8Array(yield response.arrayBuffer()))}`;
+    })();
+  }
+  function planChannels(channels2) {
+    var categories = channels2.filter((channel) => channel.type === 4).sort((a, b3) => a.position - b3.position);
+    var rest = channels2.filter((channel) => channel.type !== 4 && [
+      0,
+      2,
+      5,
+      13,
+      15,
+      16
+    ].includes(channel.type)).sort((a, b3) => (a.parent_id || "").localeCompare(b3.parent_id || "") || a.position - b3.position);
+    return [
+      ...categories,
+      ...rest
+    ];
+  }
+  function cloneServer(options) {
+    return _async_to_generator(function* () {
+      var _loop2 = function* (role2) {
+        progress(`Role ${role2.name}`);
+        try {
+          var roleIcon = null;
+          var url3 = iconUrl("role-icons", role2.id, role2.icon);
+          if (url3) {
+            try {
+              roleIcon = yield imageDataUrl(url3);
+            } catch (e) {
+            }
+          }
+          var made = body(yield call(() => rest.post({
+            url: `/guilds/${guildId}/roles`,
+            body: {
+              name: role2.name,
+              permissions: role2.permissions,
+              color: role2.color,
+              hoist: role2.hoist,
+              mentionable: role2.mentionable,
+              ...roleIcon ? {
+                icon: roleIcon
+              } : {},
+              ...role2.unicode_emoji ? {
+                unicode_emoji: role2.unicode_emoji
+              } : {}
+            }
+          })));
+          roleMap.set(role2.id, made.id);
+        } catch (e) {
+          skipped.push(`role "${role2.name}"`);
+        }
+        done++;
+      }, _loop1 = function* (channel12) {
+        progress(`Channel ${channel12.name}`);
+        var payload = {
+          name: channel12.name,
+          type: channel12.type,
+          topic: channel12.topic ?? void 0,
+          nsfw: channel12.nsfw ?? false,
+          position: channel12.position,
+          rate_limit_per_user: channel12.rate_limit_per_user ?? 0,
+          bitrate: channel12.type === 2 || channel12.type === 13 ? Math.min(channel12.bitrate || 64e3, 96e3) : void 0,
+          user_limit: channel12.user_limit ?? void 0,
+          rtc_region: channel12.rtc_region ?? void 0,
+          parent_id: channel12.parent_id ? channelMap.get(channel12.parent_id) : void 0,
+          permission_overwrites: overwrites(channel12.permission_overwrites),
+          default_auto_archive_duration: channel12.default_auto_archive_duration ?? void 0,
+          available_tags: channel12.type === 15 || channel12.type === 16 ? (channel12.available_tags || []).map((tag) => ({
+            name: tag.name,
+            moderated: tag.moderated,
+            emoji_name: tag.emoji_name ?? null
+          })) : void 0
+        };
+        try {
+          var made = body(yield call(() => rest.post({
+            url: `/guilds/${guildId}/channels`,
+            body: payload
+          })));
+          channelMap.set(channel12.id, made.id);
+        } catch (e) {
+          var fallback = FALLBACK_TYPE[channel12.type];
+          try {
+            if (fallback === void 0)
+              throw new Error("no fallback");
+            var made1 = body(yield call(() => rest.post({
+              url: `/guilds/${guildId}/channels`,
+              body: {
+                ...payload,
+                type: fallback,
+                available_tags: void 0
+              }
+            })));
+            channelMap.set(channel12.id, made1.id);
+            skipped.push(`#${channel12.name} became a ${fallback === 2 ? "voice" : "text"} channel (needs Community)`);
+          } catch (e2) {
+            skipped.push(`channel #${channel12.name}`);
+          }
+        }
+        done++;
+      }, _loop22 = function* (emoji2) {
+        progress(`Emoji :${emoji2.name}:`);
+        try {
+          var image = yield imageDataUrl(`${CDN}/emojis/${emoji2.id}.${emoji2.animated ? "gif" : "png"}`);
+          yield call(() => rest.post({
+            url: `/guilds/${guildId}/emojis`,
+            body: {
+              name: emoji2.name,
+              image,
+              roles: (emoji2.roles || []).map((id) => roleMap.get(id)).filter(Boolean)
+            }
+          }));
+        } catch (e) {
+          skipped.push(`emoji :${emoji2.name}:`);
+        }
+        done++;
+      }, _loop3 = function* (sticker2) {
+        progress(`Sticker ${sticker2.name}`);
+        try {
+          if (sticker2.format_type === 3)
+            throw new Error("lottie");
+          var extension = sticker2.format_type === 4 ? "gif" : "png";
+          var response = yield fetch(`https://media.discordapp.net/stickers/${sticker2.id}.${extension}`);
+          if (!response.ok)
+            throw new Error(`sticker ${response.status}`);
+          var file = new Blob([
+            yield response.arrayBuffer()
+          ], {
+            type: extension === "gif" ? "image/gif" : "image/png"
+          });
+          yield call(() => rest.post({
+            url: `/guilds/${guildId}/stickers`,
+            attachments: [
+              {
+                name: "file",
+                file,
+                filename: `${sticker2.name}.${extension}`
+              }
+            ],
+            body: {
+              name: sticker2.name,
+              tags: sticker2.tags || "\u2B50",
+              description: sticker2.description || ""
+            }
+          }));
+        } catch (e) {
+          skipped.push(`sticker "${sticker2.name}"`);
+        }
+        done++;
+      };
+      var { rest, sourceGuildId } = options;
+      var include = {
+        roles: true,
+        channels: true,
+        emojis: true,
+        stickers: true,
+        settings: true,
+        ...options.include
+      };
+      var pace = options.pace ?? 700;
+      var skipped = [];
+      var done = 0, total = 1;
+      var progress = (step) => options.onProgress?.(step, done, total);
+      var check = () => {
+        if (options.signal?.cancelled)
+          throw new Error("Cancelled");
+      };
+      var call = (run) => _async_to_generator(function* () {
+        for (var attempt = 0; ; attempt++) {
+          check();
+          try {
+            var result = yield run();
+            yield sleep(pace);
+            return result;
+          } catch (error) {
+            var status = error?.status ?? error?.body?.status;
+            var retry = Number(error?.body?.retry_after ?? error?.retry_after);
+            if (status === 429 && attempt < 5) {
+              yield sleep(Math.ceil((retry || 2) * 1e3) + 250);
+              continue;
+            }
+            throw error;
+          }
+        }
+      })();
+      var body = (response) => response?.body ?? response;
+      progress("Reading the server");
+      var guild = body(yield call(() => rest.get({
+        url: `/guilds/${sourceGuildId}`
+      })));
+      var roles = include.roles ? body(yield call(() => rest.get({
+        url: `/guilds/${sourceGuildId}/roles`
+      }))) || [] : [];
+      var channels2 = include.channels ? planChannels(body(yield call(() => rest.get({
+        url: `/guilds/${sourceGuildId}/channels`
+      }))) || []) : [];
+      var emojis = include.emojis ? guild.emojis || body(yield call(() => rest.get({
+        url: `/guilds/${sourceGuildId}/emojis`
+      }))) || [] : [];
+      var stickers = include.stickers ? guild.stickers || body(yield call(() => rest.get({
+        url: `/guilds/${sourceGuildId}/stickers`
+      })).catch(() => ({
+        body: []
+      }))) || [] : [];
+      var copyRoles = roles.filter((role2) => role2.id !== sourceGuildId && !role2.managed).sort((a, b3) => a.position - b3.position);
+      total = 2 + copyRoles.length + channels2.length + emojis.length + stickers.length + (include.settings ? 1 : 0);
+      progress("Creating the server");
+      var icon3 = null;
+      try {
+        var url2 = iconUrl("icons", sourceGuildId, guild.icon);
+        if (url2)
+          icon3 = yield imageDataUrl(url2);
+      } catch (e) {
+        skipped.push("server icon");
+      }
+      var created = body(yield call(() => rest.post({
+        url: "/guilds",
+        body: {
+          name: (options.name || guild.name || "Server").slice(0, 100),
+          icon: icon3
+        }
+      })));
+      var guildId = created.id;
+      done++;
+      if (include.channels) {
+        var _loop4 = function* (channel2) {
+          try {
+            yield call(() => rest.del({
+              url: `/channels/${channel2.id}`
+            }));
+          } catch (e) {
+          }
+        };
+        var defaults = body(yield call(() => rest.get({
+          url: `/guilds/${guildId}/channels`
+        }))) || [];
+        for (var channel of defaults)
+          yield* _loop4(channel);
+      }
+      done++;
+      var roleMap = /* @__PURE__ */ new Map([
+        [
+          sourceGuildId,
+          guildId
+        ]
+      ]);
+      var everyone = roles.find((role2) => role2.id === sourceGuildId);
+      if (everyone) {
+        try {
+          yield call(() => rest.patch({
+            url: `/guilds/${guildId}/roles/${guildId}`,
+            body: {
+              permissions: everyone.permissions
+            }
+          }));
+        } catch (e) {
+          skipped.push("@everyone permissions");
+        }
+      }
+      for (var role of copyRoles)
+        yield* _loop2(role);
+      if (copyRoles.length) {
+        var positions = copyRoles.filter((role2) => roleMap.has(role2.id)).map((role2, index) => ({
+          id: roleMap.get(role2.id),
+          position: index + 1
+        }));
+        try {
+          yield call(() => rest.patch({
+            url: `/guilds/${guildId}/roles`,
+            body: positions
+          }));
+        } catch (e) {
+          skipped.push("role order");
+        }
+      }
+      var channelMap = /* @__PURE__ */ new Map();
+      var overwrites = (list = []) => list.filter((item) => item.type === 1 || roleMap.has(item.id)).map((item) => ({
+        id: item.type === 1 ? item.id : roleMap.get(item.id),
+        type: item.type,
+        allow: item.allow,
+        deny: item.deny
+      }));
+      for (var channel1 of channels2)
+        yield* _loop1(channel1);
+      for (var emoji of emojis)
+        yield* _loop22(emoji);
+      for (var sticker of stickers)
+        yield* _loop3(sticker);
+      if (include.settings) {
+        var _loop5 = function* (field2, kind2, hash2) {
+          var url3 = iconUrl(kind2, sourceGuildId, hash2);
+          if (!url3)
+            return "continue";
+          try {
+            yield call(() => _async_to_generator(function* () {
+              return rest.patch({
+                url: `/guilds/${guildId}`,
+                body: {
+                  [field2]: yield imageDataUrl(url3)
+                }
+              });
+            })());
+          } catch (e) {
+            skipped.push(`server ${field2} (needs boosts)`);
+          }
+        };
+        progress("Server settings");
+        var settings2 = {
+          description: guild.description ?? void 0,
+          verification_level: guild.verification_level,
+          default_message_notifications: guild.default_message_notifications,
+          explicit_content_filter: guild.explicit_content_filter,
+          afk_timeout: guild.afk_timeout,
+          afk_channel_id: guild.afk_channel_id ? channelMap.get(guild.afk_channel_id) : void 0,
+          system_channel_id: guild.system_channel_id ? channelMap.get(guild.system_channel_id) : void 0,
+          system_channel_flags: guild.system_channel_flags,
+          preferred_locale: guild.preferred_locale
+        };
+        try {
+          yield call(() => rest.patch({
+            url: `/guilds/${guildId}`,
+            body: settings2
+          }));
+        } catch (e) {
+          skipped.push("server settings");
+        }
+        for (var [field, kind, hash] of [
+          [
+            "banner",
+            "banners",
+            guild.banner
+          ],
+          [
+            "splash",
+            "splashes",
+            guild.splash
+          ]
+        ])
+          yield* _loop5(field, kind, hash);
+        done++;
+      }
+      progress("Done");
+      return {
+        guildId,
+        skipped
+      };
+    })();
+  }
+  var CDN, sleep, FALLBACK_TYPE, BASE64, iconUrl;
+  var init_serverClone = __esm({
+    "src/lib/api/serverClone.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      CDN = "https://cdn.discordapp.com";
+      sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      FALLBACK_TYPE = {
+        5: 0,
+        13: 2,
+        15: 0,
+        16: 0
+      };
+      BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      iconUrl = (kind, id, hash) => hash ? `${CDN}/${kind}/${id}/${hash}.${hash.startsWith("a_") ? "gif" : "png"}?size=1024` : null;
+    }
+  });
+
   // src/lib/api/localRelationshipActions.ts
   function installLocalRelationshipActions(rest, isLocal, dismiss) {
     var _loop2 = function(method2) {
@@ -26902,6 +27553,370 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     ]);
   }
+  function savedConversations() {
+    var list = rootSettings.fakeMessages;
+    return (Array.isArray(list) ? list : []).map(normalizeConversation).filter(Boolean);
+  }
+  function saveConversations(list) {
+    rootSettings.fakeMessages = list.map(normalizeConversation).filter(Boolean);
+  }
+  function FakeMessagesSection() {
+    var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
+    var channelId = findByStoreName("SelectedChannelStore")?.getChannelId?.();
+    var channel = channelId ? findByStoreName("ChannelStore")?.getChannel?.(channelId) : null;
+    var users = findByStoreName("UserStore");
+    var existing = savedConversations().find((item) => item.channelId === channelId);
+    var [draft, setDraft] = (0, import_react9.useState)(() => existing ? JSON.parse(JSON.stringify(existing)) : channelId ? {
+      id: newKey(),
+      name: "Fake conversation",
+      channelId,
+      people: [],
+      lines: []
+    } : null);
+    var [personInput, setPersonInput] = (0, import_react9.useState)("");
+    var [inputKey, setInputKey] = (0, import_react9.useState)(0);
+    if (!draft)
+      return /* @__PURE__ */ jsx(K2.Section, {
+        title: "Fake conversation",
+        description: "Open a chat first, then come back here.",
+        children: /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/medium",
+          color: "text-muted",
+          children: "No chat is open."
+        })
+      });
+    var name = (person) => {
+      var user = person.userId ? users?.getUser?.(person.userId) : null;
+      return person.name || user?.globalName || user?.username || person.userId || "Person";
+    };
+    var update = (patch) => setDraft((previous) => previous && {
+      ...previous,
+      ...patch
+    });
+    var addPerson = (person) => {
+      if (draft.people.length >= MAX_FAKE_PEOPLE)
+        return showToast("Up to " + MAX_FAKE_PEOPLE + " people.");
+      if (person.userId && draft.people.some((item) => item.userId === person.userId))
+        return;
+      update({
+        people: [
+          ...draft.people,
+          {
+            key: newKey(),
+            ...person
+          }
+        ]
+      });
+      setPersonInput("");
+      setInputKey((key) => key + 1);
+    };
+    var addFromInput = () => {
+      var id = parseUserId(personInput);
+      if (id)
+        return addPerson({
+          userId: id
+        });
+      if (personInput.trim())
+        return addPerson({
+          name: personInput.trim().slice(0, 32)
+        });
+    };
+    var friendIds = (findByStoreName("RelationshipStore")?.getFriendIDs?.() ?? []).slice(0, 12);
+    var me = users?.getCurrentUser?.();
+    var show = () => {
+      var clean = normalizeConversation(draft);
+      if (!clean?.lines.length)
+        return showToast("Add at least one message.");
+      fakeMessages?.hide(clean.id);
+      saveConversations([
+        ...savedConversations().filter((item) => item.id !== clean.id),
+        clean
+      ]);
+      fakeMessages?.show(clean.channelId);
+      showToast("Shown in this chat, only on your device.");
+    };
+    return /* @__PURE__ */ jsxs(K2.Section, {
+      title: "Fake conversation in " + (channel?.name ? "#" + channel.name : "this chat"),
+      description: "Only you see these messages. Nothing is sent.",
+      children: [
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "People (" + draft.people.length + "/" + MAX_FAKE_PEOPLE + ")",
+          children: /* @__PURE__ */ jsx(K2.Chips, {
+            options: draft.people.map((person) => ({
+              value: person.key,
+              label: name(person) + " \xD7"
+            })),
+            value: "",
+            onChange: (key) => update({
+              people: draft.people.filter((item) => item.key !== key),
+              lines: draft.lines.filter((line) => line.person !== key)
+            })
+          })
+        }),
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "Add a friend",
+          children: /* @__PURE__ */ jsx(K2.Chips, {
+            options: [
+              ...me ? [
+                {
+                  value: me.id,
+                  label: "You"
+                }
+              ] : [],
+              ...friendIds.map((id) => ({
+                value: id,
+                label: users?.getUser?.(id)?.globalName || users?.getUser?.(id)?.username || id
+              }))
+            ],
+            value: "",
+            onChange: (id) => addPerson({
+              userId: id
+            })
+          })
+        }),
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "Or a user ID, or a made-up name",
+          children: /* @__PURE__ */ jsx(TextInput4, {
+            defaultValue: personInput,
+            placeholder: "User ID or name",
+            autoCapitalize: "none",
+            autoCorrect: false,
+            onChangeText: setPersonInput,
+            onSubmitEditing: addFromInput,
+            placeholderTextColor: "#777"
+          }, inputKey)
+        }),
+        /* @__PURE__ */ jsx(Button2, {
+          text: "Add person",
+          variant: "secondary",
+          size: "sm",
+          onPress: addFromInput
+        }),
+        draft.lines.map((line, index) => /* @__PURE__ */ jsxs(import_react_native26.View, {
+          style: {
+            gap: 6
+          },
+          children: [
+            /* @__PURE__ */ jsx(K2.Chips, {
+              options: draft.people.map((person) => ({
+                value: person.key,
+                label: name(person)
+              })),
+              value: line.person,
+              onChange: (key) => update({
+                lines: draft.lines.map((item) => item.key === line.key ? {
+                  ...item,
+                  person: key
+                } : item)
+              })
+            }),
+            /* @__PURE__ */ jsx(TextInput4, {
+              defaultValue: line.text,
+              placeholder: "Message " + (index + 1),
+              multiline: true,
+              onChangeText: (text) => {
+                line.text = text;
+              },
+              placeholderTextColor: "#777"
+            }),
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
+              style: {
+                flexDirection: "row",
+                gap: 8,
+                alignItems: "center"
+              },
+              children: [
+                /* @__PURE__ */ jsx(TextInput4, {
+                  defaultValue: String(line.minutesAgo),
+                  keyboardType: "number-pad",
+                  style: {
+                    width: 70
+                  },
+                  onChangeText: (text) => {
+                    line.minutesAgo = Math.max(0, Number(text.replace(/\D/g, "")) || 0);
+                  }
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: "minutes ago"
+                }),
+                /* @__PURE__ */ jsx(Button2, {
+                  text: "Remove",
+                  variant: "secondary",
+                  size: "sm",
+                  onPress: () => update({
+                    lines: draft.lines.filter((item) => item.key !== line.key)
+                  })
+                })
+              ]
+            })
+          ]
+        }, line.key)),
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
+          style: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8
+          },
+          children: [
+            /* @__PURE__ */ jsx(Button2, {
+              text: "Add message",
+              variant: "secondary",
+              size: "sm",
+              onPress: () => {
+                if (!draft.people.length)
+                  return showToast("Add a person first.");
+                var last = draft.lines[draft.lines.length - 1];
+                var next = draft.people[(draft.people.findIndex((person) => person.key === last?.person) + 1) % draft.people.length];
+                update({
+                  lines: [
+                    ...draft.lines.map((line) => ({
+                      ...line,
+                      minutesAgo: line.minutesAgo + 1
+                    })),
+                    {
+                      key: newKey(),
+                      person: next.key,
+                      text: "",
+                      minutesAgo: 0
+                    }
+                  ]
+                });
+              }
+            }),
+            /* @__PURE__ */ jsx(Button2, {
+              text: "Show in this chat",
+              variant: "primary",
+              size: "sm",
+              onPress: show
+            }),
+            existing ? /* @__PURE__ */ jsx(Button2, {
+              text: "Delete",
+              variant: "destructive",
+              size: "sm",
+              onPress: () => {
+                fakeMessages?.hide(draft.id);
+                saveConversations(savedConversations().filter((item) => item.id !== draft.id));
+                setDraft({
+                  id: newKey(),
+                  name: "Fake conversation",
+                  channelId: draft.channelId,
+                  people: [],
+                  lines: []
+                });
+              }
+            }) : null
+          ]
+        })
+      ]
+    });
+  }
+  function ServerCloneSection() {
+    var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
+    var guilds = Object.values(findByStoreName("GuildStore")?.getGuilds?.() ?? {});
+    var [guildId, setGuildId] = (0, import_react9.useState)("");
+    var [name, setName] = (0, import_react9.useState)("");
+    var [status, setStatus] = (0, import_react9.useState)({
+      running: false,
+      text: ""
+    });
+    var signal = (0, import_react9.useRef)({
+      cancelled: false
+    });
+    var start = () => _async_to_generator(function* () {
+      var source = guilds.find((guild) => guild.id === guildId);
+      if (!source)
+        return showToast("Pick a server first.");
+      signal.current = {
+        cancelled: false
+      };
+      setStatus({
+        running: true,
+        text: "Starting"
+      });
+      try {
+        var result = yield cloneServer({
+          rest: extrasHttp(),
+          sourceGuildId: source.id,
+          name: name.trim() || source.name + " (copy)",
+          signal: signal.current,
+          onProgress: (step, done, total) => setStatus({
+            running: true,
+            text: step + " (" + done + "/" + total + ")"
+          })
+        });
+        setStatus({
+          running: false,
+          text: "Finished. The new server is in your server list.",
+          skipped: result.skipped
+        });
+      } catch (error) {
+        setStatus({
+          running: false,
+          text: "Stopped: " + (error?.body?.message || error?.message || "Cloning failed")
+        });
+      }
+    })();
+    return /* @__PURE__ */ jsxs(K2.Section, {
+      title: "Clone a server",
+      description: "Copies roles, channels, permissions, emojis, stickers and settings into a new server you own, using your account. It goes slowly to stay within Discord's limits. Messages and members are never copied. Only clone servers you have the right to copy.",
+      children: [
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "Server",
+          children: /* @__PURE__ */ jsx(K2.Chips, {
+            options: guilds.slice(0, 50).map((guild) => ({
+              value: guild.id,
+              label: guild.name
+            })),
+            value: guildId,
+            onChange: (id) => {
+              setGuildId(id);
+              setName("");
+            }
+          })
+        }),
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "New server name",
+          children: /* @__PURE__ */ jsx(TextInput4, {
+            defaultValue: name,
+            placeholder: "Leave empty for \u201Cname (copy)\u201D",
+            onChangeText: setName,
+            placeholderTextColor: "#777"
+          })
+        }),
+        /* @__PURE__ */ jsx(import_react_native26.View, {
+          style: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8
+          },
+          children: status.running ? /* @__PURE__ */ jsx(Button2, {
+            text: "Stop",
+            variant: "secondary",
+            size: "sm",
+            onPress: () => {
+              signal.current.cancelled = true;
+            }
+          }) : /* @__PURE__ */ jsx(Button2, {
+            text: "Clone server",
+            variant: "primary",
+            size: "sm",
+            onPress: () => void start()
+          })
+        }),
+        status.text ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/medium",
+          children: status.text
+        }) : null,
+        status.skipped?.length ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/medium",
+          color: "text-muted",
+          children: "Couldn't copy: " + status.skipped.join(", ")
+        }) : null
+      ]
+    });
+  }
   function ExtrasCard({ onReset }) {
     var [, force] = (0, import_react9.useReducer)((x2) => x2 + 1, 0);
     var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
@@ -27117,6 +28132,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             }) : null
           ]
         }),
+        /* @__PURE__ */ jsx(FakeMessagesSection, {}),
+        /* @__PURE__ */ jsx(ServerCloneSection, {}),
         /* @__PURE__ */ jsx(K2.Section, {
           title: "Account tools",
           children: /* @__PURE__ */ jsxs(import_react_native26.View, {
@@ -27222,6 +28239,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               suppressOwnPullUntil = Date.now() + 15e3;
             },
             explain: () => showToast("Edit this connection in CloudCord Profile settings.")
+          });
+        } catch (e) {
+        }
+        try {
+          fakeMessages?.stop();
+          fakeMessages = installFakeMessages({
+            dispatcher: FluxDispatcher,
+            rest: extrasHttp(),
+            iconUtils: findByProps("getUserAvatarURL"),
+            getConversations: savedConversations,
+            getUser: (id) => findByStoreName("UserStore")?.getUser?.(id),
+            getGuildId: (channelId) => findByStoreName("ChannelStore")?.getChannel?.(channelId)?.guild_id,
+            removeLine: (conversationId, lineKey) => saveConversations(savedConversations().map((item) => item.id === conversationId ? {
+              ...item,
+              lines: item.lines.filter((line) => line.key !== lineKey)
+            } : item)),
+            explain: () => showToast("That's a fake message on your device.")
           });
         } catch (e) {
         }
@@ -30595,7 +31629,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react9, import_react_native26, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, localRequestActions, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, TEMPLATE_CATEGORIES, countTemplateUse, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react9, import_react_native26, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, localRequestActions, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, fakeMessages, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, TEMPLATE_CATEGORIES, countTemplateUse, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -30618,6 +31652,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_profileAppearance();
       init_profileIdentity();
       init_connectionSettings();
+      init_fakeMessages();
+      init_serverClone();
       init_localRelationshipActions();
       init_settings();
       init_plugins4();
@@ -31802,6 +32838,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       visualRoleLists = /* @__PURE__ */ new WeakMap();
       roleHooksInstalled = false;
       leavingServers = false;
+      fakeMessages = null;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
         _inherits(NamePreviewBoundary2, Component2);
@@ -55420,7 +56457,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "18be700f2dd77079a2c80849eff0f9cfb6477edd";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "2147fd6351fadcf7dbe88274e727d98f630ee37c";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
