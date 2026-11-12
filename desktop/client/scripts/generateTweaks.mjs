@@ -123,6 +123,14 @@ const TWEAKS = [
     ["MutedChannelsFaded", "Fades out muted channels in the channel list", `[class*="modeMuted"] { opacity: .45 !important; }`],
     ["CompactMemberList", "Tighter spacing in the member list", `[class*="member_"] { padding-top: 0 !important; padding-bottom: 0 !important; height: 38px !important; }`],
     ["RoundedImages", "Rounder corners on images and videos in chat", `[class*="imageWrapper"], [class*="imageWrapper"] img, [class*="wrapperPlaying"] { border-radius: 12px !important; }`, ["Media"]],
+    ["HideServerBanners", "Hides banners at the top of server channel lists", hide(`[class*="animatedContainer"][class*="bannerImage"], [class*="bannerImg"]`)],
+    ["HideJoinMessages", "Hides \"X joined the server\" messages", hide(`[class*="systemMessage"]:has([class*="welcome"]), li:has([class*="userJoin"])`), ["Chat"]],
+    ["HideReactionsBar", "Hides reactions under messages", hide(`[class*="reactions_"]`), ["Chat"]],
+    ["WiderChat", "Lets messages use the full width of the window", `[class*="messageListItem"] [class*="contents"] { max-width: none !important; } [class*="chatContent"] { max-width: none !important; }`, ["Chat"]],
+    ["BiggerChatText", "Slightly larger message text", `[class*="markup"][class*="messageContent"] { font-size: 1.08rem !important; line-height: 1.45 !important; }`, ["Chat"]],
+    ["RoundedAvatarsSquare", "Square-ish avatars with rounded corners", `[class*="avatar"] img, img[class*="avatar"] { border-radius: 28% !important; } [class*="avatar"] svg mask rect, mask[id*="avatar"] circle { rx: 28%; }`, ["Appearance"]],
+    ["NoChatBarBorder", "Removes the border around the chat bar", `form [class*="channelTextArea"] { border: 0 !important; box-shadow: none !important; }`, ["Chat"]],
+    ["NoMessageHoverBar", "Hides the buttons that appear when hovering a message", hide(`[class*="buttonsInner"]`), ["Chat"]],
 ];
 
 const root = join(import.meta.dirname, "..", "src", "cloudcordplugins");
