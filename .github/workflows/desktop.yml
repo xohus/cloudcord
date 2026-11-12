@@ -97,6 +97,8 @@ jobs:
           node scripts/test-pc-nitro-override.cjs
           node scripts/test-profile-hook-lifecycle.cjs
           node scripts/test-profile-network-timeout.cjs
+          node scripts/test-fake-messages.cjs
+          node scripts/test-server-clone.cjs
 
       - name: Check shared custom friend and connection previews
         env:

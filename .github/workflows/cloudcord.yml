@@ -12,6 +12,8 @@ concurrency:
       - "ios/**"
       - "desktop/client/src/utils/profileAppearance.ts"
       - "desktop/client/src/utils/connectionSettings.ts"
+      - "desktop/client/src/utils/fakeMessages.ts"
+      - "desktop/client/src/utils/serverClone.ts"
       - "desktop/client/src/utils/localRelationshipActions.ts"
       - "desktop/client/src/utils/cx*.ts"
       - "desktop/client/scripts/cx-migrate-palette.mjs"
@@ -179,6 +181,8 @@ jobs:
           grep -q '"cloudcord.ccp.character-counter":' src/core/plugins/index.ts
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
           cp "../desktop/client/src/utils/connectionSettings.ts" "src/lib/api/connectionSettings.ts"
+          cp "../desktop/client/src/utils/fakeMessages.ts" "src/lib/api/fakeMessages.ts"
+          cp "../desktop/client/src/utils/serverClone.ts" "src/lib/api/serverClone.ts"
           cp "../desktop/client/src/utils/localRelationshipActions.ts" "src/lib/api/localRelationshipActions.ts"
           cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
@@ -429,6 +433,8 @@ jobs:
           function CustomSocialEditor(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialEditor; return <Component {...props} />; }
           import { presentationIdentity, presentationName } from "@lib/api/profileIdentity";
           import { installConnectionSettings } from "@lib/api/connectionSettings";
+          import { FakeConversation, FakePerson, installFakeMessages, MAX_FAKE_PEOPLE, newKey, normalizeConversation } from "@lib/api/fakeMessages";
+          import { cloneServer } from "@lib/api/serverClone";
           import { installLocalRelationshipActions } from "@lib/api/localRelationshipActions";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
@@ -3703,6 +3709,111 @@ jobs:
                   } }
               ]);
           }
+          // ---- Fake messages (device only) ----
+          let fakeMessages: ReturnType<typeof installFakeMessages> | null = null;
+          function savedConversations(): FakeConversation[] {
+              const list = (rootSettings as any).fakeMessages;
+              return (Array.isArray(list) ? list : []).map(normalizeConversation).filter(Boolean) as FakeConversation[];
+          }
+          function saveConversations(list: FakeConversation[]) {
+              (rootSettings as any).fakeMessages = list.map(normalizeConversation).filter(Boolean);
+          }
+          function FakeMessagesSection() {
+              const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
+              const channelId = (findByStoreName("SelectedChannelStore") as any)?.getChannelId?.() as string | undefined;
+              const channel = channelId ? (findByStoreName("ChannelStore") as any)?.getChannel?.(channelId) : null;
+              const users = findByStoreName("UserStore") as any;
+              const existing = savedConversations().find(item => item.channelId === channelId);
+              const [draft, setDraft] = useState<FakeConversation | null>(() => existing ? JSON.parse(JSON.stringify(existing)) : channelId ? { id: newKey(), name: "Fake conversation", channelId, people: [], lines: [] } : null);
+              const [personInput, setPersonInput] = useState("");
+              const [inputKey, setInputKey] = useState(0);
+              if (!draft) return <K.Section title="Fake conversation" description="Open a chat first, then come back here."><Text variant="text-sm/medium" color="text-muted">No chat is open.</Text></K.Section>;
+              const name = (person: FakePerson) => { const user = person.userId ? users?.getUser?.(person.userId) : null; return person.name || user?.globalName || user?.username || person.userId || "Person"; };
+              const update = (patch: Partial<FakeConversation>) => setDraft(previous => previous && ({ ...previous, ...patch }));
+              const addPerson = (person: Omit<FakePerson, "key">) => {
+                  if (draft.people.length >= MAX_FAKE_PEOPLE) return showToast("Up to " + MAX_FAKE_PEOPLE + " people.");
+                  if (person.userId && draft.people.some(item => item.userId === person.userId)) return;
+                  update({ people: [...draft.people, { key: newKey(), ...person }] });
+                  setPersonInput(""); setInputKey(key => key + 1);
+              };
+              const addFromInput = () => {
+                  const id = parseUserId(personInput);
+                  if (id) return addPerson({ userId: id });
+                  if (personInput.trim()) return addPerson({ name: personInput.trim().slice(0, 32) });
+              };
+              const friendIds: string[] = ((findByStoreName("RelationshipStore") as any)?.getFriendIDs?.() ?? []).slice(0, 12);
+              const me = users?.getCurrentUser?.();
+              const show = () => {
+                  const clean = normalizeConversation(draft);
+                  if (!clean?.lines.length) return showToast("Add at least one message.");
+                  fakeMessages?.hide(clean.id);
+                  saveConversations([...savedConversations().filter(item => item.id !== clean.id), clean]);
+                  fakeMessages?.show(clean.channelId);
+                  showToast("Shown in this chat, only on your device.");
+              };
+              return <K.Section title={"Fake conversation in " + (channel?.name ? "#" + channel.name : "this chat")} description="Only you see these messages. Nothing is sent.">
+                  <K.Field label={"People (" + draft.people.length + "/" + MAX_FAKE_PEOPLE + ")"}>
+                      <K.Chips options={draft.people.map(person => ({ value: person.key, label: name(person) + " ×" }))} value={""} onChange={(key: string) => update({ people: draft.people.filter(item => item.key !== key), lines: draft.lines.filter(line => line.person !== key) })} />
+                  </K.Field>
+                  <K.Field label="Add a friend">
+                      <K.Chips options={[...(me ? [{ value: me.id, label: "You" }] : []), ...friendIds.map(id => ({ value: id, label: users?.getUser?.(id)?.globalName || users?.getUser?.(id)?.username || id }))]} value={""} onChange={(id: string) => addPerson({ userId: id })} />
+                  </K.Field>
+                  <K.Field label="Or a user ID, or a made-up name"><TextInput key={inputKey} defaultValue={personInput} placeholder="User ID or name" autoCapitalize="none" autoCorrect={false} onChangeText={setPersonInput} onSubmitEditing={addFromInput} placeholderTextColor="#777" /></K.Field>
+                  <Button text="Add person" variant="secondary" size="sm" onPress={addFromInput} />
+                  {draft.lines.map((line, index) => <View key={line.key} style={{ gap: 6 }}>
+                      <K.Chips options={draft.people.map(person => ({ value: person.key, label: name(person) }))} value={line.person} onChange={(key: string) => update({ lines: draft.lines.map(item => item.key === line.key ? { ...item, person: key } : item) })} />
+                      <TextInput defaultValue={line.text} placeholder={"Message " + (index + 1)} multiline onChangeText={(text: string) => { line.text = text; }} placeholderTextColor="#777" />
+                      <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                          <TextInput defaultValue={String(line.minutesAgo)} keyboardType="number-pad" style={{ width: 70 }} onChangeText={(text: string) => { line.minutesAgo = Math.max(0, Number(text.replace(/\D/g, "")) || 0); }} />
+                          <Text variant="text-xs/medium" color="text-muted">minutes ago</Text>
+                          <Button text="Remove" variant="secondary" size="sm" onPress={() => update({ lines: draft.lines.filter(item => item.key !== line.key) })} />
+                      </View>
+                  </View>)}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      <Button text="Add message" variant="secondary" size="sm" onPress={() => {
+                          if (!draft.people.length) return showToast("Add a person first.");
+                          const last = draft.lines[draft.lines.length - 1];
+                          const next = draft.people[(draft.people.findIndex(person => person.key === last?.person) + 1) % draft.people.length];
+                          update({ lines: [...draft.lines.map(line => ({ ...line, minutesAgo: line.minutesAgo + 1 })), { key: newKey(), person: next.key, text: "", minutesAgo: 0 }] });
+                      }} />
+                      <Button text="Show in this chat" variant="primary" size="sm" onPress={show} />
+                      {existing ? <Button text="Delete" variant="destructive" size="sm" onPress={() => { fakeMessages?.hide(draft.id); saveConversations(savedConversations().filter(item => item.id !== draft.id)); setDraft({ id: newKey(), name: "Fake conversation", channelId: draft.channelId, people: [], lines: [] }); }} /> : null}
+                  </View>
+              </K.Section>;
+          }
+
+          // ---- Server clone ----
+          function ServerCloneSection() {
+              const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
+              const guilds = Object.values((findByStoreName("GuildStore") as any)?.getGuilds?.() ?? {}) as any[];
+              const [guildId, setGuildId] = useState<string>("");
+              const [name, setName] = useState("");
+              const [status, setStatus] = useState<{ running: boolean; text: string; skipped?: string[] }>({ running: false, text: "" });
+              const signal = useRef({ cancelled: false });
+              const start = async () => {
+                  const source = guilds.find(guild => guild.id === guildId);
+                  if (!source) return showToast("Pick a server first.");
+                  signal.current = { cancelled: false };
+                  setStatus({ running: true, text: "Starting" });
+                  try {
+                      const result = await cloneServer({ rest: extrasHttp(), sourceGuildId: source.id, name: name.trim() || source.name + " (copy)", signal: signal.current,
+                          onProgress: (step, done, total) => setStatus({ running: true, text: step + " (" + done + "/" + total + ")" }) });
+                      setStatus({ running: false, text: "Finished. The new server is in your server list.", skipped: result.skipped });
+                  } catch (error: any) {
+                      setStatus({ running: false, text: "Stopped: " + (error?.body?.message || error?.message || "Cloning failed") });
+                  }
+              };
+              return <K.Section title="Clone a server" description="Copies roles, channels, permissions, emojis, stickers and settings into a new server you own, using your account. It goes slowly to stay within Discord's limits. Messages and members are never copied. Only clone servers you have the right to copy.">
+                  <K.Field label="Server"><K.Chips options={guilds.slice(0, 50).map(guild => ({ value: guild.id, label: guild.name }))} value={guildId} onChange={(id: string) => { setGuildId(id); setName(""); }} /></K.Field>
+                  <K.Field label="New server name"><TextInput defaultValue={name} placeholder="Leave empty for “name (copy)”" onChangeText={setName} placeholderTextColor="#777" /></K.Field>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {status.running ? <Button text="Stop" variant="secondary" size="sm" onPress={() => { signal.current.cancelled = true; }} /> : <Button text="Clone server" variant="primary" size="sm" onPress={() => void start()} />}
+                  </View>
+                  {status.text ? <Text variant="text-sm/medium">{status.text}</Text> : null}
+                  {status.skipped?.length ? <Text variant="text-xs/medium" color="text-muted">{"Couldn't copy: " + status.skipped.join(", ")}</Text> : null}
+              </K.Section>;
+          }
+
           function ExtrasCard({ onReset }: { onReset: () => void }) {
               const [, force] = useReducer((x: number) => x + 1, 0);
               const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
@@ -3742,6 +3853,8 @@ jobs:
                       </View>
                       {parseUserId(friendId) ? <Text variant="text-xs/medium" color="text-muted">{"User ID: " + parseUserId(friendId)}</Text> : null}
                   </K.Section>
+                  <FakeMessagesSection />
+                  <ServerCloneSection />
                   <K.Section title="Account tools">
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                           <Button text="Leave all servers" variant="destructive" size="sm" onPress={confirmLeaveAllServers} />
@@ -3790,6 +3903,17 @@ jobs:
                                   suppressOwnPullUntil = Date.now() + 15_000;
                               },
                               explain: () => showToast("Edit this connection in CloudCord Profile settings."),
+                          });
+                      } catch {}
+                      try {
+                          fakeMessages?.stop();
+                          fakeMessages = installFakeMessages({
+                              dispatcher: FluxDispatcher, rest: extrasHttp(), iconUtils: findByProps("getUserAvatarURL"),
+                              getConversations: savedConversations,
+                              getUser: id => (findByStoreName("UserStore") as any)?.getUser?.(id),
+                              getGuildId: channelId => (findByStoreName("ChannelStore") as any)?.getChannel?.(channelId)?.guild_id,
+                              removeLine: (conversationId, lineKey) => saveConversations(savedConversations().map(item => item.id === conversationId ? { ...item, lines: item.lines.filter(line => line.key !== lineKey) } : item)),
+                              explain: () => showToast("That's a fake message on your device."),
                           });
                       } catch {}
                       for (const step of [installGiftHook, installBoostHooks, applyFakeNitro]) { try { step(); } catch {} }

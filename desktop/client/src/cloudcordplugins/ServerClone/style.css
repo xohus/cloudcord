@@ -1,0 +1,16 @@
+.cc-clone-title { color: var(--header-primary); font-size: 20px; font-weight: 700; margin: 0; flex: 1; }
+.cc-clone { display: flex; flex-direction: column; gap: 14px; padding: 16px 0 !important; color: var(--text-normal); }
+.cc-clone-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--header-secondary); }
+.cc-clone-field input { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--background-modifier-accent); background: var(--input-background, var(--background-tertiary)); color: var(--text-normal); font: inherit; font-weight: 400; }
+.cc-clone-parts { display: grid; gap: 8px; }
+.cc-clone-parts label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.cc-clone-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.cc-clone-progress { display: flex; flex-direction: column; gap: 10px; }
+.cc-clone-bar { height: 8px; border-radius: 999px; background: var(--background-modifier-accent); overflow: hidden; }
+.cc-clone-bar > div { height: 100%; background: var(--brand-500, #5865f2); transition: width .3s; }
+.cc-clone-step { font-size: 14px; }
+.cc-clone-progress ul { margin: 6px 0 0 18px; font-size: 13px; color: var(--text-muted); }
+.cc-clone-footer { display: flex; gap: 8px; justify-content: flex-end; }
+.cc-clone-btn { padding: 8px 16px; border-radius: 6px; border: 0; background: var(--background-modifier-accent); color: var(--text-normal); font: inherit; font-weight: 600; cursor: pointer; }
+.cc-clone-btn.primary { background: var(--brand-500, #5865f2); color: #fff; }
+.cc-clone-btn:disabled { opacity: .5; cursor: not-allowed; }
