@@ -230,6 +230,17 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     const rpc2 = load('customrpc/index');
     assert.equal(rpc2.buildActivity({ name: '' }, 1), null);
     assert.equal(rpc2.buildActivity({ name: 'Chess', type: '3' }, 5).type, 3);
+    const withImages = rpc2.buildActivity({ name: 'Chess', imageBigTooltip: 'Board' }, 5, { large: 'mp:external/abc' });
+    assert.equal(withImages.assets.large_image, 'mp:external/abc'); assert.equal(withImages.assets.large_text, 'Board');
+    assert.equal(rpc2.buildActivity({ name: 'Chess' }, 5).assets, undefined, 'no pictures, no assets');
+    const posted = [];
+    const http = { post: async request => { posted.push(request); return { body: [{ external_asset_path: 'external/xyz' }] }; } };
+    assert.equal(await rpc2.resolveImage('1234567890123456789', 'https://i.imgur.com/a.png', http), 'mp:external/xyz');
+    assert.equal(posted[0].url, '/applications/1234567890123456789/external-assets');
+    assert.equal(await rpc2.resolveImage('1234567890123456789', 'https://i.imgur.com/a.png', http), 'mp:external/xyz');
+    assert.equal(posted.length, 1, 'links are converted once');
+    assert.equal(await rpc2.resolveImage('', 'https://i.imgur.com/b.png', http), undefined, 'links need an application id');
+    assert.equal(await rpc2.resolveImage('', 'my_asset', http), 'my_asset', 'asset names pass through');
     const lfm = load('lastfmrichpresence/index');
     assert.equal(lfm.activityFromLastfm({ recenttracks: { track: [{ name: 'Song', artist: { '#text': 'Band' }, '@attr': { nowplaying: 'true' } }] } }).name, 'Band - Song');
     assert.equal(lfm.activityFromLastfm({ recenttracks: { track: [{ name: 'Old' }] } }), null, 'only now playing');
