@@ -30,7 +30,7 @@ export function createRainUpdater(files: any) {
                 if (body.length < 10000 || !body.includes("CloudCord")) throw new Error("invalid runtime response");
                 return body;
             })(),
-            new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("download timed out")), 20000); })
+            new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("download timed out")), 90000); })
         ]).finally(() => clearTimeout(timeout));
         if (typeof files?.writeFile !== "function") throw new Error("runtime file writer unavailable");
         const path = await files.writeFile("documents", "rain/bundle.js", code, "utf8");
