@@ -15,11 +15,12 @@ import * as DataStore from "@api/DataStore";
 import { findStoreLazy } from "@webpack";
 import { copyToClipboard } from "@utils/clipboard";
 import { installGiftPreview } from "./giftPreview";
-import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
+import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, IconUtils, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
 import { fakeConversationCount, openFakeConversation, openFakeDm } from "../../cloudcordplugins/FakeMessages";
 import { openServerClone } from "../../cloudcordplugins/ServerClone";
+import { FakeToolsSection } from "../../cloudcordplugins/FakeTools";
 
 const NITRO_APP_ID = "521842831262875670";
 const NITRO_SKU = "521847234246082599";
@@ -82,7 +83,7 @@ function fakeMember(guildId: string, member: any) {
 
 interface CustomRole { id: string; name: string; color: string; hoist: boolean; emoji?: string; admin?: boolean; top?: boolean; }
 interface RoleTweak { name?: string; color?: string; emoji?: string; }
-interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean; customRoles?: CustomRole[]; roleTweaks?: Record<string, RoleTweak>; }
+interface BoostFake { name?: string; iconUrl?: string; level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean; customRoles?: CustomRole[]; roleTweaks?: Record<string, RoleTweak>; }
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
@@ -242,6 +243,7 @@ function sendFakeBoostMessage(times: number, reachedLevel: number) {
 
 const BOOST_SINCE = new Date(Date.now() - 90 * 86400_000);
 let boostOriginals: { getGuild: any; getMember: any; getSelfMember?: any; } | null = null;
+let guildIconOriginal: any = null;
 const guildOverlays = new WeakMap<object, any>();
 // Our own overlays, so a guild that comes back through getGuild is never wrapped twice.
 const overlaySet = new WeakSet<object>();
@@ -349,11 +351,14 @@ function installBoostHooks() {
     (GuildStore as any).getGuild = function (guildId: string, ...rest: unknown[]) {
         const guild = getGuild.call(this, guildId, ...rest);
         const fake = boostFor(guildId);
-        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.owner || fake?.members != null || fake?.online != null)) return guild;
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.name || fake?.iconUrl || fake?.level || fake?.partner || fake?.verified || fake?.owner || fake?.members != null || fake?.online != null)) return guild;
         let overlay = guildOverlays.get(guild);
         if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, {
             get: (target, key) => {
                 const now = boostFor(guildId);
+                if (now?.name && key === "name") return now.name;
+                // A placeholder icon hash makes Discord ask for the icon URL, which returns the chosen picture.
+                if (now?.iconUrl && key === "icon") return "cloudcord_custom";
                 if (now?.level && key === "premiumTier") return 3;
                 if (now?.level && key === "premiumSubscriberCount") return Math.max(14, target.premiumSubscriberCount ?? 0);
                 if (now?.owner && key === "ownerId") return UserStore.getCurrentUser()?.id ?? target.ownerId;
@@ -373,6 +378,14 @@ function installBoostHooks() {
         if (!member || typeof member !== "object" || !boostFor(guildId) || userId !== UserStore.getCurrentUser()?.id) return member;
         return fakeMember(guildId, member);
     };
+    // Renamed servers: their chosen picture wherever Discord asks for the server icon.
+    if (IconUtils?.getGuildIconURL && !guildIconOriginal) {
+        guildIconOriginal = IconUtils.getGuildIconURL;
+        (IconUtils as any).getGuildIconURL = function (options: any, ...rest: unknown[]) {
+            const url = boostFor(options?.id)?.iconUrl;
+            return url || guildIconOriginal.call(this, options, ...rest);
+        };
+    }
     const { getSelfMember } = boostOriginals;
     if (getSelfMember) (GuildMemberStore as any).getSelfMember = function (guildId: string, ...rest: unknown[]) {
         const member = getSelfMember.call(this, guildId, ...rest);
@@ -519,6 +532,7 @@ function uninstallBoostHooks() {
     (GuildStore as any).getGuild = boostOriginals.getGuild; (GuildMemberStore as any).getMember = boostOriginals.getMember;
     if (boostOriginals.getSelfMember) (GuildMemberStore as any).getSelfMember = boostOriginals.getSelfMember;
     boostOriginals = null;
+    if (guildIconOriginal) { (IconUtils as any).getGuildIconURL = guildIconOriginal; guildIconOriginal = null; }
 }
 function refreshGuildViews(guildId: string) {
     try { GuildStore.emitChange?.(); GuildMemberStore.emitChange?.(); GuildMemberCountStore.emitChange?.(); ChannelMemberStore.emitChange?.(); GuildRoleStore.emitChange?.(); } catch (e) { logger.warn("Refreshing guild stores failed", e); }
@@ -545,6 +559,10 @@ function BoostSection() {
             <Grid2>
                 <SelectField label="Boosts" options={[1, 2, 3, 5, 10].map(value => ({ value, label: `${value}x` }))} value={times} onChange={value => setTimes(Number(value))} />
                 <SelectField label="Message" options={[{ value: 0, label: "Just boosted" }, { value: 1, label: "Reached level 1" }, { value: 2, label: "Reached level 2" }, { value: 3, label: "Reached level 3" }]} value={reached} onChange={value => setReached(Number(value))} />
+            </Grid2>
+            <Grid2>
+                <label className="cpx-field"><span className="cpx-label">Server name</span><input className="cpx-input" maxLength={100} placeholder={guild.name} value={fake.name ?? ""} onChange={event => set({ name: event.currentTarget.value || undefined })} /></label>
+                <label className="cpx-field"><span className="cpx-label">Server icon (image link)</span><input className="cpx-input" placeholder="https://…" value={fake.iconUrl ?? ""} onChange={event => { const value = event.currentTarget.value.trim(); set({ iconUrl: value.startsWith("https://") ? value : undefined }); }} /></label>
             </Grid2>
             <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => sendFakeBoostMessage(times, reached)}>Send fake boost message</button></div>
             <span className="cpx-hint">Shows in the channel you have open and disappears when you switch channels or restart.</span>
@@ -895,6 +913,7 @@ export function ExtrasPanel() {
                 <button type="button" className="cpx-btn" disabled={!cloneGuildId} onClick={() => openServerClone(GuildStore.getGuild(cloneGuildId))}>Clone server</button>
             </div>
         </Section>
+        <FakeToolsSection Section={Section} SelectField={SelectField} />
         <Section title="Account tools">
             <div className="cpx-inline">
                 <button type="button" className="cpx-btn cpx-btn-danger" onClick={confirmLeaveAll}>Leave all servers</button>

@@ -1,0 +1,10 @@
+.cc-ban-screen { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; background: var(--background-tertiary, #1e1f22); font-family: var(--font-primary, sans-serif); }
+.cc-ban-card { width: min(480px, calc(100vw - 32px)); padding: 32px; border-radius: 8px; background: var(--background-primary, #313338); color: var(--text-normal, #dbdee1); text-align: center; box-shadow: 0 8px 24px rgb(0 0 0 / 30%); }
+.cc-ban-icon { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #da373c; color: #fff; font-size: 34px; font-weight: 800; }
+.cc-ban-card h1 { margin: 0 0 8px; color: var(--header-primary, #f2f3f5); font-size: 24px; font-weight: 700; }
+.cc-ban-card p { margin: 0 0 24px; color: var(--text-muted, #b5bac1); font-size: 16px; line-height: 1.4; }
+.cc-ban-buttons { display: flex; flex-direction: column; gap: 8px; }
+.cc-ban-buttons button { height: 44px; border: 0; border-radius: 3px; background: #5865f2; color: #fff; font: inherit; font-size: 16px; font-weight: 500; cursor: pointer; }
+.cc-ban-buttons .cc-ban-ghost { background: transparent; color: var(--text-link, #00a8fc); }
+.cc-ban-hint { display: block; margin-top: 16px; font-size: 12px; color: var(--text-muted, #949ba4); opacity: .6; }
+.cc-removal p { margin: 0 0 8px; }
