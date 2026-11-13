@@ -217,7 +217,10 @@ export function installFakeMessages(options: FakeMessagesOptions) {
         try {
             const original = object?.[key];
             if (typeof original !== "function") return;
-            const replacement = function (this: any, ...args: any[]) { return handler(original.bind(this), args); };
+            const replacement = function (this: any, ...args: any[]) {
+                // Never let a bug here break Discord's own request (login, purchases, anything).
+                try { return handler(original.bind(this), args); } catch { return original.apply(this, args); }
+            };
             object[key] = replacement;
             if (object[key] !== replacement) return;
             cleanups.push(() => { if (object[key] === replacement) object[key] = original; });

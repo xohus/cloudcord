@@ -21,7 +21,10 @@ export function installConnectionSettings(options: {
         try {
             const original = object?.[key];
             if (typeof original !== "function") return false;
-            const replacement = function (this: any, ...args: any[]) { return handler(original.bind(this), args); };
+            const replacement = function (this: any, ...args: any[]) {
+                // Never let a bug here break Discord's own request (login, purchases, anything).
+                try { return handler(original.bind(this), args); } catch { return original.apply(this, args); }
+            };
             object[key] = replacement;
             if (object[key] !== replacement) return false;
             cleanups.push(() => { if (object[key] === replacement) object[key] = original; });

@@ -8,8 +8,13 @@ export function installLocalRelationshipActions(rest: any, isLocal: (id: string)
             const original = rest?.[method];
             if (typeof original !== "function") continue;
             const replacement = function (this: any, ...args: any[]) {
-                const id = String(args[0]?.url || "").match(/^\/users\/@me\/relationships\/(\d{17,20})\/?(?:\?.*)?$/)?.[1];
-                if (!active || !id || !isLocal(id)) return original.apply(this, args);
+                let id: string | undefined;
+                // Never let a bug here break Discord's own request.
+                try {
+                    id = String(args[0]?.url || "").match(/^\/users\/@me\/relationships\/(\d{17,20})\/?(?:\?.*)?$/)?.[1];
+                    if (id && !isLocal(id)) id = undefined;
+                } catch { id = undefined; }
+                if (!active || !id) return original.apply(this, args);
                 if (method === "put") return Promise.reject(new Error("This is a device-only preview, not a real friend request. Remove it with Ignore."));
                 dismiss(id);
                 return Promise.resolve({ ok: true, status: 204, body: null });
