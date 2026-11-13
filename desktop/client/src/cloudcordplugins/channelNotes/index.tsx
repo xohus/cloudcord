@@ -9,7 +9,7 @@ import "./styles.css";
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addChannelToolbarButton, ChannelToolbarButton, removeChannelToolbarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
-import { Channel, RenderModalProps } from "@endcord/discord-types";
+import { Channel, RenderModalProps } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { classNameFactory } from "@utils/css";
 import { t, useI18n } from "@utils/i18n";

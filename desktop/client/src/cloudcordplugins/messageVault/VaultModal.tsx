@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Message, RenderModalProps } from "@endcord/discord-types";
+import { Message, RenderModalProps } from "@vencord/discord-types";
 import { classNameFactory } from "@utils/css";
 import { t, useI18n } from "@utils/i18n";
 import { identity } from "@utils/misc";

@@ -5,7 +5,7 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
-import type { Channel, Message } from "@endcord/discord-types";
+import type { Channel, Message } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import { useForceUpdater } from "@utils/react";

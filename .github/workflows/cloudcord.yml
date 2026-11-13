@@ -2499,8 +2499,17 @@ jobs:
                               if (String(props.id || "").includes("gifting")) {
                                   rendered.props.onPress = () => showGiftingBadgeOverlay(String(props.label || ""));
                                   rendered.props.accessibilityRole = "button";
+                                  return;
                               }
                           }
+                          // Discord's default tap opens its badges tab. Show the badge's own name and
+                          // description instead, like the tooltip on desktop.
+                          const label = String(rendered.props.label || rendered.props.description || rendered.props.tooltip || rendered.props.accessibilityLabel || "").trim();
+                          if (!label) return;
+                          const ours = /^(?:cloudcord-|fakeprofile-)/.test(renderedId);
+                          const detail = String(rendered.props.description && rendered.props.description !== label ? rendered.props.description : "");
+                          rendered.props.onPress = () => Alert.alert(label, [detail, ours ? "A CloudCord badge. People using CloudCord can see it." : ""].filter(Boolean).join(String.fromCharCode(10, 10)) || undefined);
+                          rendered.props.accessibilityRole = "button";
                       });
                       diagnostics.patches += 1;
                   } catch {}

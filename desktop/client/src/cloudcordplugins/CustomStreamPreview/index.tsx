@@ -8,7 +8,7 @@ import { UserAreaButton, UserAreaRenderProps } from "@api/UserArea";
 import { Divider } from "@components/Divider";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Flex } from "@components/Flex";
-import { RenderModalProps } from "@endcord/discord-types";
+import { RenderModalProps } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t } from "@utils/i18n";
 import { closeModal, ModalCloseButton as ModalCloseButtonRaw, ModalContent as ModalContentRaw, ModalFooter as ModalFooterRaw, ModalHeader as ModalHeaderRaw, ModalRoot as ModalRootRaw, ModalSize, openModal } from "@utils/modal";

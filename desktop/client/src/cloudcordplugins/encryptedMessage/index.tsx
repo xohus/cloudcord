@@ -6,7 +6,7 @@
 
 import { ChatBarButton, ChatBarButtonFactory } from "@api/ChatButtons";
 import { addContextMenuPatch, removeContextMenuPatch } from "@api/ContextMenu";
-import type { Message } from "@endcord/discord-types";
+import type { Message } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t as translateText } from "@utils/i18n";
 import definePlugin from "@utils/types";

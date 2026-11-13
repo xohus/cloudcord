@@ -89,7 +89,7 @@ const settings = definePluginSettings({
     },
     panda: {
         type: OptionType.BOOLEAN,
-        description: "The Endcord panda follows your mouse, or the others when they're on, and naps whenever it can",
+        description: "A panda follows your mouse, or the others when they're on, and naps whenever it can",
         default: true,
         onChange: () => syncPet("panda")
     }
@@ -97,7 +97,7 @@ const settings = definePluginSettings({
 
 export default definePlugin({
     name: "oneko",
-    description: "The Endcord panda follows your mouse. A cat and a puppy can join it from the settings",
+    description: "A panda follows your mouse. A cat and a puppy can join it from the settings",
     settings,
     tags: ["Fun", "Appearance"],
     // Listing adryd here because this literally just evals her script

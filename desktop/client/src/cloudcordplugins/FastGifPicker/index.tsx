@@ -296,7 +296,7 @@ function StatsPanel() {
     }, [open]);
 
     return (
-        <Card variant="normal">
+        <Card variant="primary">
             <Flex flexDirection="column" gap="12px">
                 <Flex justifyContent="space-between" alignItems="center" gap="12px">
                     <BaseText size="md" weight="semibold">{t("FastGifPicker stats")}</BaseText>

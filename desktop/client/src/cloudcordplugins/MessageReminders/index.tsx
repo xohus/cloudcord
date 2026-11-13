@@ -8,7 +8,7 @@ import { findGroupChildrenByChildId } from "@api/ContextMenu";
 import { get, set } from "@api/DataStore";
 import { showNotification } from "@api/Notifications";
 import { Flex } from "@components/Flex";
-import { Message, RenderModalProps } from "@endcord/discord-types";
+import { Message, RenderModalProps } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t } from "@utils/i18n";
 import { ModalCloseButton, ModalContent, ModalHeader, ModalRoot, ModalSize, openModal } from "@utils/modal";

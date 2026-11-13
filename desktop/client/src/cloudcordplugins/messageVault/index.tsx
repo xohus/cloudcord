@@ -9,7 +9,7 @@ import "./styles.css";
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addChannelToolbarButton, ChannelToolbarButton, removeChannelToolbarButton } from "@api/HeaderBar";
 import { definePluginSettings } from "@api/Settings";
-import { Message } from "@endcord/discord-types";
+import { Message } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t } from "@utils/i18n";
 import { Logger } from "@utils/Logger";

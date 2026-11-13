@@ -11,7 +11,7 @@ import { HeaderBarButton } from "@api/HeaderBar";
 import { showNotification } from "@api/Notifications";
 import { definePluginSettings } from "@api/Settings";
 import ErrorBoundary from "@components/ErrorBoundary";
-import type { CommandArgument, CommandContext } from "@endcord/discord-types";
+import type { CommandArgument, CommandContext } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t } from "@utils/i18n";
 import { makeCodeblock } from "@utils/text";
@@ -20,7 +20,7 @@ import { openModal, RTCConnectionStore } from "@webpack/common";
 
 import { getLocation, type IPInfo, VoiceServerIcon, type VoiceServerInfo, VoiceServerModal } from "./VoiceServerModal";
 
-const Native = EndcordNative.pluginHelpers.VoiceServerInfo as PluginNative<typeof import("./native")>;
+const Native = VencordNative.pluginHelpers.VoiceServerInfo as PluginNative<typeof import("./native")>;
 const REQUEST_TIMEOUT_MS = 12_000;
 const activeRequests = new Set<AbortController>();
 

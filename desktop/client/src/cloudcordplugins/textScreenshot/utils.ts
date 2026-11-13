@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { User } from "@endcord/discord-types";
+import { User } from "@vencord/discord-types";
 import { IconUtils } from "@webpack/common";
 
 const DISCORD_BG = "#313338";

@@ -5,7 +5,7 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { Message } from "@endcord/discord-types";
+import { Message } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t } from "@utils/i18n";
 import definePlugin, { OptionType } from "@utils/types";

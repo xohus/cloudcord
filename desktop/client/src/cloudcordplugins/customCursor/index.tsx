@@ -55,7 +55,7 @@ function pixelSvg(rows: string[]) {
 
 const PRESETS: CursorPreset[] = [
     {
-        label: "Endcord",
+        label: "CloudCord",
         value: "endcord",
         ...arrowAndHand("url(#g)", "#f3f6fb", '<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ccbff"/><stop offset="1" stop-color="#3d74e0"/></linearGradient>')
     },

@@ -7,7 +7,7 @@
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { definePluginSettings, useSettings } from "@api/Settings";
 import ErrorBoundary from "@components/ErrorBoundary";
-import type { Channel, User } from "@endcord/discord-types";
+import type { Channel, User } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { t } from "@utils/i18n";
 import { classes } from "@utils/misc";

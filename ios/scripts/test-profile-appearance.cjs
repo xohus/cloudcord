@@ -17,7 +17,7 @@ native.displayNameStyles.colors[0] = 123;
 assert.equal(input.displayNameStyles.colors[0], 0);
 assert.deepEqual(JSON.parse(JSON.stringify(api.nativeProfileAppearance({}))), {});
 assert.equal(api.nativeProfileAppearance({ serverTag: null }).primaryGuild, null);
-assert.equal(api.nativeProfileAppearance({ displayNameStyles: null }).displayNameStyles, null);
+assert.equal(api.nativeProfileAppearance({ displayNameStyles: null }).displayNameStyles, undefined, 'a reset name style falls back to the real one instead of handing Discord null');
 assert.equal(api.normalizeProfileAppearance({ serverTag: { ...input.serverTag, tag: 'TOOLONG' } }).serverTag, undefined);
 assert.equal(api.normalizeProfileAppearance({ displayNameStyles: { fontId: -1, effectId: 0, colors: [] } }).displayNameStyles, undefined);
 // One malformed server row must not prevent the remaining picker entries loading.

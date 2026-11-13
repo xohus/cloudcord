@@ -210,8 +210,9 @@ export function appearanceOptions(values: any): { value: number; label: string }
 
 export function normalizeProfileAppearance(data: any): ProfileAppearance {
     const result: ProfileAppearance = { ...normalizeCustomSocial(data) };
-    if (data?.displayNameStyles === null) result.displayNameStyles = null;
-    else if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
+    // A reset name style (null) means "use my real Discord style", never a null style:
+    // Discord's name renderer reads style.fontId and crashed on every screen with your name.
+    if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
         const style = data.displayNameStyles;
         // 0 is not a Discord font or effect; Discord's own name-style picker crashes on it.
         // Map it to Discord's defaults (font 11 = Default, effect 1 = Solid).

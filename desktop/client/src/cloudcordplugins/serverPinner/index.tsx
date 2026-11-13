@@ -9,7 +9,7 @@ import "./styles.css";
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
-import { Guild } from "@endcord/discord-types";
+import { Guild } from "@vencord/discord-types";
 import { Devs } from "@utils/constants";
 import { classNameFactory } from "@utils/css";
 import { t } from "@utils/i18n";
