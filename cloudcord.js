@@ -16894,7 +16894,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (typeof original !== "function")
           return false;
         var replacement = function replacement2(...args) {
-          return handler(original.bind(this), args);
+          try {
+            return handler(original.bind(this), args);
+          } catch (e) {
+            return original.apply(this, args);
+          }
         };
         object[key] = replacement;
         if (object[key] !== replacement)
@@ -17266,7 +17270,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (typeof original !== "function")
           return;
         var replacement = function replacement2(...args) {
-          return handler(original.bind(this), args);
+          try {
+            return handler(original.bind(this), args);
+          } catch (e) {
+            return original.apply(this, args);
+          }
         };
         object[key2] = replacement;
         if (object[key2] !== replacement)
@@ -17775,8 +17783,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (typeof original !== "function")
           return "continue";
         var replacement = function replacement2(...args) {
-          var id = String(args[0]?.url || "").match(/^\/users\/@me\/relationships\/(\d{17,20})\/?(?:\?.*)?$/)?.[1];
-          if (!active || !id || !isLocal(id))
+          var id;
+          try {
+            id = String(args[0]?.url || "").match(/^\/users\/@me\/relationships\/(\d{17,20})\/?(?:\?.*)?$/)?.[1];
+            if (id && !isLocal(id))
+              id = void 0;
+          } catch (e) {
+            id = void 0;
+          }
+          if (!active || !id)
             return original.apply(this, args);
           if (method2 === "put")
             return Promise.reject(new Error("This is a device-only preview, not a real friend request. Remove it with Ignore."));
@@ -56705,7 +56720,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a1b0f9486e7b334f9a65552a835674a7be592523";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "b96824ec53a9550f24b29f21ac5ce12179ea065d";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
