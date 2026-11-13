@@ -16224,9 +16224,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var result = {
       ...normalizeCustomSocial(data)
     };
-    if (data?.displayNameStyles === null)
-      result.displayNameStyles = null;
-    else if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
+    if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
       var style = data.displayNameStyles;
       var rawFont = style.fontId ?? style.font_id, rawEffect = style.effectId ?? style.effect_id;
       var fontId = rawFont === 0 ? 11 : rawFont;
@@ -25471,8 +25469,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             if (String(props.id || "").includes("gifting")) {
               rendered.props.onPress = () => showGiftingBadgeOverlay(String(props.label || ""));
               rendered.props.accessibilityRole = "button";
+              return;
             }
           }
+          var label2 = String(rendered.props.label || rendered.props.description || rendered.props.tooltip || rendered.props.accessibilityLabel || "").trim();
+          if (!label2)
+            return;
+          var ours = /^(?:cloudcord-|fakeprofile-)/.test(renderedId);
+          var detail = String(rendered.props.description && rendered.props.description !== label2 ? rendered.props.description : "");
+          rendered.props.onPress = () => import_react_native26.Alert.alert(label2, [
+            detail,
+            ours ? "A CloudCord badge. People using CloudCord can see it." : ""
+          ].filter(Boolean).join(String.fromCharCode(10, 10)) || void 0);
+          rendered.props.accessibilityRole = "button";
         });
         diagnostics.patches += 1;
       } catch (e) {
@@ -56696,7 +56705,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "771fdf768dbf318ebb2f846439bed806b50ef5c8";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a1b0f9486e7b334f9a65552a835674a7be592523";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
