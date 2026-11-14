@@ -236,7 +236,13 @@ export function installFakeMessages(options: FakeMessagesOptions) {
     const merge = (channelId: string, page: any[], query: string) => {
         const fakes = conversationsIn(channelId).flatMap(messagesFor);
         if (!fakes.length) return page;
-        const params = new URLSearchParams(query);
+        // Parsed by hand: React Native's URLSearchParams does not implement get().
+        const values = new Map<string, string>();
+        for (const part of query.split("&")) {
+            const [key, value = ""] = part.split("=");
+            if (key) try { values.set(decodeURIComponent(key), decodeURIComponent(value)); } catch { }
+        }
+        const params = { get: (key: string) => values.get(key) ?? null };
         const ids = page.map(message => BigInt(message.id));
         const newest = ids.length ? ids.reduce((a, b) => a > b ? a : b) : null;
         const oldest = ids.length ? ids.reduce((a, b) => a < b ? a : b) : null;
@@ -254,12 +260,17 @@ export function installFakeMessages(options: FakeMessagesOptions) {
     };
     wrap(options.rest, "get", (original, args) => {
         const url = urlOf(args);
+        const channel = url.match(/\/channels\/(\d+)/)?.[1];
+        // Everything else (GIF search, member search, ...) goes straight to Discord untouched.
+        if (!channel) return original(...args);
         const match = url.match(/\/channels\/(\d+)\/messages(?:\?(.*))?$/);
-        const query = new URLSearchParams(match?.[2] || "");
-        for (const [key, value] of Object.entries(args[0]?.query || {})) query.set(key, String(value));
-        if (match && isLocalDm(match[1])) return ok(merge(match[1], [], query.toString()));
-        if (/\/channels\/(\d+)/.test(url) && isLocalDm(url.match(/\/channels\/(\d+)/)![1])) return ok({});
-        if (!match || !conversationsIn(match[1]).length) return original(...args);
+        if (!match && !isLocalDm(channel)) return original(...args);
+        if (!match) return ok({});
+        if (!isLocalDm(match[1]) && !conversationsIn(match[1]).length) return original(...args);
+        // React Native's URLSearchParams has no set(), so build the query by hand.
+        const extra = Object.entries(args[0]?.query || {}).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+        const query = [match[2], ...extra].filter(Boolean).join("&");
+        if (isLocalDm(match[1])) return ok(merge(match[1], [], query));
         return Promise.resolve(original(...args)).then((response: any) => {
             const page = response?.body;
             if (!Array.isArray(page)) return response;
