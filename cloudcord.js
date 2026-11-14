@@ -17297,7 +17297,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var fakes = conversationsIn(channelId).flatMap(messagesFor);
       if (!fakes.length)
         return page;
-      var params = new URLSearchParams(query);
+      var values = /* @__PURE__ */ new Map();
+      for (var part of query.split("&")) {
+        var [key2, value = ""] = part.split("=");
+        if (key2)
+          try {
+            values.set(decodeURIComponent(key2), decodeURIComponent(value));
+          } catch (e) {
+          }
+      }
+      var params = {
+        get: (key3) => values.get(key3) ?? null
+      };
       var ids = page.map((message) => BigInt(message.id));
       var newest = ids.length ? ids.reduce((a, b3) => a > b3 ? a : b3) : null;
       var oldest = ids.length ? ids.reduce((a, b3) => a < b3 ? a : b3) : null;
@@ -17320,16 +17331,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     };
     wrap(options.rest, "get", (original, args) => {
       var url2 = urlOf(args);
-      var match = url2.match(/\/channels\/(\d+)\/messages(?:\?(.*))?$/);
-      var query = new URLSearchParams(match?.[2] || "");
-      for (var [key2, value] of Object.entries(args[0]?.query || {}))
-        query.set(key2, String(value));
-      if (match && isLocalDm(match[1]))
-        return ok(merge(match[1], [], query.toString()));
-      if (/\/channels\/(\d+)/.test(url2) && isLocalDm(url2.match(/\/channels\/(\d+)/)[1]))
-        return ok({});
-      if (!match || !conversationsIn(match[1]).length)
+      var channel = url2.match(/\/channels\/(\d+)/)?.[1];
+      if (!channel)
         return original(...args);
+      var match = url2.match(/\/channels\/(\d+)\/messages(?:\?(.*))?$/);
+      if (!match && !isLocalDm(channel))
+        return original(...args);
+      if (!match)
+        return ok({});
+      if (!isLocalDm(match[1]) && !conversationsIn(match[1]).length)
+        return original(...args);
+      var extra = Object.entries(args[0]?.query || {}).map(([key2, value]) => `${encodeURIComponent(key2)}=${encodeURIComponent(String(value))}`);
+      var query = [
+        match[2],
+        ...extra
+      ].filter(Boolean).join("&");
+      if (isLocalDm(match[1]))
+        return ok(merge(match[1], [], query));
       return Promise.resolve(original(...args)).then((response) => {
         var page = response?.body;
         if (!Array.isArray(page))
@@ -56720,7 +56738,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "b96824ec53a9550f24b29f21ac5ce12179ea065d";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "e40ab4cb3fcd2087c6878468383b78c23733aef5";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
