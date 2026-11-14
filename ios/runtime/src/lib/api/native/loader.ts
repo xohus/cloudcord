@@ -1,4 +1,6 @@
 import { VdThemeInfo } from "@lib/addons/themes";
+import { Platform } from "react-native";
+
 import { removeCacheFile } from "./fs";
 
 // @ts-ignore
@@ -230,6 +232,9 @@ export function getSysColors() {
 
 export function getLoaderConfigPath() {
     if ((globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__) return "rain/loader.json";
+    // The Android loader (KettuXposed) reads files/pyoncord/loader.json, so a custom
+    // runtime URL saved anywhere else is never used there.
+    if (Platform.OS === "android") return "pyoncord/loader.json";
     if (isCloudCordLoader()) return "cloudcord/loader.json";
     if (isPyonLoader()) {
         return "cloudcord/loader.json";
